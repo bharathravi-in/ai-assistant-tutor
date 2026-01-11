@@ -1,8 +1,10 @@
 """
 LLM Client - Abstraction layer for LLM providers
+Supports multi-tenant organization-specific API keys
 """
 from typing import Optional
 from app.config import get_settings
+from app.utils.encryption import decrypt_value
 
 settings = get_settings()
 
@@ -10,30 +12,121 @@ settings = get_settings()
 class LLMClient:
     """
     Provider-agnostic LLM client.
-    Supports OpenAI, Google Gemini, and LiteLLM.
+    Supports OpenAI, Google Gemini, Anthropic, and LiteLLM.
+    Can use organization-specific API keys for multi-tenant support.
     """
     
-    def __init__(self):
-        self.provider = settings.llm_provider.lower()
+    def __init__(self, organization_settings=None):
+        """
+        Initialize LLM client.
+        
+        Args:
+            organization_settings: Optional OrganizationSettings object
+                                   for multi-tenant API key support
+        """
+        self.org_settings = organization_settings
         self._client = None
+        
+        # Determine provider and API key
+        if organization_settings:
+            self.provider = organization_settings.ai_provider.value
+            self._api_key = self._get_org_api_key()
+            self._model = self._get_org_model()
+        else:
+            self.provider = settings.llm_provider.lower()
+            self._api_key = self._get_env_api_key()
+            self._model = self._get_default_model()
+        
         self._init_client()
+    
+    def _get_org_api_key(self) -> Optional[str]:
+        """Get API key from organization settings (decrypted)."""
+        if not self.org_settings:
+            return None
+        
+        if self.provider == "openai":
+            encrypted = self.org_settings.openai_api_key
+        elif self.provider == "gemini":
+            encrypted = self.org_settings.gemini_api_key
+        elif self.provider == "azure_openai":
+            encrypted = self.org_settings.azure_openai_key
+        elif self.provider == "anthropic":
+            encrypted = self.org_settings.anthropic_api_key
+        else:
+            return None
+        
+        return decrypt_value(encrypted) if encrypted else None
+    
+    def _get_org_model(self) -> str:
+        """Get model name from organization settings."""
+        if not self.org_settings:
+            return self._get_default_model()
+        
+        if self.provider == "openai":
+            return self.org_settings.openai_model or "gpt-4o-mini"
+        elif self.provider == "gemini":
+            return self.org_settings.gemini_model or "gemini-pro"
+        elif self.provider == "azure_openai":
+            return self.org_settings.azure_openai_deployment or "gpt-4"
+        else:
+            return "gpt-4o-mini"
+    
+    def _get_env_api_key(self) -> Optional[str]:
+        """Get API key from environment variables."""
+        if self.provider == "openai":
+            return settings.openai_api_key
+        elif self.provider == "gemini":
+            return settings.google_api_key
+        return None
+    
+    def _get_default_model(self) -> str:
+        """Get default model for provider."""
+        if self.provider == "openai":
+            return "gpt-4o-mini"
+        elif self.provider == "gemini":
+            return "gemini-pro"
+        return "gpt-4o-mini"
     
     def _init_client(self):
         """Initialize the appropriate LLM client."""
+        # Check if we have a valid API key
+        if not self._api_key or self._api_key.startswith("your-"):
+            # No valid API key, will use demo mode
+            self._client = None
+            return
+        
         if self.provider == "openai":
             try:
                 from openai import AsyncOpenAI
-                self._client = AsyncOpenAI(api_key=settings.openai_api_key)
+                self._client = AsyncOpenAI(api_key=self._api_key)
             except ImportError:
                 raise ImportError("OpenAI package not installed. Run: pip install openai")
         
         elif self.provider == "gemini":
             try:
                 import google.generativeai as genai
-                genai.configure(api_key=settings.google_api_key)
-                self._client = genai.GenerativeModel('gemini-pro')
+                genai.configure(api_key=self._api_key)
+                self._client = genai.GenerativeModel(self._model)
             except ImportError:
                 raise ImportError("Google AI package not installed. Run: pip install google-generativeai")
+        
+        elif self.provider == "azure_openai":
+            try:
+                from openai import AsyncAzureOpenAI
+                self._client = AsyncAzureOpenAI(
+                    api_key=self._api_key,
+                    azure_endpoint=self.org_settings.azure_openai_endpoint if self.org_settings else "",
+                    api_version="2024-02-15-preview"
+                )
+            except ImportError:
+                raise ImportError("OpenAI package not installed. Run: pip install openai")
+        
+        elif self.provider == "anthropic":
+            try:
+                import anthropic
+                self._client = anthropic.AsyncAnthropic(api_key=self._api_key)
+            except ImportError:
+                raise ImportError("Anthropic package not installed. Run: pip install anthropic")
         
         elif self.provider == "litellm":
             try:
@@ -61,6 +154,10 @@ class LLMClient:
         Returns:
             Generated text response
         """
+        # Check if client is available
+        if self._client is None:
+            return self._get_demo_response(prompt)
+        
         # Add language instruction if not English
         if language != "en":
             lang_instruction = self._get_language_instruction(language)
@@ -70,6 +167,10 @@ class LLMClient:
             return await self._generate_openai(prompt, max_tokens, temperature)
         elif self.provider == "gemini":
             return await self._generate_gemini(prompt, max_tokens, temperature)
+        elif self.provider == "azure_openai":
+            return await self._generate_azure_openai(prompt, max_tokens, temperature)
+        elif self.provider == "anthropic":
+            return await self._generate_anthropic(prompt, max_tokens, temperature)
         elif self.provider == "litellm":
             return await self._generate_litellm(prompt, max_tokens, temperature)
         else:
@@ -80,9 +181,25 @@ class LLMClient:
         """Generate using OpenAI."""
         try:
             response = await self._client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=self._model,
                 messages=[
                     {"role": "system", "content": "You are an expert teaching assistant for government school teachers. Provide practical, actionable advice that can be implemented immediately in the classroom."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"Error generating response: {str(e)}"
+    
+    async def _generate_azure_openai(self, prompt: str, max_tokens: int, temperature: float) -> str:
+        """Generate using Azure OpenAI."""
+        try:
+            response = await self._client.chat.completions.create(
+                model=self._model,
+                messages=[
+                    {"role": "system", "content": "You are an expert teaching assistant for government school teachers."},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=max_tokens,
@@ -106,11 +223,26 @@ class LLMClient:
         except Exception as e:
             return f"Error generating response: {str(e)}"
     
+    async def _generate_anthropic(self, prompt: str, max_tokens: int, temperature: float) -> str:
+        """Generate using Anthropic Claude."""
+        try:
+            response = await self._client.messages.create(
+                model="claude-3-haiku-20240307",
+                max_tokens=max_tokens,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                system="You are an expert teaching assistant for government school teachers. Provide practical, actionable advice.",
+            )
+            return response.content[0].text
+        except Exception as e:
+            return f"Error generating response: {str(e)}"
+    
     async def _generate_litellm(self, prompt: str, max_tokens: int, temperature: float) -> str:
         """Generate using LiteLLM (provider-agnostic)."""
         try:
             response = await self._client.acompletion(
-                model="gpt-4o-mini",  # Can be configured
+                model=self._model,
                 messages=[
                     {"role": "system", "content": "You are an expert teaching assistant for government school teachers."},
                     {"role": "user", "content": prompt}
@@ -138,9 +270,9 @@ class LLMClient:
         """Return a demo response when no LLM is configured."""
         return """```json
 {
-    "simple_explanation": "This is a demo response. Configure your LLM provider in .env to get real AI responses.",
-    "what_to_say": "To get started, set your OPENAI_API_KEY or GOOGLE_API_KEY in the .env file.",
-    "example_or_analogy": "Think of the AI assistant like a helpful colleague who is always available.",
-    "check_for_understanding": "Can you configure an API key and try again?"
+    "simple_explanation": "This is a demo response. Configure your LLM provider (OpenAI/Gemini) to get real AI responses.",
+    "what_to_say": "Ask your organization administrator to configure AI settings, or set API keys in the .env file.",
+    "example_or_analogy": "Think of the AI assistant like a helpful colleague who needs proper credentials to access the knowledge base.",
+    "check_for_understanding": "Have you configured your AI provider API keys?"
 }
 ```"""

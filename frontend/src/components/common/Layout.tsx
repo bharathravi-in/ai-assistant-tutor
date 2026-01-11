@@ -12,7 +12,10 @@ import {
     Moon,
     Sun,
     GraduationCap,
-    HelpCircle
+    HelpCircle,
+    Building2,
+    CreditCard,
+    Settings
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -43,6 +46,16 @@ export default function Layout({ children }: LayoutProps) {
     }
 
     const getNavItems = () => {
+        // Superadmin specific navigation
+        if (user?.role === 'superadmin') {
+            return [
+                { icon: Home, label: 'Dashboard', path: '/superadmin' },
+                { icon: Building2, label: 'Organizations', path: '/superadmin/organizations' },
+                { icon: CreditCard, label: 'Plans', path: '/superadmin/plans' },
+                { icon: Settings, label: 'Settings', path: '/superadmin/settings' },
+            ]
+        }
+
         const baseItems = [
             { icon: Home, label: t('nav.home'), path: `/${user?.role === 'admin' ? 'admin' : user?.role === 'crp' || user?.role === 'arp' ? 'crp' : 'teacher'}` },
             { icon: History, label: t('nav.history'), path: `/${user?.role}/history` },

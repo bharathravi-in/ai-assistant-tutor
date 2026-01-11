@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.database import init_db
 from app.routers import auth_router, teacher_router, crp_router, admin_router, ai_router
+from app.routers.superadmin import router as superadmin_router
 
 settings = get_settings()
 
@@ -46,6 +47,7 @@ app.include_router(ai_router, prefix="/api")
 app.include_router(teacher_router, prefix="/api")
 app.include_router(crp_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
+app.include_router(superadmin_router, prefix="/api")
 
 
 @app.get("/")

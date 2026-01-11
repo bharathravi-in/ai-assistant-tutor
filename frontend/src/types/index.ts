@@ -1,5 +1,5 @@
 // User types
-export type UserRole = 'teacher' | 'crp' | 'arp' | 'admin'
+export type UserRole = 'teacher' | 'crp' | 'arp' | 'admin' | 'superadmin'
 
 export interface User {
     id: number

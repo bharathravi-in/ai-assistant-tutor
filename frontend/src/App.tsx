@@ -7,6 +7,8 @@ import RegisterPage from './pages/RegisterPage'
 import TeacherDashboard from './pages/teacher/Dashboard'
 import CRPDashboard from './pages/crp/Dashboard'
 import AdminDashboard from './pages/admin/Dashboard'
+import SuperadminDashboard from './pages/superadmin/Dashboard'
+import OrganizationSettings from './pages/superadmin/OrganizationSettings'
 
 // Layout
 import Layout from './components/common/Layout'
@@ -31,6 +33,8 @@ function RoleBasedRedirect() {
     if (!user) return <Navigate to="/login" replace />
 
     switch (user.role) {
+        case 'superadmin':
+            return <Navigate to="/superadmin" replace />
         case 'admin':
             return <Navigate to="/admin" replace />
         case 'crp':
@@ -78,6 +82,43 @@ function App() {
                 <ProtectedRoute roles={['admin']}>
                     <Layout>
                         <AdminDashboard />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+
+            {/* Superadmin routes */}
+            <Route path="/superadmin" element={
+                <ProtectedRoute roles={['superadmin']}>
+                    <Layout>
+                        <SuperadminDashboard />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/superadmin/organizations" element={
+                <ProtectedRoute roles={['superadmin']}>
+                    <Layout>
+                        <SuperadminDashboard />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/superadmin/organizations/:orgId" element={
+                <ProtectedRoute roles={['superadmin']}>
+                    <Layout>
+                        <OrganizationSettings />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/superadmin/plans" element={
+                <ProtectedRoute roles={['superadmin']}>
+                    <Layout>
+                        <SuperadminDashboard />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/superadmin/settings" element={
+                <ProtectedRoute roles={['superadmin']}>
+                    <Layout>
+                        <SuperadminDashboard />
                     </Layout>
                 </ProtectedRoute>
             } />
