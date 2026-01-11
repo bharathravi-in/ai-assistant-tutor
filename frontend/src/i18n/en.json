@@ -1,0 +1,88 @@
+{
+    "app": {
+        "name": "AI Teaching Assistant",
+        "tagline": "Just-in-Time Support for Teachers"
+    },
+    "dashboard": {
+        "welcome": "Welcome, Teacher!",
+        "subtitle": "Your AI assistant is ready to help"
+    },
+    "voice": {
+        "placeholder": "Type or speak your question...",
+        "error": "Sorry, I could not process your request. Please try again.",
+        "listening": "Listening...",
+        "speaking": "Speaking...",
+        "ready": "Ready to help"
+    },
+    "nav": {
+        "home": "Home",
+        "history": "History",
+        "profile": "Profile",
+        "logout": "Logout"
+    },
+    "auth": {
+        "login": "Login",
+        "register": "Register",
+        "phone": "Phone Number",
+        "password": "Password",
+        "name": "Full Name",
+        "loginTitle": "Welcome Back!",
+        "registerTitle": "Create Account",
+        "noAccount": "Don't have an account?",
+        "hasAccount": "Already have an account?"
+    },
+    "modes": {
+        "explain": {
+            "title": "Explain / Teach",
+            "description": "Learn how to explain a concept to students",
+            "placeholder": "How do I explain fractions to Class 4 students?"
+        },
+        "assist": {
+            "title": "Classroom Assist",
+            "description": "Get immediate help with classroom challenges",
+            "placeholder": "My class is very noisy after lunch break..."
+        },
+        "plan": {
+            "title": "Plan Lesson",
+            "description": "Create an engaging lesson plan",
+            "placeholder": "Create a 30-minute lesson on photosynthesis for Class 6"
+        }
+    },
+    "chat": {
+        "askPlaceholder": "Type your question or tap the mic to speak...",
+        "send": "Send",
+        "thinking": "Thinking...",
+        "tryAgain": "Try Again"
+    },
+    "reflection": {
+        "title": "How did it go?",
+        "tried": "Did you try this?",
+        "worked": "Did it work?",
+        "yes": "Yes",
+        "no": "No",
+        "feedback": "Any additional feedback?",
+        "submit": "Submit Feedback",
+        "thanks": "Thank you for your feedback!"
+    },
+    "response": {
+        "simpleExplanation": "Simple Explanation",
+        "whatToSay": "What to Say to Students",
+        "exampleAnalogy": "Example / Analogy",
+        "checkUnderstanding": "Check for Understanding",
+        "immediateAction": "Do This NOW",
+        "managementStrategy": "Management Strategy",
+        "teachingPivot": "Teaching Pivot",
+        "fallbackOption": "Fallback Option",
+        "learningObjectives": "Learning Objectives",
+        "activities": "Activities",
+        "exitQuestions": "Exit Questions"
+    },
+    "languages": {
+        "en": "English",
+        "hi": "हिंदी",
+        "ta": "தமிழ்",
+        "te": "తెలుగు",
+        "kn": "ಕನ್ನಡ",
+        "mr": "मराठी"
+    }
+}

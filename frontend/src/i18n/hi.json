@@ -1,0 +1,77 @@
+{
+    "app": {
+        "name": "AI शिक्षण सहायक",
+        "tagline": "शिक्षकों के लिए तत्काल सहायता"
+    },
+    "nav": {
+        "home": "होम",
+        "history": "इतिहास",
+        "profile": "प्रोफ़ाइल",
+        "logout": "लॉगआउट"
+    },
+    "auth": {
+        "login": "लॉगिन",
+        "register": "रजिस्टर",
+        "phone": "फ़ोन नंबर",
+        "password": "पासवर्ड",
+        "name": "पूरा नाम",
+        "loginTitle": "स्वागत है!",
+        "registerTitle": "खाता बनाएं",
+        "noAccount": "खाता नहीं है?",
+        "hasAccount": "पहले से खाता है?"
+    },
+    "modes": {
+        "explain": {
+            "title": "समझाएं / सिखाएं",
+            "description": "छात्रों को कोई अवधारणा कैसे समझाएं",
+            "placeholder": "कक्षा 4 के छात्रों को भिन्न कैसे समझाऊं?"
+        },
+        "assist": {
+            "title": "कक्षा सहायता",
+            "description": "कक्षा की चुनौतियों में तुरंत मदद पाएं",
+            "placeholder": "लंच के बाद मेरी कक्षा बहुत शोर कर रही है..."
+        },
+        "plan": {
+            "title": "पाठ योजना",
+            "description": "एक रोचक पाठ योजना बनाएं",
+            "placeholder": "कक्षा 6 के लिए प्रकाश संश्लेषण पर 30 मिनट का पाठ बनाएं"
+        }
+    },
+    "chat": {
+        "askPlaceholder": "अपना सवाल लिखें या बोलने के लिए माइक दबाएं...",
+        "send": "भेजें",
+        "thinking": "सोच रहा हूं...",
+        "tryAgain": "फिर से कोशिश करें"
+    },
+    "reflection": {
+        "title": "कैसा रहा?",
+        "tried": "क्या आपने यह आज़माया?",
+        "worked": "क्या यह काम किया?",
+        "yes": "हां",
+        "no": "नहीं",
+        "feedback": "कोई अतिरिक्त प्रतिक्रिया?",
+        "submit": "प्रतिक्रिया भेजें",
+        "thanks": "आपकी प्रतिक्रिया के लिए धन्यवाद!"
+    },
+    "response": {
+        "simpleExplanation": "सरल व्याख्या",
+        "whatToSay": "छात्रों से क्या कहें",
+        "exampleAnalogy": "उदाहरण / उपमा",
+        "checkUnderstanding": "समझ जांचें",
+        "immediateAction": "अभी यह करें",
+        "managementStrategy": "प्रबंधन रणनीति",
+        "teachingPivot": "शिक्षण में बदलाव",
+        "fallbackOption": "वैकल्पिक विकल्प",
+        "learningObjectives": "सीखने के उद्देश्य",
+        "activities": "गतिविधियां",
+        "exitQuestions": "अंतिम प्रश्न"
+    },
+    "languages": {
+        "en": "English",
+        "hi": "हिंदी",
+        "ta": "தமிழ்",
+        "te": "తెలుగు",
+        "kn": "ಕನ್ನಡ",
+        "mr": "मराठी"
+    }
+}
