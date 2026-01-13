@@ -75,7 +75,18 @@
         "fallbackOption": "Fallback Option",
         "learningObjectives": "Learning Objectives",
         "activities": "Activities",
-        "exitQuestions": "Exit Questions"
+        "exitQuestions": "Exit Questions",
+        "conceptualBriefing": "Conceptual Briefing",
+        "mnemonicsHooks": "Catchy Hooks & Mnemonics",
+        "localExamples": "Local Examples",
+        "genericExamples": "Generic Examples",
+        "visualAid": "Visual Aid / TLM Idea",
+        "understanding": "AI Understanding",
+        "immediateActionAssist": "Immediate Action",
+        "quickHook": "Quick Hook",
+        "quickActivity": "Quick Activity",
+        "bridgeLesson": "Bridge back to Lesson",
+        "preventiveTip": "Preventive Tip"
     },
     "languages": {
         "en": "English",

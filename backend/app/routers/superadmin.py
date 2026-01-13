@@ -14,6 +14,7 @@ from app.models.user import User, UserRole
 from app.models.organization import Organization, SubscriptionPlan
 from app.models.organization_settings import OrganizationSettings, AIProvider, StorageProvider
 from app.models.subscription import PlanLimits, UsageTracking, AuditLog
+from app.models.system_settings import SystemSettings
 from app.routers.auth import get_current_user
 from app.utils.encryption import encrypt_value, decrypt_value, mask_value
 
@@ -88,6 +89,9 @@ class SettingsUpdate(BaseModel):
     azure_openai_key: Optional[str] = None
     azure_openai_deployment: Optional[str] = None
     anthropic_api_key: Optional[str] = None
+    litellm_api_key: Optional[str] = None
+    litellm_base_url: Optional[str] = None
+    litellm_model: Optional[str] = None
     
     # Storage Configuration
     storage_provider: Optional[StorageProvider] = None
@@ -454,7 +458,7 @@ async def update_organization_settings(
     # Fields that need encryption
     encrypted_fields = [
         'openai_api_key', 'gemini_api_key', 'azure_openai_key', 'anthropic_api_key',
-        'gcs_service_account_key', 's3_access_key', 's3_secret_key',
+        'litellm_api_key', 'gcs_service_account_key', 's3_access_key', 's3_secret_key',
         'azure_storage_connection_string', 'webhook_secret', 'sso_client_secret', 'lms_api_key'
     ]
     
@@ -588,3 +592,165 @@ async def update_plan(
     await db.refresh(plan_limits)
     
     return plan_limits
+
+
+# ============== Global AI Settings ==============
+
+class GlobalAISettings(BaseModel):
+    ai_provider: str = "openai"
+    openai_api_key: Optional[str] = None
+    openai_model: str = "gpt-4o-mini"
+    gemini_api_key: Optional[str] = None
+    gemini_model: str = "gemini-pro"
+    azure_openai_endpoint: Optional[str] = None
+    azure_openai_key: Optional[str] = None
+    azure_openai_deployment: Optional[str] = None
+    anthropic_api_key: Optional[str] = None
+    litellm_api_key: Optional[str] = None
+    litellm_base_url: Optional[str] = None
+    litellm_model: str = "gpt-4o-mini"
+
+
+@router.get("/ai-settings")
+async def get_global_ai_settings(
+    current_user: User = Depends(require_superadmin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get global AI settings."""
+    # Try to get from database first
+    system_settings = await db.scalar(select(SystemSettings).limit(1))
+    
+    if not system_settings:
+        # Fallback to current environment settings
+        from app.config import get_settings
+        config_settings = get_settings()
+        return {
+            "ai_provider": config_settings.llm_provider,
+            "openai_api_key": mask_value(config_settings.openai_api_key) if config_settings.openai_api_key else "",
+            "openai_model": "gpt-4o-mini",
+            "gemini_api_key": mask_value(config_settings.google_api_key) if config_settings.google_api_key else "",
+            "gemini_model": "gemini-pro",
+            "azure_openai_endpoint": "",
+            "azure_openai_key": "",
+            "azure_openai_deployment": "",
+            "anthropic_api_key": mask_value(config_settings.anthropic_api_key) if config_settings.anthropic_api_key else "",
+            "litellm_api_key": mask_value(config_settings.litellm_api_key) if config_settings.litellm_api_key else "",
+            "litellm_base_url": config_settings.litellm_base_url or "",
+            "litellm_model": config_settings.litellm_model or "gpt-4o-mini",
+        }
+    
+    return {
+        "ai_provider": system_settings.ai_provider,
+        "openai_api_key": mask_value(decrypt_value(system_settings.openai_api_key)) if system_settings.openai_api_key else "",
+        "openai_model": system_settings.openai_model,
+        "gemini_api_key": mask_value(decrypt_value(system_settings.gemini_api_key)) if system_settings.gemini_api_key else "",
+        "gemini_model": system_settings.gemini_model,
+        "azure_openai_endpoint": system_settings.azure_openai_endpoint or "",
+        "azure_openai_key": mask_value(decrypt_value(system_settings.azure_openai_key)) if system_settings.azure_openai_key else "",
+        "azure_openai_deployment": system_settings.azure_openai_deployment or "",
+        "anthropic_api_key": mask_value(decrypt_value(system_settings.anthropic_api_key)) if system_settings.anthropic_api_key else "",
+        "litellm_api_key": mask_value(decrypt_value(system_settings.litellm_api_key)) if system_settings.litellm_api_key else "",
+        "litellm_base_url": system_settings.litellm_base_url or "",
+        "litellm_model": system_settings.litellm_model or "gpt-4o-mini",
+    }
+
+
+@router.put("/ai-settings")
+async def update_global_ai_settings(
+    data: GlobalAISettings,
+    current_user: User = Depends(require_superadmin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update global AI settings (writes to database)."""
+    system_settings = await db.scalar(select(SystemSettings).limit(1))
+    
+    if not system_settings:
+        system_settings = SystemSettings()
+        db.add(system_settings)
+    
+    system_settings.ai_provider = data.ai_provider
+    
+    # Only update non-empty/non-masked values
+    if data.openai_api_key and data.openai_api_key != "••••••••":
+        system_settings.openai_api_key = encrypt_value(data.openai_api_key)
+    if data.openai_model:
+        system_settings.openai_model = data.openai_model
+        
+    if data.gemini_api_key and data.gemini_api_key != "••••••••":
+        system_settings.gemini_api_key = encrypt_value(data.gemini_api_key)
+    if data.gemini_model:
+        system_settings.gemini_model = data.gemini_model
+        
+    if data.anthropic_api_key and data.anthropic_api_key != "••••••••":
+        system_settings.anthropic_api_key = encrypt_value(data.anthropic_api_key)
+        
+    if data.azure_openai_endpoint:
+        system_settings.azure_openai_endpoint = data.azure_openai_endpoint
+    if data.azure_openai_key and data.azure_openai_key != "••••••••":
+        system_settings.azure_openai_key = encrypt_value(data.azure_openai_key)
+    if data.azure_openai_deployment:
+        system_settings.azure_openai_deployment = data.azure_openai_deployment
+        
+    if data.litellm_api_key and data.litellm_api_key != "••••••••":
+        system_settings.litellm_api_key = encrypt_value(data.litellm_api_key)
+    if data.litellm_base_url:
+        system_settings.litellm_base_url = data.litellm_base_url
+    if data.litellm_model:
+        system_settings.litellm_model = data.litellm_model
+    
+    await db.commit()
+    
+    return {"message": "AI settings updated successfully. Changes are applied in real-time."}
+
+
+@router.post("/ai-settings/test")
+async def test_ai_connection(
+    data: GlobalAISettings,
+    current_user: User = Depends(require_superadmin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Test AI provider connection."""
+    try:
+        from app.ai.llm_client import LLMClient
+        
+        # Fetch real settings from DB for masked keys
+        system_settings = await db.scalar(select(SystemSettings).limit(1))
+        
+        # Create a temporary mock settings for testing
+        class MockSystemSettings:
+            def __init__(self, data: GlobalAISettings, db_settings: Optional[SystemSettings]):
+                self.ai_provider = data.ai_provider
+                self.openai_model = data.openai_model
+                self.gemini_model = data.gemini_model
+                self.azure_openai_endpoint = data.azure_openai_endpoint
+                self.azure_openai_deployment = data.azure_openai_deployment
+                self.litellm_base_url = data.litellm_base_url
+                self.litellm_model = data.litellm_model
+                
+                # Resolve keys: if input is mask, use DB; else use what user sent
+                self.openai_api_key = self._resolve_key(data.openai_api_key, db_settings.openai_api_key if db_settings else None)
+                self.gemini_api_key = self._resolve_key(data.gemini_api_key, db_settings.gemini_api_key if db_settings else None)
+                self.azure_openai_key = self._resolve_key(data.azure_openai_key, db_settings.azure_openai_key if db_settings else None)
+                self.anthropic_api_key = self._resolve_key(data.anthropic_api_key, db_settings.anthropic_api_key if db_settings else None)
+                self.litellm_api_key = self._resolve_key(data.litellm_api_key, db_settings.litellm_api_key if db_settings else None)
+
+            def _resolve_key(self, input_val: Optional[str], db_val: Optional[str]) -> Optional[str]:
+                if not input_val:
+                    return None
+                if input_val == "••••••••":
+                    return db_val # Already encrypted in DB
+                return encrypt_value(input_val)
+
+        mock_settings = MockSystemSettings(data, system_settings)
+        client = LLMClient(system_settings=mock_settings)
+        
+        # Try a simple completion
+        response = await client.generate("Say 'Connection successful!' in exactly 3 words.", max_tokens=50)
+        
+        if "demo" in response.lower() or "configure" in response.lower():
+            return {"success": False, "message": "No valid API key configured for this provider"}
+        
+        return {"success": True, "message": f"Connection successful! Response: {response[:100]}..."}
+    
+    except Exception as e:
+        return {"success": False, "message": f"Connection failed: {str(e)}"}

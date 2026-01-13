@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom color palette */
+:root {
+  --color-primary: #264092;
+  --color-primary-light: #3451a8;
+  --color-primary-dark: #1c3070;
+  --color-secondary: #373434;
+  --color-accent: #EF951E;
+  --color-accent-light: #F69953;
+  --color-accent-dark: #D67E0B;
+  --color-yellow: #F5C94C;
+  --color-gray-custom: #95989F;
+  --color-peach: #F9D9A4;
+}
+
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
@@ -29,19 +43,30 @@
     @apply px-5 py-2.5 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-95;
   }
 
-  /* Gradient primary button */
+  /* Primary button - Navy with Orange accent */
   .btn-primary {
-    @apply btn bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600 hover:shadow-lg focus:ring-indigo-500;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+    @apply btn text-white hover:shadow-lg;
+  }
+
+  .btn-primary:hover {
+    background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
+  }
+
+  /* Accent button - Orange gradient */
+  .btn-accent {
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+    @apply btn text-white hover:shadow-lg;
   }
 
   /* Secondary button */
   .btn-secondary {
-    @apply btn bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 focus:ring-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700;
+    @apply btn bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700;
   }
 
   /* Ghost button */
   .btn-ghost {
-    @apply btn bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-200 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white;
+    @apply btn bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white;
   }
 
   /* Card with shadow */
@@ -53,14 +78,27 @@
     @apply card hover:shadow-lg hover:-translate-y-0.5;
   }
 
-  /* Gradient card for highlighted content */
+  /* Gradient card for highlighted content - Navy */
   .card-gradient {
-    @apply relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-lg;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+    @apply relative overflow-hidden rounded-2xl p-6 text-white shadow-lg;
+  }
+
+  /* Accent card - Orange gradient */
+  .card-accent {
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+    @apply relative overflow-hidden rounded-2xl p-6 text-white shadow-lg;
   }
 
   /* Input fields */
   .input {
-    @apply w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200 dark:bg-gray-800 dark:border-gray-600 dark:text-white;
+    @apply w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-900 placeholder-gray-400 transition-all duration-200 dark:bg-gray-800 dark:border-gray-600 dark:text-white;
+    --tw-ring-color: rgba(38, 64, 146, 0.2);
+  }
+
+  .input:focus {
+    border-color: var(--color-primary);
+    @apply ring-2;
   }
 
   /* Mode selector cards */
@@ -69,17 +107,25 @@
   }
 
   .mode-card.active {
-    @apply border-indigo-500 bg-indigo-50 shadow-lg dark:bg-indigo-900/20;
+    border-color: var(--color-primary);
+    background: rgba(38, 64, 146, 0.05);
+    @apply shadow-lg;
+  }
+
+  .dark .mode-card.active {
+    background: rgba(38, 64, 146, 0.2);
   }
 
   /* Response sections */
   .response-section {
-    @apply p-4 rounded-xl bg-gray-50 border-l-4 border-indigo-500 dark:bg-gray-800/50;
+    border-left-color: var(--color-primary);
+    @apply p-4 rounded-xl bg-gray-50 border-l-4 dark:bg-gray-800/50;
   }
 
   /* Floating action button */
   .fab {
-    @apply fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300;
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+    @apply fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full text-white flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300;
   }
 
   /* Badge */
@@ -88,7 +134,18 @@
   }
 
   .badge-primary {
-    @apply badge bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400;
+    background: rgba(38, 64, 146, 0.1);
+    color: var(--color-primary);
+  }
+
+  .dark .badge-primary {
+    background: rgba(38, 64, 146, 0.3);
+    color: #60a5fa;
+  }
+
+  .badge-accent {
+    background: rgba(239, 149, 30, 0.15);
+    color: var(--color-accent-dark);
   }
 
   .badge-success {
@@ -98,24 +155,48 @@
   .badge-warning {
     @apply badge bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400;
   }
+
+  /* Sidebar nav item active */
+  .nav-item-active {
+    background: linear-gradient(90deg, rgba(38, 64, 146, 0.1) 0%, transparent 100%);
+    border-left: 3px solid var(--color-primary);
+    color: var(--color-primary);
+  }
+
+  .dark .nav-item-active {
+    background: linear-gradient(90deg, rgba(38, 64, 146, 0.3) 0%, transparent 100%);
+    color: #60a5fa;
+  }
 }
 
 @layer utilities {
 
-  /* Gradient text */
+  /* Gradient text - Navy to accent */
   .gradient-text {
-    @apply bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
-  /* Soft mesh background pattern */
+  /* Soft mesh background pattern - Navy theme */
   .mesh-bg {
     background-color: #f8fafc;
     background-image:
-      radial-gradient(at 40% 20%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, rgba(168, 85, 247, 0.1) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, rgba(99, 102, 241, 0.05) 0px, transparent 50%),
-      radial-gradient(at 80% 50%, rgba(168, 85, 247, 0.05) 0px, transparent 50%),
-      radial-gradient(at 0% 100%, rgba(99, 102, 241, 0.1) 0px, transparent 50%);
+      radial-gradient(at 40% 20%, rgba(38, 64, 146, 0.08) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, rgba(239, 149, 30, 0.08) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, rgba(38, 64, 146, 0.04) 0px, transparent 50%),
+      radial-gradient(at 80% 50%, rgba(246, 153, 83, 0.04) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(38, 64, 146, 0.06) 0px, transparent 50%);
+  }
+
+  /* Dark mesh background */
+  .dark .mesh-bg {
+    background-color: #111827;
+    background-image:
+      radial-gradient(at 40% 20%, rgba(38, 64, 146, 0.15) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, rgba(239, 149, 30, 0.1) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, rgba(38, 64, 146, 0.08) 0px, transparent 50%);
   }
 }
 
@@ -137,9 +218,15 @@
   @apply bg-gray-400 dark:bg-gray-500;
 }
 
-/* Selection */
+/* Selection - Navy theme */
 ::selection {
-  @apply bg-indigo-200 text-indigo-900 dark:bg-indigo-800/50 dark:text-white;
+  background: rgba(38, 64, 146, 0.2);
+  color: var(--color-primary);
+}
+
+.dark ::selection {
+  background: rgba(38, 64, 146, 0.4);
+  color: white;
 }
 
 /* Voice recording animation */
@@ -174,4 +261,21 @@
   100% {
     background-position: 0% 50%;
   }
+}
+
+/* Shimmer loading effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }

@@ -1,3 +1,4 @@
+import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
 
@@ -5,10 +6,18 @@ import { useAuthStore } from './stores/authStore'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import TeacherDashboard from './pages/teacher/Dashboard'
+import TeacherProfile from './pages/teacher/Profile'
+import TeacherHistory from './pages/teacher/History'
+import TeacherSettings from './pages/teacher/Settings'
 import CRPDashboard from './pages/crp/Dashboard'
+import FeedbackAssist from './pages/crp/FeedbackAssist'
 import AdminDashboard from './pages/admin/Dashboard'
 import SuperadminDashboard from './pages/superadmin/Dashboard'
 import OrganizationSettings from './pages/superadmin/OrganizationSettings'
+import OrganizationsList from './pages/superadmin/OrganizationsList'
+import PlansPage from './pages/superadmin/PlansPage'
+import SettingsPage from './pages/superadmin/SettingsPage'
+import AISettingsPage from './pages/superadmin/AISettingsPage'
 
 // Layout
 import Layout from './components/common/Layout'
@@ -20,7 +29,8 @@ function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?
         return <Navigate to="/login" replace />
     }
 
-    if (roles && user && !roles.includes(user.role)) {
+    const userRole = user?.role?.toLowerCase()
+    if (roles && user && !roles.includes(userRole)) {
         return <Navigate to="/" replace />
     }
 
@@ -32,7 +42,8 @@ function RoleBasedRedirect() {
 
     if (!user) return <Navigate to="/login" replace />
 
-    switch (user.role) {
+    const role = user.role?.toLowerCase()
+    switch (role) {
         case 'superadmin':
             return <Navigate to="/superadmin" replace />
         case 'admin':
@@ -60,19 +71,48 @@ function App() {
             } />
 
             {/* Teacher routes */}
-            <Route path="/teacher/*" element={
+            <Route path="/teacher" element={
                 <ProtectedRoute roles={['teacher']}>
                     <Layout>
                         <TeacherDashboard />
                     </Layout>
                 </ProtectedRoute>
             } />
+            <Route path="/teacher/profile" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <TeacherProfile />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/history" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <TeacherHistory />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/settings" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <TeacherSettings />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+
 
             {/* CRP/ARP routes */}
-            <Route path="/crp/*" element={
+            <Route path="/crp" element={
                 <ProtectedRoute roles={['crp', 'arp']}>
                     <Layout>
                         <CRPDashboard />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/crp/feedback-assist" element={
+                <ProtectedRoute roles={['crp', 'arp']}>
+                    <Layout>
+                        <FeedbackAssist />
                     </Layout>
                 </ProtectedRoute>
             } />
@@ -97,7 +137,7 @@ function App() {
             <Route path="/superadmin/organizations" element={
                 <ProtectedRoute roles={['superadmin']}>
                     <Layout>
-                        <SuperadminDashboard />
+                        <OrganizationsList />
                     </Layout>
                 </ProtectedRoute>
             } />
@@ -111,14 +151,21 @@ function App() {
             <Route path="/superadmin/plans" element={
                 <ProtectedRoute roles={['superadmin']}>
                     <Layout>
-                        <SuperadminDashboard />
+                        <PlansPage />
                     </Layout>
                 </ProtectedRoute>
             } />
             <Route path="/superadmin/settings" element={
                 <ProtectedRoute roles={['superadmin']}>
                     <Layout>
-                        <SuperadminDashboard />
+                        <SettingsPage />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/superadmin/ai-settings" element={
+                <ProtectedRoute roles={['superadmin']}>
+                    <Layout>
+                        <AISettingsPage />
                     </Layout>
                 </ProtectedRoute>
             } />

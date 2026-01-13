@@ -11,11 +11,12 @@ from app.database import Base
 
 class UserRole(str, enum.Enum):
     """User roles in the system."""
-    TEACHER = "teacher"
-    CRP = "crp"  # Cluster Resource Person
-    ARP = "arp"  # Academic Resource Person
-    ADMIN = "admin"  # Organization admin
-    SUPERADMIN = "superadmin"  # Platform superadmin
+    TEACHER = "TEACHER"
+    CRP = "CRP"  # Cluster Resource Person
+    ARP = "ARP"  # Academic Resource Person
+    ADMIN = "ADMIN"  # Organization admin
+    SUPERADMIN = "SUPERADMIN"  # Platform superadmin
+    STUDENT = "STUDENT"  # Student learner
 
 
 class User(Base):

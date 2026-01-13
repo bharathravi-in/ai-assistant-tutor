@@ -7,11 +7,15 @@ from app.models.reflection import Reflection, CRPResponse
 from app.models.organization import Organization, SubscriptionPlan
 from app.models.organization_settings import OrganizationSettings, AIProvider, StorageProvider
 from app.models.subscription import PlanLimits, UsageTracking, AuditLog
+from app.models.user_settings import UserSettings, CustomVoice
+from app.models.system_settings import SystemSettings
 
 __all__ = [
     # User
     "User",
     "UserRole",
+    "UserSettings",
+    "CustomVoice",
     # Query
     "Query",
     "QueryMode",
@@ -28,4 +32,7 @@ __all__ = [
     "PlanLimits",
     "UsageTracking",
     "AuditLog",
+    "SystemSettings",
 ]
+
+

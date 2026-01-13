@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.user import User
 from app.models.query import Query, QueryMode
+from app.models.system_settings import SystemSettings
 from app.schemas.ai import AIRequest, AIResponse
 from app.routers.auth import get_current_user
 from app.services.ai_orchestrator import AIOrchestrator
+from sqlalchemy import select
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -27,8 +29,11 @@ async def ask_ai(
     """
     start_time = time.time()
     
+    # Fetch global AI settings first
+    system_settings = await db.scalar(select(SystemSettings).limit(1))
+    
     # Create orchestrator and get response
-    orchestrator = AIOrchestrator()
+    orchestrator = AIOrchestrator(system_settings=system_settings)
     
     try:
         response = await orchestrator.process_request(

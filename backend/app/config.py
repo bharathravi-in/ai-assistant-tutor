@@ -26,9 +26,13 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 1440  # 24 hours
     
     # LLM Configuration
-    llm_provider: str = "openai"  # openai, gemini, litellm
+    llm_provider: str = "openai"  # openai, gemini, litellm, anthropic, azure_openai
     openai_api_key: str = ""
     google_api_key: str = ""
+    anthropic_api_key: str = ""
+    litellm_api_key: str = ""
+    litellm_base_url: str = ""
+    litellm_model: str = "gpt-4o-mini"
     
     # CORS
     cors_origins: str = "http://localhost:5173,http://localhost:3000"

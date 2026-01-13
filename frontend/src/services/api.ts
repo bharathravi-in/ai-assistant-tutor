@@ -12,10 +12,9 @@ import type {
     AdminDashboard
 } from '../types'
 
-const API_URL = import.meta.env.VITE_API_URL || ''
-
+// Always use relative path - the dev server proxy handles routing to backend
 const api = axios.create({
-    baseURL: `${API_URL}/api`,
+    baseURL: '/api',
     headers: {
         'Content-Type': 'application/json',
     },
@@ -217,4 +216,98 @@ export const adminApi = {
     },
 }
 
+// Settings endpoints
+export const settingsApi = {
+    getSettings: async () => {
+        const response = await api.get('/settings')
+        return response.data
+    },
+
+    updateSettings: async (data: {
+        selected_voice?: string
+        voice_rate?: number
+        voice_pitch?: number
+        auto_play_response?: boolean
+    }) => {
+        const response = await api.put('/settings', data)
+        return response.data
+    },
+
+    createCustomVoice: async (name: string, gender: string, audioFile: Blob) => {
+        const formData = new FormData()
+        formData.append('audio', audioFile, 'voice.webm')
+        const response = await api.post(`/settings/voices?name=${encodeURIComponent(name)}&gender=${gender}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        return response.data
+    },
+
+    deleteCustomVoice: async (voiceId: number) => {
+        const response = await api.delete(`/settings/voices/${voiceId}`)
+        return response.data
+    },
+}
+
+// Teacher Support endpoints (Phase 2)
+export const teacherSupportApi = {
+    getClassroomHelp: async (data: {
+        challenge: string
+        grade?: number
+        subject?: string
+        topic?: string
+        students_level?: string
+    }) => {
+        const response = await api.post('/teacher/classroom-help', data)
+        return response.data
+    },
+
+    getMicroLearning: async (data: {
+        topic: string
+        grade: number
+        subject: string
+        duration_minutes?: number
+    }) => {
+        const response = await api.post('/teacher/micro-learning', data)
+        return response.data
+    },
+
+    getQuickPrompts: async () => {
+        const response = await api.get('/teacher/quick-prompts')
+        return response.data
+    },
+}
+
+// CRP Support endpoints (Phase 3)
+export const crpSupportApi = {
+    generateFeedback: async (data: {
+        teacher_name: string
+        class_observed: string
+        subject: string
+        topic_taught: string
+        observation_notes: string
+        strengths_observed?: string
+        areas_of_concern?: string
+    }) => {
+        const response = await api.post('/crp/generate-feedback', data)
+        return response.data
+    },
+
+    generateImprovementPlan: async (data: {
+        teacher_name: string
+        key_areas: string[]
+        current_strengths: string[]
+        visit_frequency?: string
+    }) => {
+        const response = await api.post('/crp/generate-improvement-plan', data)
+        return response.data
+    },
+
+    getObservationTemplate: async () => {
+        const response = await api.get('/crp/observation-template')
+        return response.data
+    },
+}
+
 export default api
+
+

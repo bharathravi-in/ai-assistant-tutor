@@ -59,6 +59,11 @@ class OrganizationSettings(Base):
     
     anthropic_api_key: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Encrypted
     
+    # LiteLLM Configuration
+    litellm_api_key: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Encrypted
+    litellm_base_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    litellm_model: Mapped[str] = mapped_column(String(100), default="gpt-4o-mini")
+    
     # Storage Configuration
     storage_provider: Mapped[StorageProvider] = mapped_column(
         Enum(StorageProvider), 

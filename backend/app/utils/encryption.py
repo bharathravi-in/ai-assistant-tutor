@@ -87,22 +87,18 @@ def decrypt_value(encrypted: str) -> str:
 def mask_value(value: str, visible_chars: int = 4) -> str:
     """
     Mask a sensitive value for display.
-    Shows only first and last few characters.
     
     Args:
         value: Value to mask
         visible_chars: Number of characters to show at start and end
         
     Returns:
-        Masked value like "sk-xx...xxxx"
+        Masked value like "••••••••" or "sk-x••••xxxx"
     """
     if not value:
         return ""
     
-    if len(value) <= visible_chars * 2:
-        return "*" * len(value)
-    
-    return f"{value[:visible_chars]}...{value[-visible_chars:]}"
+    return "••••••••"
 
 
 def is_encrypted(value: str) -> bool:

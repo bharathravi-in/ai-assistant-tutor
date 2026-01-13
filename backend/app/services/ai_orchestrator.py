@@ -3,6 +3,7 @@ AI Orchestrator Service
 Handles AI mode selection, prompt generation, and LLM interaction.
 """
 import json
+import re
 from typing import Optional, Dict, Any
 from app.config import get_settings
 from app.models.query import QueryMode
@@ -10,6 +11,7 @@ from app.ai.prompts.explain import get_explain_prompt
 from app.ai.prompts.assist import get_assist_prompt
 from app.ai.prompts.plan import get_plan_prompt
 from app.ai.llm_client import LLMClient
+from app.utils.json_utils import extract_and_repair_json
 
 settings = get_settings()
 
@@ -22,8 +24,11 @@ class AIOrchestrator:
     - Plan: Lesson planning
     """
     
-    def __init__(self):
-        self.llm_client = LLMClient()
+    def __init__(self, organization_settings=None, system_settings=None):
+        self.llm_client = LLMClient(
+            organization_settings=organization_settings,
+            system_settings=system_settings
+        )
     
     async def process_request(
         self,
@@ -86,23 +91,40 @@ class AIOrchestrator:
         }
     
     def _parse_response(self, response: str, mode: QueryMode) -> Dict[str, Any]:
-        """Parse LLM response into structured format."""
-        # Try to extract JSON from response
+        """Parse LLM response into structured format with EXTREME robust JSON extraction."""
+        if not response:
+            return {"raw_response": ""}
+
+        # Clean the response string from any trailing/leading noise
+        cleaned_response = response.strip()
+
+        # Try multiple extraction strategies
+        strategies = [
+            # 1. Backtick JSON block
+            r'```json\s*(.*?)\s*(?:```|$)',
+            # 2. Triple single quote JSON block (seen in some Gemini responses)
+            r"'''json\s*(.*?)\s*(?:'''|$)",
+            # 3. Generic code block
+            r'```\s*(.*?)\s*(?:```|$)',
+            # 4. Raw braces (be greedy to capture full object)
+            r'(\{.*\})'
+        ]
+
+        for pattern in strategies:
+            match = re.search(pattern, cleaned_response, re.DOTALL)
+            if match:
+                json_str = match.group(1).strip()
+                # Use repair utility for code block content
+                try:
+                    data = extract_and_repair_json(json_str)
+                    if data: return data
+                except: continue
+        
+        # Last ditch: try repair on the entire cleaned response
         try:
-            # Look for JSON block in response
-            if "```json" in response:
-                json_start = response.find("```json") + 7
-                json_end = response.find("```", json_start)
-                json_str = response[json_start:json_end].strip()
-                return json.loads(json_str)
-            elif "{" in response:
-                # Try to find JSON object
-                json_start = response.find("{")
-                json_end = response.rfind("}") + 1
-                json_str = response[json_start:json_end]
-                return json.loads(json_str)
-        except (json.JSONDecodeError, ValueError):
-            pass
+            data = extract_and_repair_json(cleaned_response)
+            if data: return data
+        except: pass
         
         # Fallback: return raw response
         return {"raw_response": response}
@@ -122,38 +144,97 @@ class AIOrchestrator:
         return json.dumps(structured, indent=2, ensure_ascii=False)
     
     def _format_explain(self, data: Dict[str, Any]) -> str:
-        """Format explain mode response."""
+        """Format explain mode response using Phase 6 keys."""
         parts = []
         
+        # Phase 6 keys
+        if "conceptual_briefing" in data:
+            parts.append(f"📖 **Conceptual Briefing**\n{data['conceptual_briefing']}")
+        
         if "simple_explanation" in data:
-            parts.append(f"📚 **Simple Explanation**\n{data['simple_explanation']}")
+            parts.append(f"💡 **Simple Explanation**\n{data['simple_explanation']}")
         
+        if "mnemonics_hooks" in data:
+            val = data["mnemonics_hooks"]
+            if isinstance(val, list):
+                parts.append("🔗 **Mnemonics & Hooks**\n" + "\n".join([f"• {v}" for v in val]))
+            else:
+                parts.append(f"🔗 **Mnemonics & Hooks**\n{val}")
+            
         if "what_to_say" in data:
-            parts.append(f"💬 **What to Say to Students**\n{data['what_to_say']}")
-        
-        if "example_or_analogy" in data:
-            parts.append(f"💡 **Example/Analogy**\n{data['example_or_analogy']}")
-        
+            parts.append(f"🗣️ **What to Say**\n{data['what_to_say']}")
+            
+        if "specific_examples" in data:
+            examples = data["specific_examples"]
+            if isinstance(examples, list):
+                parts.append("🌳 **Contextual Examples**\n" + "\n".join([f"• {e}" for e in examples]))
+            else:
+                parts.append(f"🌳 **Contextual Examples**\n{examples}")
+
+        if "generic_examples" in data:
+            examples = data["generic_examples"]
+            if isinstance(examples, list):
+                parts.append("🌐 **Generic Examples**\n" + "\n".join([f"• {e}" for e in examples]))
+            else:
+                parts.append(f"🌐 **Generic Examples**\n{examples}")
+                
+        if "visual_aid_idea" in data:
+            parts.append(f"🎨 **Visual Aid / TLM Idea**\n{data['visual_aid_idea']}")
+
         if "check_for_understanding" in data:
-            parts.append(f"❓ **Check for Understanding**\n{data['check_for_understanding']}")
+            check = data["check_for_understanding"]
+            if isinstance(check, dict):
+                check_parts = []
+                for level, q in check.items():
+                    check_parts.append(f"**{level.title()}**: {q}")
+                parts.append("❓ **Check for Understanding**\n" + "\n".join(check_parts))
+            else:
+                parts.append(f"❓ **Check for Understanding**\n{check}")
+        
+        # Legacy key support
+        if not parts:
+            if "example_or_analogy" in data:
+                parts.append(f"💡 **Example/Analogy**\n{data['example_or_analogy']}")
         
         return "\n\n".join(parts) if parts else json.dumps(data, indent=2, ensure_ascii=False)
     
     def _format_assist(self, data: Dict[str, Any]) -> str:
-        """Format assist mode response."""
+        """Format assist mode response using Phase 6 keys."""
         parts = []
         
+        if "understanding" in data:
+            parts.append(f"🤝 **Support**: {data['understanding']}")
+        
         if "immediate_action" in data:
-            parts.append(f"⚡ **Do This NOW (Next 2-5 mins)**\n{data['immediate_action']}")
-        
-        if "management_strategy" in data:
-            parts.append(f"📋 **Management Strategy**\n{data['management_strategy']}")
-        
-        if "teaching_pivot" in data:
-            parts.append(f"🔄 **Teaching Pivot**\n{data['teaching_pivot']}")
-        
-        if "fallback_option" in data:
-            parts.append(f"🔙 **Fallback Option**\n{data['fallback_option']}")
+            parts.append(f"⚡ **Do This NOW**\n{data['immediate_action']}")
+            
+        if "mnemonics_hooks" in data:
+            val = data["mnemonics_hooks"]
+            if isinstance(val, list):
+                parts.append("🔗 **Quick Hooks**\n" + "\n".join([f"• {v}" for v in val]))
+            else:
+                parts.append(f"🔗 **Quick Hook**\n{val}")
+            
+        if "quick_activity" in data:
+            parts.append(f"🏸 **Quick Activity**\n{data['quick_activity']}")
+            
+        if "bridge_the_gap" in data:
+            parts.append(f"🌉 **Bridge to Lesson**\n{data['bridge_the_gap']}")
+            
+        if "check_progress" in data:
+            parts.append(f"📈 **Check Progress**\n{data['check_progress']}")
+            
+        if "for_later" in data:
+            parts.append(f"🛡️ **For Tomorrow**\n{data['for_later']}")
+            
+        # Legacy keys
+        if not parts:
+            if "management_strategy" in data:
+                parts.append(f"📋 **Management Strategy**\n{data['management_strategy']}")
+            if "teaching_pivot" in data:
+                parts.append(f"🔄 **Teaching Pivot**\n{data['teaching_pivot']}")
+            if "fallback_option" in data:
+                parts.append(f"🔙 **Fallback Option**\n{data['fallback_option']}")
         
         return "\n\n".join(parts) if parts else json.dumps(data, indent=2, ensure_ascii=False)
     

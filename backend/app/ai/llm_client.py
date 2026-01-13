@@ -16,15 +16,16 @@ class LLMClient:
     Can use organization-specific API keys for multi-tenant support.
     """
     
-    def __init__(self, organization_settings=None):
+    def __init__(self, organization_settings=None, system_settings=None):
         """
         Initialize LLM client.
         
         Args:
             organization_settings: Optional OrganizationSettings object
-                                   for multi-tenant API key support
+            system_settings: Optional SystemSettings object
         """
         self.org_settings = organization_settings
+        self.system_settings = system_settings
         self._client = None
         
         # Determine provider and API key
@@ -32,6 +33,10 @@ class LLMClient:
             self.provider = organization_settings.ai_provider.value
             self._api_key = self._get_org_api_key()
             self._model = self._get_org_model()
+        elif system_settings:
+            self.provider = system_settings.ai_provider
+            self._api_key = self._get_system_api_key()
+            self._model = self._get_system_model()
         else:
             self.provider = settings.llm_provider.lower()
             self._api_key = self._get_env_api_key()
@@ -52,6 +57,8 @@ class LLMClient:
             encrypted = self.org_settings.azure_openai_key
         elif self.provider == "anthropic":
             encrypted = self.org_settings.anthropic_api_key
+        elif self.provider == "litellm":
+            encrypted = self.org_settings.litellm_api_key
         else:
             return None
         
@@ -68,6 +75,44 @@ class LLMClient:
             return self.org_settings.gemini_model or "gemini-pro"
         elif self.provider == "azure_openai":
             return self.org_settings.azure_openai_deployment or "gpt-4"
+        elif self.provider == "litellm":
+            return self.org_settings.litellm_model or "gpt-4o-mini"
+        else:
+            return "gpt-4o-mini"
+
+    def _get_system_api_key(self) -> Optional[str]:
+        """Get API key from system settings (decrypted)."""
+        if not self.system_settings:
+            return None
+        
+        if self.provider == "openai":
+            encrypted = self.system_settings.openai_api_key
+        elif self.provider == "gemini":
+            encrypted = self.system_settings.gemini_api_key
+        elif self.provider == "azure_openai":
+            encrypted = self.system_settings.azure_openai_key
+        elif self.provider == "anthropic":
+            encrypted = self.system_settings.anthropic_api_key
+        elif self.provider == "litellm":
+            encrypted = self.system_settings.litellm_api_key
+        else:
+            return None
+        
+        return decrypt_value(encrypted) if encrypted else None
+    
+    def _get_system_model(self) -> str:
+        """Get model name from system settings."""
+        if not self.system_settings:
+            return self._get_default_model()
+        
+        if self.provider == "openai":
+            return self.system_settings.openai_model or "gpt-4o-mini"
+        elif self.provider == "gemini":
+            return self.system_settings.gemini_model or "gemini-pro"
+        elif self.provider == "azure_openai":
+            return self.system_settings.azure_openai_deployment or "gpt-4"
+        elif self.provider == "litellm":
+            return self.system_settings.litellm_model or "gpt-4o-mini"
         else:
             return "gpt-4o-mini"
     
@@ -77,6 +122,10 @@ class LLMClient:
             return settings.openai_api_key
         elif self.provider == "gemini":
             return settings.google_api_key
+        elif self.provider == "anthropic":
+            return settings.anthropic_api_key
+        elif self.provider == "litellm":
+            return settings.litellm_api_key
         return None
     
     def _get_default_model(self) -> str:
@@ -113,9 +162,15 @@ class LLMClient:
         elif self.provider == "azure_openai":
             try:
                 from openai import AsyncAzureOpenAI
+                endpoint = ""
+                if self.org_settings and self.org_settings.azure_openai_endpoint:
+                    endpoint = self.org_settings.azure_openai_endpoint
+                elif self.system_settings and self.system_settings.azure_openai_endpoint:
+                    endpoint = self.system_settings.azure_openai_endpoint
+                
                 self._client = AsyncAzureOpenAI(
                     api_key=self._api_key,
-                    azure_endpoint=self.org_settings.azure_openai_endpoint if self.org_settings else "",
+                    azure_endpoint=endpoint,
                     api_version="2024-02-15-preview"
                 )
             except ImportError:
@@ -131,6 +186,16 @@ class LLMClient:
         elif self.provider == "litellm":
             try:
                 import litellm
+                # Configure LiteLLM base URL if provided
+                if self.org_settings and self.org_settings.litellm_base_url:
+                    litellm.api_base = self.org_settings.litellm_base_url
+                elif self.system_settings and self.system_settings.litellm_base_url:
+                    litellm.api_base = self.system_settings.litellm_base_url
+                elif settings.litellm_base_url:
+                    litellm.api_base = settings.litellm_base_url
+                
+                if self._api_key:
+                    litellm.api_key = self._api_key
                 self._client = litellm
             except ImportError:
                 raise ImportError("LiteLLM package not installed. Run: pip install litellm")
@@ -139,7 +204,7 @@ class LLMClient:
         self,
         prompt: str,
         language: str = "en",
-        max_tokens: int = 2000,
+        max_tokens: int = 4000,
         temperature: float = 0.7,
     ) -> str:
         """
@@ -241,14 +306,37 @@ class LLMClient:
     async def _generate_litellm(self, prompt: str, max_tokens: int, temperature: float) -> str:
         """Generate using LiteLLM (provider-agnostic)."""
         try:
+            # Determine base URL
+            api_base = None
+            if self.org_settings and self.org_settings.litellm_base_url:
+                api_base = self.org_settings.litellm_base_url
+            elif self.system_settings and self.system_settings.litellm_base_url:
+                api_base = self.system_settings.litellm_base_url
+            elif settings.litellm_base_url:
+                api_base = settings.litellm_base_url
+                
+            # IMPORTANT: If a custom base URL is provided, we force litellm to treat it
+            # as an OpenAI-style proxy to avoid automatic routing to Vertex/Google.
+            extra_args = {}
+            model_to_use = self._model
+            
+            if api_base:
+                # Force it to use the proxy for specific models if needed
+                # Prefixing with 'openai/' tells LiteLLM to use OpenAI-style calling
+                if "gemini" in model_to_use.lower() and "/" not in model_to_use:
+                    model_to_use = f"openai/{model_to_use}"
+                
             response = await self._client.acompletion(
-                model=self._model,
+                model=model_to_use,
                 messages=[
                     {"role": "system", "content": "You are an expert teaching assistant for government school teachers."},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=max_tokens,
                 temperature=temperature,
+                api_key=self._api_key,
+                api_base=api_base,
+                **extra_args
             )
             return response.choices[0].message.content
         except Exception as e:

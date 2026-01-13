@@ -33,8 +33,13 @@ async def get_current_user(
     if payload is None:
         raise credentials_exception
     
-    user_id: int = payload.get("sub")
-    if user_id is None:
+    user_id_str = payload.get("sub")
+    if user_id_str is None:
+        raise credentials_exception
+    
+    try:
+        user_id = int(user_id_str)
+    except (ValueError, TypeError):
         raise credentials_exception
     
     result = await db.execute(select(User).where(User.id == user_id))
@@ -113,7 +118,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
     await db.commit()
     
     # Generate token
-    access_token = create_access_token(data={"sub": user.id, "role": user.role.value})
+    access_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
     
     return Token(access_token=access_token, user=UserResponse.model_validate(user))
 

@@ -1,5 +1,5 @@
 // User types
-export type UserRole = 'teacher' | 'crp' | 'arp' | 'admin' | 'superadmin'
+export type UserRole = 'teacher' | 'crp' | 'arp' | 'admin' | 'superadmin' | 'student'
 
 export interface User {
     id: number
@@ -121,3 +121,95 @@ export interface AdminDashboard {
     success_rate: number
     avg_response_time_ms: number
 }
+
+// Course types
+export type CourseStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
+
+export interface CourseContentSection {
+    title: string
+    content: string
+    key_points: string[]
+    examples: Array<{
+        title: string
+        problem: string
+        solution: string
+    }>
+}
+
+export interface CourseContent {
+    title: string
+    description: string
+    learning_objectives: string[]
+    sections: CourseContentSection[]
+    practice_questions: Array<{
+        question: string
+        type: string
+        options?: string[]
+        answer: string
+        explanation: string
+    }>
+    key_takeaways: string[]
+    fun_fact?: string
+}
+
+export interface Course {
+    id: number
+    title: string
+    description: string | null
+    subject: string
+    grade: number
+    topic: string
+    enrollment_code: string
+    content: CourseContent | null
+    duration_minutes: number | null
+    status: CourseStatus
+    student_count: number
+    created_at: string
+    updated_at: string
+    published_at: string | null
+    created_by_name?: string
+}
+
+export interface CourseListResponse {
+    items: Course[]
+    total: number
+    page: number
+    page_size: number
+    total_pages: number
+}
+
+// Student Enrollment types
+export interface Enrollment {
+    id: number
+    course_id: number
+    course_title: string
+    course_subject: string
+    course_grade: number
+    course_topic: string
+    completion_percent: number
+    enrolled_at: string
+    last_accessed_at: string | null
+    completed_at: string | null
+}
+
+export interface EnrollmentProgress {
+    sections_completed: number[]
+    current_section: number
+    quiz_scores: Record<string, number>
+    time_spent_minutes: number
+}
+
+// Course Chat types
+export interface ChatMessage {
+    id: number
+    message: string
+    response: string
+    is_on_topic: boolean
+    created_at: string
+}
+
+export interface ChatHistoryResponse {
+    items: ChatMessage[]
+    total: number
+}
+

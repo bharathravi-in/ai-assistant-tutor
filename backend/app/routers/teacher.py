@@ -175,3 +175,192 @@ async def get_my_stats(
         "successful_suggestions": successful_suggestions,
         "success_rate": (successful_suggestions / total_queries * 100) if total_queries > 0 else 0,
     }
+
+
+# ==================== PHASE 2: CLASSROOM IMPLEMENTATION SUPPORT ====================
+
+from pydantic import BaseModel
+from typing import Optional
+from app.ai.llm_client import LLMClient
+from app.ai.prompts.classroom_help import get_classroom_help_prompt, get_micro_learning_prompt
+import json
+
+
+class ClassroomHelpRequest(BaseModel):
+    """Request for immediate classroom help."""
+    challenge: str
+    grade: Optional[int] = None
+    subject: Optional[str] = None
+    topic: Optional[str] = None
+    students_level: Optional[str] = None  # e.g., "below grade level", "mixed abilities"
+
+
+class MicroLearningRequest(BaseModel):
+    """Request for micro-learning content."""
+    topic: str
+    grade: int
+    subject: str
+    duration_minutes: int = 5
+
+
+@router.post("/classroom-help")
+async def get_classroom_help(
+    request: ClassroomHelpRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get immediate help for classroom implementation challenges.
+    
+    Use when teacher is IN the classroom and stuck.
+    Returns actionable guidance that can be used RIGHT NOW.
+    """
+    # Generate prompt
+    prompt = get_classroom_help_prompt(
+        challenge=request.challenge,
+        grade=request.grade,
+        subject=request.subject,
+        topic=request.topic,
+        students_level=request.students_level,
+    )
+    
+    # Get AI response
+    llm_client = LLMClient()
+    response_text = await llm_client.generate(prompt)
+    
+    # Parse JSON response
+    try:
+        # Clean up response if needed
+        if response_text.startswith("```"):
+            response_text = response_text.strip("```json\n").strip("```")
+        guidance = json.loads(response_text)
+    except json.JSONDecodeError:
+        guidance = {
+            "understanding": "I understand you're facing a challenge.",
+            "immediate_action": response_text[:500],
+            "quick_activity": "Try asking students what they already know about this topic.",
+            "bridge_the_gap": "Start from what students know and build up.",
+            "check_progress": "Ask a simple question to check understanding.",
+            "for_later": "Plan prerequisite review for future lessons."
+        }
+    
+    # Store query for history
+    new_query = QueryModel(
+        user_id=current_user.id,
+        mode=QueryMode.ASSIST,  # Using ASSIST mode for classroom help
+        question=request.challenge,
+        response=response_text,
+        grade=request.grade,
+        subject=request.subject,
+        topic=request.topic,
+    )
+    db.add(new_query)
+    await db.commit()
+    
+    return {
+        "status": "success",
+        "guidance": guidance,
+        "query_id": new_query.id
+    }
+
+
+@router.post("/micro-learning")
+async def get_micro_learning(
+    request: MicroLearningRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get micro-learning content to quickly learn/review a topic.
+    
+    Use before teaching a topic to refresh knowledge.
+    """
+    # Generate prompt
+    prompt = get_micro_learning_prompt(
+        topic=request.topic,
+        grade=request.grade,
+        subject=request.subject,
+        duration_minutes=request.duration_minutes,
+    )
+    
+    # Get AI response
+    llm_client = LLMClient()
+    response_text = await llm_client.generate(prompt)
+    
+    # Parse JSON response
+    try:
+        if response_text.startswith("```"):
+            response_text = response_text.strip("```json\n").strip("```")
+        content = json.loads(response_text)
+    except json.JSONDecodeError:
+        content = {
+            "topic_summary": f"Overview of {request.topic}",
+            "key_concepts": ["Concept 1", "Concept 2"],
+            "common_misconceptions": ["Common mistake 1"],
+            "teaching_sequence": [{"step": 1, "what": "Introduction", "how": "Explain basics", "time": "2 min"}],
+            "error": "Could not parse structured response"
+        }
+    
+    return {
+        "status": "success",
+        "content": content,
+        "topic": request.topic,
+        "grade": request.grade,
+        "subject": request.subject
+    }
+
+
+# Quick prompts for common scenarios (can be used by frontend)
+QUICK_PROMPTS = [
+    {
+        "id": "classroom_management",
+        "title": "Classroom Management",
+        "icon": "users",
+        "prompts": [
+            "Students are distracted and not paying attention",
+            "Some students are disrupting the class",
+            "How to manage a multi-grade classroom",
+            "Students complete work at different speeds"
+        ]
+    },
+    {
+        "id": "explaining_concepts", 
+        "title": "Explaining Concepts",
+        "icon": "lightbulb",
+        "prompts": [
+            "Students don't understand the prerequisite concepts",
+            "How to explain this topic using everyday examples",
+            "Students are memorizing but not understanding",
+            "How to check if students truly understand"
+        ]
+    },
+    {
+        "id": "activities",
+        "title": "Quick Activities",
+        "icon": "activity",
+        "prompts": [
+            "Need a 5-minute activity for this topic",
+            "Group activity for mixed ability class",
+            "Activity with minimal resources",
+            "How to make this lesson interactive"
+        ]
+    },
+    {
+        "id": "time_filler",
+        "title": "Time Management",
+        "icon": "clock",
+        "prompts": [
+            "Lesson finished early, need 10-minute filler",
+            "Running out of time, how to wrap up quickly",
+            "Students finished early, what to do next",
+            "How to pace the lesson better"
+        ]
+    }
+]
+
+
+@router.get("/quick-prompts")
+async def get_quick_prompts():
+    """Get quick prompt suggestions for common classroom scenarios."""
+    return {"prompts": QUICK_PROMPTS}
+

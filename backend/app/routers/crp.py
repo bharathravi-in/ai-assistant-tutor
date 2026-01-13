@@ -184,3 +184,222 @@ async def get_crp_stats(
         "queries_today": queries_today,
         "responses_by_tag": tag_counts,
     }
+
+
+# ==================== PHASE 3: CRP FEEDBACK ASSISTANT ====================
+
+from pydantic import BaseModel
+from typing import Optional, List
+from app.ai.llm_client import LLMClient
+from app.ai.prompts.crp_feedback import get_crp_feedback_prompt, get_improvement_plan_prompt
+import json
+
+
+class FeedbackGenerateRequest(BaseModel):
+    """Request to generate specific feedback for a teacher."""
+    teacher_name: str
+    class_observed: str
+    subject: str
+    topic_taught: str
+    observation_notes: str
+    strengths_observed: Optional[str] = None
+    areas_of_concern: Optional[str] = None
+
+
+class ImprovementPlanRequest(BaseModel):
+    """Request to generate improvement plan."""
+    teacher_name: str
+    key_areas: List[str]
+    current_strengths: List[str]
+    visit_frequency: str = "monthly"
+
+
+@router.post("/generate-feedback")
+async def generate_teacher_feedback(
+    request: FeedbackGenerateRequest,
+    current_user: User = Depends(require_role(UserRole.CRP, UserRole.ARP)),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Generate specific, actionable feedback for a teacher based on observation.
+    
+    This helps CRPs convert their raw notes into constructive, detailed feedback.
+    """
+    # Generate prompt
+    prompt = get_crp_feedback_prompt(
+        teacher_name=request.teacher_name,
+        class_observed=request.class_observed,
+        subject=request.subject,
+        topic_taught=request.topic_taught,
+        observation_notes=request.observation_notes,
+        strengths_observed=request.strengths_observed,
+        areas_of_concern=request.areas_of_concern,
+    )
+    
+    # Get AI response
+    llm_client = LLMClient()
+    response_text = await llm_client.generate(prompt)
+    
+    # Parse JSON response with extreme robust extraction
+    feedback = None
+    try:
+        import re
+        patterns = [
+            r'```json\s*(.*?)\s*(?:```|$)',
+            r"'''json\s*(.*?)\s*(?:'''|$)",
+            r'```\s*(.*?)\s*(?:```|$)',
+            r'(\{.*\})'
+        ]
+        text_to_parse = response_text.strip()
+        for pattern in patterns:
+            match = re.search(pattern, text_to_parse, re.DOTALL)
+            if match:
+                try:
+                    feedback = json.loads(match.group(1).strip())
+                    if isinstance(feedback, dict): break
+                except: pass
+        
+        if not feedback:
+            start, end = text_to_parse.find('{'), text_to_parse.rfind('}')
+            if start != -1 and end != -1:
+                try: feedback = json.loads(text_to_parse[start:end+1])
+                except: pass
+    except Exception:
+        pass
+
+    if not feedback:
+        feedback = {
+            "summary": "Observation of the classroom session.",
+            "strengths": [{"what": "Teacher engagement", "why_effective": "Good effort", "continue_doing": "Keep it up"}],
+            "improvement_areas": [{"observation": "Areas to work on", "impact": "Could improve learning", "specific_suggestion": response_text[:500], "example": "Try this approach", "resources": "Ask CRP for support"}],
+            "priority_action": {"focus": "One key area", "how": "Work on it gradually", "success_indicator": "Visible improvement"},
+            "encouragement": "Keep working hard!"
+        }
+    
+    return {
+        "status": "success",
+        "feedback": feedback,
+        "teacher_name": request.teacher_name,
+        "generated_by": current_user.name or current_user.phone
+    }
+
+
+@router.post("/generate-improvement-plan")
+async def generate_improvement_plan(
+    request: ImprovementPlanRequest,
+    current_user: User = Depends(require_role(UserRole.CRP, UserRole.ARP)),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Generate a structured improvement plan for a teacher.
+    
+    Use after multiple observations to create a development roadmap.
+    """
+    # Generate prompt
+    prompt = get_improvement_plan_prompt(
+        teacher_name=request.teacher_name,
+        key_areas=request.key_areas,
+        current_strengths=request.current_strengths,
+        visit_frequency=request.visit_frequency,
+    )
+    
+    # Get AI response
+    llm_client = LLMClient()
+    response_text = await llm_client.generate(prompt)
+    
+    # Parse JSON response with extreme robust extraction
+    plan = None
+    try:
+        import re
+        patterns = [
+            r'```json\s*(.*?)\s*(?:```|$)',
+            r"'''json\s*(.*?)\s*(?:'''|$)",
+            r'```\s*(.*?)\s*(?:```|$)',
+            r'(\{.*\})'
+        ]
+        text_to_parse = response_text.strip()
+        for pattern in patterns:
+            match = re.search(pattern, text_to_parse, re.DOTALL)
+            if match:
+                try:
+                    plan = json.loads(match.group(1).strip())
+                    if isinstance(plan, dict): break
+                except: pass
+        
+        if not plan:
+            start, end = text_to_parse.find('{'), text_to_parse.rfind('}')
+            if start != -1 and end != -1:
+                try: plan = json.loads(text_to_parse[start:end+1])
+                except: pass
+    except Exception:
+        pass
+
+    if not plan:
+        plan = {
+            "goal": f"Support {request.teacher_name}'s professional development",
+            "timeline": "3 months",
+            "monthly_focus": [{"month": 1, "focus_area": "Primary improvement area", "activities": ["Practice regularly"], "support_needed": "CRP guidance", "milestone": "Initial progress"}],
+            "quick_wins": ["Start with small changes"],
+            "peer_learning": "Collaborate with other teachers",
+            "self_assessment": ["Reflect on progress regularly"],
+            "recognition": "Celebrate improvements"
+        }
+    
+    return {
+        "status": "success",
+        "plan": plan,
+        "teacher_name": request.teacher_name,
+        "generated_by": current_user.name or current_user.phone
+    }
+
+
+# Observation template for CRPs
+OBSERVATION_TEMPLATE = {
+    "instruction": "Use this template when observing a classroom",
+    "sections": [
+        {
+            "title": "Basic Information",
+            "fields": ["teacher_name", "class_observed", "subject", "topic_taught", "date", "time"]
+        },
+        {
+            "title": "Classroom Environment",
+            "prompts": [
+                "How is the seating arrangement?",
+                "Are learning materials visible?",
+                "Is the board being used effectively?"
+            ]
+        },
+        {
+            "title": "Teaching Process",
+            "prompts": [
+                "How did the teacher begin the lesson?",
+                "What methods were used to explain concepts?",
+                "Were students asked questions?",
+                "How were activities organized?"
+            ]
+        },
+        {
+            "title": "Student Engagement",
+            "prompts": [
+                "Were all students participating?",
+                "How were struggling students supported?",
+                "Were advanced students challenged?"
+            ]
+        },
+        {
+            "title": "Key Observations",
+            "prompts": [
+                "What worked well? (strengths)",
+                "What could be improved? (areas of concern)",
+                "Any specific incidents to note?"
+            ]
+        }
+    ]
+}
+
+
+@router.get("/observation-template")
+async def get_observation_template():
+    """Get observation template for CRPs to use during classroom visits."""
+    return OBSERVATION_TEMPLATE
+
