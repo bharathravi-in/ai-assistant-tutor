@@ -40,6 +40,10 @@ export interface Query {
     processing_time_ms: number | null
     is_resolved: boolean
     requires_crp_review: boolean
+    is_multigrade: boolean
+    class_size: number | null
+    instructional_time_minutes: number | null
+    media_path: string | null
     created_at: string
     responded_at: string | null
 }
@@ -61,6 +65,10 @@ export interface AIRequest {
     subject?: string
     topic?: string
     context?: string
+    media_path?: string
+    is_multigrade?: boolean
+    class_size?: number
+    instructional_time_minutes?: number
 }
 
 export interface AIResponse {
@@ -68,9 +76,68 @@ export interface AIResponse {
     mode: QueryMode
     language: string
     content: string
-    structured: Record<string, unknown>
+    structured: Record<string, any>
     processing_time_ms: number
     suggestions: string[]
+    query?: Query
+}
+
+export interface QuickPrompt {
+    icon: string
+    text: string
+    mode: QueryMode
+}
+
+export interface QuizQuestion {
+    id: number
+    type: 'mcq' | 'fill_in_the_blank' | 'true_false'
+    question: string
+    options?: string[]
+    answer: string
+    explanation?: string
+}
+
+export interface Quiz {
+    title: string
+    description: string
+    questions: QuizQuestion[]
+}
+
+export interface Flashcard {
+    front: string
+    back: string
+}
+
+export interface DIYWorkshop {
+    title: string
+    materials: string[]
+    steps: string[]
+    usage_tips: string
+}
+
+export interface AuditResult {
+    is_compliant: boolean
+    compliance_score: number
+    strengths: string[]
+    weaknesses: string[]
+    improvement_suggestions: string[]
+    ncert_ref?: string
+}
+
+export interface PosterTemplate {
+    title: string
+    key_sections: string[]
+    visual_layout_description: string
+}
+
+export interface VisualKit {
+    flashcards: Flashcard[]
+    poster_template: PosterTemplate
+}
+
+export interface TLM {
+    diy_workshop: DIYWorkshop
+    visual_kit: VisualKit
 }
 
 // Reflection types
@@ -80,6 +147,9 @@ export interface Reflection {
     tried: boolean
     worked: boolean | null
     voice_note_url: string | null
+    voice_note_transcript: string | null
+    pedagogical_sentiment: string | null
+    analysis_json: string | null
     text_feedback: string | null
     created_at: string
 }
@@ -89,6 +159,8 @@ export interface ReflectionCreate {
     tried: boolean
     worked?: boolean
     text_feedback?: string
+    voice_note_url?: string
+    voice_note_transcript?: string
 }
 
 // CRP types
@@ -100,9 +172,23 @@ export interface CRPResponse {
     crp_id: number
     response_text: string | null
     voice_note_url: string | null
+    voice_note_transcript: string | null
+    observation_notes: string | null
     tag: ResponseTag | null
+    is_best_practice: boolean
     overrides_ai: boolean
     created_at: string
+}
+
+export interface CRPResponseCreate {
+    query_id: number
+    response_text?: string
+    voice_note_url?: string
+    voice_note_transcript?: string
+    observation_notes?: string
+    tag?: string
+    overrides_ai?: boolean
+    override_reason?: string
 }
 
 // Stats types

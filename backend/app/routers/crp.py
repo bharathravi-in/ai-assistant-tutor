@@ -120,7 +120,7 @@ async def respond_to_query(
     current_user: User = Depends(require_role(UserRole.CRP, UserRole.ARP)),
     db: AsyncSession = Depends(get_db)
 ):
-    """Submit CRP/ARP response to a teacher query."""
+    """Submit CRP/ARP response to a teacher query. Supports text and/or voice responses."""
     # Verify query exists
     result = await db.execute(
         select(QueryModel).where(QueryModel.id == response_data.query_id)
@@ -134,9 +134,13 @@ async def respond_to_query(
         query_id=response_data.query_id,
         crp_id=current_user.id,
         response_text=response_data.response_text,
+        voice_note_url=response_data.voice_note_url,
+        voice_note_duration_sec=response_data.voice_note_duration_sec,
         tag=response_data.tag,
         overrides_ai=response_data.overrides_ai,
         override_reason=response_data.override_reason,
+        observation_notes=response_data.observation_notes,
+        voice_note_transcript=response_data.voice_note_transcript,
     )
     
     db.add(crp_response)
@@ -148,6 +152,7 @@ async def respond_to_query(
     await db.refresh(crp_response)
     
     return CRPResponseResponse.model_validate(crp_response)
+
 
 
 @router.get("/stats")
@@ -269,11 +274,22 @@ async def generate_teacher_feedback(
 
     if not feedback:
         feedback = {
-            "summary": "Observation of the classroom session.",
-            "strengths": [{"what": "Teacher engagement", "why_effective": "Good effort", "continue_doing": "Keep it up"}],
-            "improvement_areas": [{"observation": "Areas to work on", "impact": "Could improve learning", "specific_suggestion": response_text[:500], "example": "Try this approach", "resources": "Ask CRP for support"}],
-            "priority_action": {"focus": "One key area", "how": "Work on it gradually", "success_indicator": "Visible improvement"},
-            "encouragement": "Keep working hard!"
+            "strengths": ["Teacher showed good rapport with students", "Clear explanation of concepts"],
+            "actionable_suggestions": [
+                {
+                    "category": "Pedagogy",
+                    "suggestion": "Try incorporating more interactive elements",
+                    "how_to_implement": "Ask students to explain concepts to each other in pairs"
+                }
+            ],
+            "recommended_micro_learning": [
+                {
+                    "resource_title": "Active Learning Techniques",
+                    "type": "Video",
+                    "focus_area": "Student Engagement"
+                }
+            ],
+            "suggested_feedback_script": "You showed excellent connection with students today. I noticed some opportunities to increase engagement - let's discuss a simple technique you can try next class."
         }
     
     return {
@@ -403,3 +419,112 @@ async def get_observation_template():
     """Get observation template for CRPs to use during classroom visits."""
     return OBSERVATION_TEMPLATE
 
+
+# ==================== BEST PRACTICE LIBRARY ====================
+
+@router.post("/responses/{response_id}/mark-best-practice")
+async def mark_as_best_practice(
+    response_id: int,
+    current_user: User = Depends(require_role(UserRole.CRP, UserRole.ARP, UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db)
+):
+    """Mark a CRP response as a best practice for the shared strategy pool."""
+    result = await db.execute(
+        select(CRPResponse).where(CRPResponse.id == response_id)
+    )
+    response = result.scalar_one_or_none()
+    
+    if not response:
+        raise HTTPException(status_code=404, detail="Response not found")
+    
+    response.is_best_practice = True
+    await db.commit()
+    
+    return {"message": "Marked as best practice", "response_id": response_id}
+
+
+@router.delete("/responses/{response_id}/mark-best-practice")
+async def unmark_best_practice(
+    response_id: int,
+    current_user: User = Depends(require_role(UserRole.CRP, UserRole.ARP, UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db)
+):
+    """Remove best practice status from a CRP response."""
+    result = await db.execute(
+        select(CRPResponse).where(CRPResponse.id == response_id)
+    )
+    response = result.scalar_one_or_none()
+    
+    if not response:
+        raise HTTPException(status_code=404, detail="Response not found")
+    
+    response.is_best_practice = False
+    await db.commit()
+    
+    return {"message": "Removed best practice status", "response_id": response_id}
+
+
+@router.get("/best-practices")
+async def get_best_practices(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=50),
+    subject: Optional[str] = None,
+    grade: Optional[int] = None,
+    mode: Optional[QueryMode] = None,
+    current_user: User = Depends(require_role(UserRole.CRP, UserRole.ARP, UserRole.ADMIN, UserRole.TEACHER, UserRole.SUPERADMIN)),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get shared strategy pool - all responses marked as best practices.
+    Teachers can also access this to learn from effective strategies.
+    """
+    query = select(CRPResponse).join(QueryModel).where(CRPResponse.is_best_practice == True)
+    
+    if subject:
+        query = query.where(QueryModel.subject == subject)
+    if grade:
+        query = query.where(QueryModel.grade == grade)
+    if mode:
+        query = query.where(QueryModel.mode == mode)
+    
+    # Count total
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+    
+    # Get paginated results
+    query = query.order_by(CRPResponse.created_at.desc())
+    query = query.offset((page - 1) * page_size).limit(page_size)
+    
+    result = await db.execute(query)
+    responses = result.scalars().all()
+    
+    # Enrich with query context
+    items = []
+    for resp in responses:
+        query_result = await db.execute(
+            select(QueryModel).where(QueryModel.id == resp.query_id)
+        )
+        q = query_result.scalar_one_or_none()
+        
+        items.append({
+            "id": resp.id,
+            "response_text": resp.response_text,
+            "tag": resp.tag.value if resp.tag else None,
+            "created_at": resp.created_at.isoformat(),
+            "query_context": {
+                "input_text": q.input_text[:200] if q and q.input_text else None,
+                "mode": q.mode.value if q else None,
+                "grade": q.grade if q else None,
+                "subject": q.subject if q else None,
+                "topic": q.topic if q else None,
+            } if q else None
+        })
+    
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size
+    }

@@ -15,14 +15,18 @@ import {
     TrendingUp,
     Star,
     ChevronDown,
-    ChevronUp
+    ChevronUp,
+    Paperclip,
+    X
 } from 'lucide-react'
 import { useChatStore } from '../../stores/chatStore'
 import { aiApi, teacherSupportApi } from '../../services/api'
-import type { QueryMode } from '../../types'
+import type { QueryMode, QuickPrompt, Quiz, TLM, AuditResult } from '../../types'
 import AIResponse from '../../components/teacher/AIResponse'
 import ReflectionForm from '../../components/teacher/ReflectionForm'
 import VoiceAssistant from '../../components/teacher/VoiceAssistant'
+import QuizDrawer from '../../components/teacher/QuizDrawer'
+import TLMDrawer from '../../components/teacher/TLMDrawer'
 
 const modes: { id: QueryMode; icon: typeof BookOpen; label: string; description: string; color: string }[] = [
     { id: 'explain', icon: BookOpen, label: 'Explain / Teach', description: 'Get tips on explaining concepts to students', color: '#264092' },
@@ -30,21 +34,70 @@ const modes: { id: QueryMode; icon: typeof BookOpen; label: string; description:
     { id: 'plan', icon: ClipboardList, label: 'Plan Lesson', description: 'Create an engaging lesson plan', color: '#22c55e' },
 ]
 
-const defaultQuickPrompts = [
-    { icon: Lightbulb, text: 'How to teach fractions to Class 4?', mode: 'explain' as QueryMode },
-    { icon: Clock, text: '30-minute science activity ideas', mode: 'plan' as QueryMode },
-    { icon: TrendingUp, text: 'Student engagement techniques', mode: 'assist' as QueryMode },
+interface DisplayPrompt {
+    icon: any
+    text: string
+    mode: QueryMode
+}
+
+const defaultQuickPrompts: DisplayPrompt[] = [
+    { icon: Lightbulb, text: 'Explain photosynthesis for Class 6', mode: 'explain' as QueryMode },
+    { icon: Clock, text: 'Create a 40-min lesson plan for Fractions', mode: 'plan' as QueryMode },
+    { icon: TrendingUp, text: 'How to handle a noisy classroom?', mode: 'assist' as QueryMode },
     { icon: Star, text: 'Make learning fun for Class 5', mode: 'explain' as QueryMode },
 ]
 
 export default function TeacherDashboard() {
-    const { t, i18n } = useTranslation()
+    const { i18n } = useTranslation()
     const { mode, setMode, isLoading, setLoading, currentResponse, setResponse, setError } = useChatStore()
     const [inputText, setInputText] = useState('')
     const [showReflection, setShowReflection] = useState(false)
     const [showVoiceAssistant, setShowVoiceAssistant] = useState(false)
     const [showContext, setShowContext] = useState(true)
-    const [dynamicQuickPrompts, setDynamicQuickPrompts] = useState<any[]>([])
+    const [dynamicQuickPrompts, setDynamicQuickPrompts] = useState<QuickPrompt[]>([])
+
+    // Media State
+    const [selectedFile, setSelectedFile] = useState<File | null>(null)
+    const [uploading, setUploading] = useState(false)
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+    const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            setSelectedFile(file)
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader()
+                reader.onloadend = () => {
+                    setPreviewUrl(reader.result as string)
+                }
+                reader.readAsDataURL(file)
+            } else {
+                setPreviewUrl(null)
+            }
+        }
+    }
+
+    const clearFile = () => {
+        setSelectedFile(null)
+        setPreviewUrl(null)
+        if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+
+    // Quiz Genie State
+    const [showQuizDrawer, setShowQuizDrawer] = useState(false)
+    const [currentQuiz, setCurrentQuiz] = useState<Quiz | null>(null)
+    const [isQuizLoading, setIsQuizLoading] = useState(false)
+
+    // TLM Designer State
+    const [showTLMDrawer, setShowTLMDrawer] = useState(false)
+    const [currentTLM, setCurrentTLM] = useState<TLM | null>(null)
+    const [isTLMLoading, setIsTLMLoading] = useState(false)
+
+    // NCERT Auditor State
+    const [auditResults, setAuditResults] = useState<Record<number, AuditResult>>({})
+    const [isAuditLoading, setIsAuditLoading] = useState(false)
+    const [auditingQueryId, setAuditingQueryId] = useState<number | null>(null)
 
     useEffect(() => {
         const fetchQuickPrompts = async () => {
@@ -58,8 +111,8 @@ export default function TeacherDashboard() {
         fetchQuickPrompts()
     }, [])
 
-    const activeQuickPrompts = dynamicQuickPrompts.length > 0
-        ? dynamicQuickPrompts.map(p => ({
+    const activeQuickPrompts: DisplayPrompt[] = dynamicQuickPrompts.length > 0
+        ? dynamicQuickPrompts.map((p: QuickPrompt) => ({
             icon: p.mode === 'assist' ? TrendingUp : p.mode === 'plan' ? Clock : Lightbulb,
             text: p.text,
             mode: p.mode as QueryMode
@@ -71,6 +124,9 @@ export default function TeacherDashboard() {
     const [subject, setSubject] = useState('')
     const [topic, setTopic] = useState('')
     const [studentsLevel, setStudentsLevel] = useState('at grade level')
+    const [isMultigrade, setIsMultigrade] = useState(false)
+    const [classSize, setClassSize] = useState<number>(40)
+    const [availableTime, setAvailableTime] = useState<number>(30)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -80,6 +136,14 @@ export default function TeacherDashboard() {
         setShowReflection(false)
 
         try {
+            let uploadedMediaUrl = '';
+            if (selectedFile) {
+                setUploading(true);
+                const uploadResult = await mediaApi.upload(selectedFile);
+                uploadedMediaUrl = uploadResult.url;
+                setUploading(false);
+            }
+
             let response;
             if (mode === 'assist') {
                 // Use specialized classroom help endpoint for assist mode
@@ -88,7 +152,10 @@ export default function TeacherDashboard() {
                     grade,
                     subject,
                     topic,
-                    students_level: studentsLevel
+                    students_level: studentsLevel,
+                    is_multigrade: isMultigrade,
+                    class_size: classSize,
+                    instructional_time_minutes: availableTime,
                 })
                 response = {
                     query_id: result.query_id,
@@ -107,13 +174,85 @@ export default function TeacherDashboard() {
                     language: i18n.language,
                     grade,
                     subject,
-                    topic
+                    topic,
+                    is_multigrade: isMultigrade,
+                    class_size: classSize,
+                    instructional_time_minutes: availableTime,
+                    media_path: uploadedMediaUrl
                 })
             }
             setResponse(response)
             setInputText('')
+            clearFile()
         } catch (err) {
             setError('Failed to get response. Please try again.')
+        } finally {
+            setLoading(false)
+            setUploading(false)
+        }
+    }
+
+    const handleGenerateQuiz = async (topicName: string, content: string) => {
+        setIsQuizLoading(true)
+        setShowQuizDrawer(true)
+        try {
+            const quiz = await aiApi.generateQuiz({
+                topic: topicName || topic || 'Current Lesson',
+                content: content,
+                language: i18n.language,
+                level: 'medium' // Can be made dynamic later
+            })
+            setCurrentQuiz(quiz)
+        } catch (err) {
+            console.error('Quiz generation failed', err)
+            setError('Failed to generate quiz. Please try again.')
+            setShowQuizDrawer(false)
+        } finally {
+            setIsQuizLoading(false)
+        }
+    }
+
+    const handleGenerateTLM = async (topicName: string, content: string) => {
+        setIsTLMLoading(true)
+        setShowTLMDrawer(true)
+        try {
+            const tlm = await aiApi.generateTLM({
+                topic: topicName || topic || 'Current Lesson',
+                content: content,
+                language: i18n.language
+            })
+            setCurrentTLM(tlm)
+        } catch (err) {
+            console.error('TLM generation failed', err)
+            setError('Failed to design TLM. Please try again.')
+            setShowTLMDrawer(false)
+        } finally {
+            setIsTLMLoading(false)
+        }
+    }
+
+    const handleAuditContent = async (topicName: string, content: string) => {
+        if (!currentResponse) return
+
+        setIsAuditLoading(true)
+        setAuditingQueryId(currentResponse.query_id)
+        try {
+            const audit = await aiApi.auditContent({
+                topic: topicName || topic || 'Current Lesson',
+                content: content,
+                grade: grade,
+                subject: subject
+            })
+            setAuditResults(prev => ({
+                ...prev,
+                [currentResponse.query_id]: audit
+            }))
+        } catch (err) {
+            console.error('Audit failed', err)
+            setError('Failed to audit content. Please try again.')
+        } finally {
+            setIsAuditLoading(false)
+            setAuditingQueryId(null)
         }
     }
 
@@ -267,6 +406,38 @@ export default function TeacherDashboard() {
                                         <option value="struggling with basics">Struggling with basics</option>
                                     </select>
                                 </div>
+                                <div className="flex items-center gap-2 pt-5">
+                                    <input
+                                        type="checkbox"
+                                        id="multigrade"
+                                        checked={isMultigrade}
+                                        onChange={(e) => setIsMultigrade(e.target.checked)}
+                                        className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+                                    />
+                                    <label htmlFor="multigrade" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                                        Multigrade Class
+                                    </label>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-500 mb-1">Class Size</label>
+                                    <input
+                                        type="number"
+                                        value={classSize}
+                                        onChange={(e) => setClassSize(parseInt(e.target.value))}
+                                        placeholder="e.g. 40"
+                                        className="w-full p-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-1 focus:ring-primary-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-500 mb-1">Time (mins)</label>
+                                    <input
+                                        type="number"
+                                        value={availableTime}
+                                        onChange={(e) => setAvailableTime(parseInt(e.target.value))}
+                                        placeholder="e.g. 30"
+                                        className="w-full p-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-1 focus:ring-primary-500"
+                                    />
+                                </div>
                             </div>
                         )}
                     </div>
@@ -278,7 +449,7 @@ export default function TeacherDashboard() {
                                 Quick prompts to get started
                             </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {activeQuickPrompts.map((prompt: any, index: number) => (
+                                {activeQuickPrompts.map((prompt: DisplayPrompt, index: number) => (
                                     <button
                                         key={index}
                                         onClick={() => handleQuickPrompt(prompt.text, prompt.mode)}
@@ -312,7 +483,17 @@ export default function TeacherDashboard() {
                                 </div>
                             ) : (
                                 <>
-                                    <AIResponse response={currentResponse!} mode={mode} />
+                                    <AIResponse
+                                        response={currentResponse!}
+                                        mode={mode}
+                                        onGenerateQuiz={handleGenerateQuiz}
+                                        isQuizLoading={isQuizLoading}
+                                        onGenerateTLM={handleGenerateTLM}
+                                        isTLMLoading={isTLMLoading}
+                                        onAudit={handleAuditContent}
+                                        isAuditLoading={isAuditLoading && auditingQueryId === currentResponse?.query_id}
+                                        auditResult={currentResponse ? auditResults[currentResponse.query_id] : undefined}
+                                    />
                                     {!showReflection && (
                                         <div className="flex justify-center">
                                             <button
@@ -341,13 +522,48 @@ export default function TeacherDashboard() {
             <div className="bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
                 <div className="max-w-4xl mx-auto">
                     <form onSubmit={handleSubmit} className="relative">
+                        {/* File Preview */}
+                        {(selectedFile || uploading) && (
+                            <div className="absolute bottom-full left-0 mb-4 animate-slide-up">
+                                <div className="bg-white dark:bg-gray-800 rounded-2xl p-2 shadow-xl border border-gray-100 dark:border-gray-700 flex items-center gap-3">
+                                    {previewUrl ? (
+                                        <div className="w-12 h-12 rounded-lg overflow-hidden border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                                            <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                        </div>
+                                    ) : (
+                                        <div className="w-12 h-12 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center">
+                                            <BookOpen className="w-6 h-6 text-primary-600" />
+                                        </div>
+                                    )}
+                                    <div className="flex-1 min-w-[120px]">
+                                        <p className="text-xs font-medium text-gray-700 dark:text-gray-200 truncate max-w-[150px]">
+                                            {uploading ? 'Uploading...' : selectedFile?.name}
+                                        </p>
+                                        <p className="text-[10px] text-gray-400">
+                                            {uploading ? 'Processing content...' : 'Ready for AI analysis'}
+                                        </p>
+                                    </div>
+                                    {!uploading && (
+                                        <button
+                                            type="button"
+                                            onClick={clearFile}
+                                            className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 transition-colors"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                    {uploading && <Loader2 className="w-4 h-4 text-primary-600 animate-spin mr-2" />}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden focus-within:ring-2 focus-within:ring-primary-500 transition-all">
                             <textarea
                                 value={inputText}
                                 onChange={(e) => setInputText(e.target.value)}
                                 placeholder={mode === 'assist' ? "Describe the classroom challenge..." : "Explain Newton's laws..."}
-                                className="w-full min-h-[60px] max-h-[150px] p-4 pr-32 text-gray-800 dark:text-white bg-transparent border-0 resize-none focus:outline-none custom-scrollbar"
-                                disabled={isLoading}
+                                className="w-full min-h-[60px] max-h-[150px] p-4 pr-40 text-gray-800 dark:text-white bg-transparent border-0 resize-none focus:outline-none custom-scrollbar"
+                                disabled={isLoading || uploading}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter' && !e.shiftKey) {
                                         e.preventDefault();
@@ -355,7 +571,25 @@ export default function TeacherDashboard() {
                                     }
                                 }}
                             />
-                            <div className="absolute right-2 bottom-2 flex items-center gap-2">
+
+                            {/* Hidden File Input */}
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                accept="image/*,application/pdf"
+                                className="hidden"
+                            />
+
+                            <div className="absolute right-2 bottom-2 flex items-center gap-1 sm:gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className={`p-2 rounded-xl transition-colors ${selectedFile ? 'text-primary-600 bg-primary-50 dark:bg-primary-900/20' : 'text-gray-400 hover:text-primary-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                    title="Upload lesson notes or textbook photo"
+                                >
+                                    <Paperclip className="w-5 h-5" />
+                                </button>
                                 <button
                                     type="button"
                                     onClick={() => setShowVoiceAssistant(true)}
@@ -365,11 +599,11 @@ export default function TeacherDashboard() {
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={isLoading || !inputText.trim()}
+                                    disabled={isLoading || uploading || (!inputText.trim() && !selectedFile)}
                                     className="flex items-center justify-center w-12 h-12 rounded-xl text-white transition-all hover:scale-105 disabled:opacity-50 disabled:scale-100"
                                     style={{ background: 'linear-gradient(135deg, #EF951E 0%, #F69953 100%)' }}
                                 >
-                                    {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                                    {isLoading || uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                                 </button>
                             </div>
                         </div>
@@ -384,6 +618,30 @@ export default function TeacherDashboard() {
             <VoiceAssistant
                 isOpen={showVoiceAssistant}
                 onClose={() => setShowVoiceAssistant(false)}
+            />
+
+            <QuizDrawer
+                isOpen={showQuizDrawer}
+                onClose={() => setShowQuizDrawer(false)}
+                quiz={currentQuiz}
+                isLoading={isQuizLoading}
+                onRegenerate={() => {
+                    if (currentResponse) {
+                        handleGenerateQuiz(currentResponse.query?.topic || topic || 'Current Lesson', currentResponse.content)
+                    }
+                }}
+            />
+
+            <TLMDrawer
+                isOpen={showTLMDrawer}
+                onClose={() => setShowTLMDrawer(false)}
+                tlm={currentTLM}
+                isLoading={isTLMLoading}
+                onRegenerate={() => {
+                    if (currentResponse) {
+                        handleGenerateTLM(currentResponse.query?.topic || topic || 'Current Lesson', currentResponse.content)
+                    }
+                }}
             />
         </div>
     )

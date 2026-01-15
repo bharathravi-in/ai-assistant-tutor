@@ -11,6 +11,7 @@ import TeacherHistory from './pages/teacher/History'
 import TeacherSettings from './pages/teacher/Settings'
 import CRPDashboard from './pages/crp/Dashboard'
 import FeedbackAssist from './pages/crp/FeedbackAssist'
+import ARPDashboard from './pages/arp/Dashboard'
 import AdminDashboard from './pages/admin/Dashboard'
 import SuperadminDashboard from './pages/superadmin/Dashboard'
 import OrganizationSettings from './pages/superadmin/OrganizationSettings'
@@ -48,8 +49,9 @@ function RoleBasedRedirect() {
             return <Navigate to="/superadmin" replace />
         case 'admin':
             return <Navigate to="/admin" replace />
-        case 'crp':
         case 'arp':
+            return <Navigate to="/arp" replace />
+        case 'crp':
             return <Navigate to="/crp" replace />
         default:
             return <Navigate to="/teacher" replace />
@@ -101,18 +103,76 @@ function App() {
             } />
 
 
-            {/* CRP/ARP routes */}
+            {/* CRP routes */}
             <Route path="/crp" element={
-                <ProtectedRoute roles={['crp', 'arp']}>
+                <ProtectedRoute roles={['crp']}>
                     <Layout>
                         <CRPDashboard />
                     </Layout>
                 </ProtectedRoute>
             } />
             <Route path="/crp/feedback-assist" element={
-                <ProtectedRoute roles={['crp', 'arp']}>
+                <ProtectedRoute roles={['crp']}>
                     <Layout>
                         <FeedbackAssist />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/crp/history" element={
+                <ProtectedRoute roles={['crp']}>
+                    <Layout>
+                        <TeacherHistory />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/crp/profile" element={
+                <ProtectedRoute roles={['crp']}>
+                    <Layout>
+                        <TeacherProfile />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/crp/settings" element={
+                <ProtectedRoute roles={['crp']}>
+                    <Layout>
+                        <TeacherSettings />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+
+            {/* ARP routes */}
+            <Route path="/arp" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <ARPDashboard />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/feedback-assist" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <FeedbackAssist />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/history" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <TeacherHistory />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/profile" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <TeacherProfile />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/settings" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <TeacherSettings />
                     </Layout>
                 </ProtectedRoute>
             } />

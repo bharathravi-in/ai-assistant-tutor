@@ -754,3 +754,265 @@ async def test_ai_connection(
     
     except Exception as e:
         return {"success": False, "message": f"Connection failed: {str(e)}"}
+
+
+# ============== AI Response Auditing ==============
+
+@router.get("/audit/queries")
+async def get_queries_for_audit(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    organization_id: Optional[int] = None,
+    mode: Optional[str] = None,
+    has_crp_override: Optional[bool] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    current_user: User = Depends(require_superadmin),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    List queries for AI response auditing.
+    SuperAdmins can review AI responses for quality and curriculum alignment.
+    """
+    from app.models.query import Query as QueryModel
+    from app.models.reflection import Reflection, CRPResponse
+    
+    query = select(QueryModel)
+    
+    if organization_id:
+        query = query.join(User, QueryModel.user_id == User.id).where(
+            User.organization_id == organization_id
+        )
+    
+    if mode:
+        from app.models.query import QueryMode
+        try:
+            query = query.where(QueryModel.mode == QueryMode(mode))
+        except ValueError:
+            pass
+    
+    if start_date:
+        query = query.where(QueryModel.created_at >= start_date)
+    if end_date:
+        query = query.where(QueryModel.created_at <= end_date)
+    
+    # Count total
+    count_query = select(func.count()).select_from(query.subquery())
+    total = await db.scalar(count_query)
+    
+    # Paginate
+    query = query.order_by(QueryModel.created_at.desc())
+    query = query.offset((page - 1) * page_size).limit(page_size)
+    
+    result = await db.execute(query)
+    queries = result.scalars().all()
+    
+    items = []
+    for q in queries:
+        # Get teacher
+        teacher = await db.get(User, q.user_id)
+        
+        # Get reflection
+        reflection = await db.scalar(
+            select(Reflection).where(Reflection.query_id == q.id)
+        )
+        
+        # Get CRP responses
+        crp_responses = await db.execute(
+            select(CRPResponse).where(CRPResponse.query_id == q.id)
+        )
+        crp_list = crp_responses.scalars().all()
+        
+        # Check for override
+        has_override = any(r.overrides_ai for r in crp_list)
+        
+        if has_crp_override is not None and has_override != has_crp_override:
+            continue
+        
+        items.append({
+            "id": q.id,
+            "teacher": {
+                "id": teacher.id if teacher else None,
+                "name": teacher.name if teacher else None,
+                "organization_id": teacher.organization_id if teacher else None,
+            },
+            "mode": q.mode.value,
+            "input_text": q.input_text[:200] if q.input_text else None,
+            "ai_response": q.response_text[:500] if q.response_text else None,
+            "subject": q.subject,
+            "grade": q.grade,
+            "topic": q.topic,
+            "processing_time_ms": q.processing_time_ms,
+            "created_at": q.created_at.isoformat(),
+            "reflection": {
+                "tried": reflection.tried,
+                "worked": reflection.worked,
+                "feedback": reflection.text_feedback,
+            } if reflection else None,
+            "crp_responses": [
+                {
+                    "id": r.id,
+                    "crp_id": r.crp_id,
+                    "response_text": r.response_text[:200] if r.response_text else None,
+                    "overrides_ai": r.overrides_ai,
+                    "override_reason": r.override_reason,
+                    "tag": r.tag.value if r.tag else None,
+                }
+                for r in crp_list
+            ],
+            "has_crp_override": has_override,
+        })
+    
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size if total else 0
+    }
+
+
+@router.get("/audit/queries/{query_id}")
+async def get_query_audit_detail(
+    query_id: int,
+    current_user: User = Depends(require_superadmin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get detailed audit view of a single query."""
+    from app.models.query import Query as QueryModel
+    from app.models.reflection import Reflection, CRPResponse
+    
+    q = await db.get(QueryModel, query_id)
+    if not q:
+        raise HTTPException(status_code=404, detail="Query not found")
+    
+    teacher = await db.get(User, q.user_id)
+    org = await db.get(Organization, teacher.organization_id) if teacher and teacher.organization_id else None
+    
+    reflection = await db.scalar(select(Reflection).where(Reflection.query_id == q.id))
+    
+    crp_responses = await db.execute(select(CRPResponse).where(CRPResponse.query_id == q.id))
+    crp_list = crp_responses.scalars().all()
+    
+    # Get CRP names
+    crp_details = []
+    for r in crp_list:
+        crp_user = await db.get(User, r.crp_id)
+        crp_details.append({
+            "id": r.id,
+            "crp_id": r.crp_id,
+            "crp_name": crp_user.name if crp_user else None,
+            "response_text": r.response_text,
+            "voice_note_url": r.voice_note_url,
+            "overrides_ai": r.overrides_ai,
+            "override_reason": r.override_reason,
+            "tag": r.tag.value if r.tag else None,
+            "is_best_practice": r.is_best_practice,
+            "created_at": r.created_at.isoformat(),
+        })
+    
+    return {
+        "query": {
+            "id": q.id,
+            "mode": q.mode.value,
+            "input_text": q.input_text,
+            "response_text": q.response_text,
+            "subject": q.subject,
+            "grade": q.grade,
+            "topic": q.topic,
+            "processing_time_ms": q.processing_time_ms,
+            "language": q.language,
+            "created_at": q.created_at.isoformat(),
+        },
+        "teacher": {
+            "id": teacher.id if teacher else None,
+            "name": teacher.name if teacher else None,
+            "phone": teacher.phone if teacher else None,
+            "school_name": teacher.school_name if teacher else None,
+        },
+        "organization": {
+            "id": org.id if org else None,
+            "name": org.name if org else None,
+        },
+        "reflection": {
+            "tried": reflection.tried,
+            "worked": reflection.worked,
+            "text_feedback": reflection.text_feedback,
+            "voice_note_url": reflection.voice_note_url,
+            "created_at": reflection.created_at.isoformat(),
+        } if reflection else None,
+        "crp_responses": crp_details,
+    }
+
+
+@router.get("/audit/summary")
+async def get_audit_summary(
+    days: int = Query(30, ge=1, le=365),
+    organization_id: Optional[int] = None,
+    current_user: User = Depends(require_superadmin),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get summary statistics for AI response auditing."""
+    from app.models.query import Query as QueryModel, QueryMode
+    from app.models.reflection import Reflection, CRPResponse
+    from datetime import timedelta
+    
+    since = datetime.utcnow() - timedelta(days=days)
+    
+    # Base query
+    base = select(QueryModel).where(QueryModel.created_at >= since)
+    if organization_id:
+        base = base.join(User, QueryModel.user_id == User.id).where(
+            User.organization_id == organization_id
+        )
+    
+    # Total queries
+    total_queries = await db.scalar(
+        select(func.count()).select_from(base.subquery())
+    )
+    
+    # Queries with reflections
+    with_reflection = await db.scalar(
+        select(func.count()).select_from(Reflection).join(QueryModel).where(
+            QueryModel.created_at >= since
+        )
+    )
+    
+    # Success rate
+    worked = await db.scalar(
+        select(func.count()).select_from(Reflection).join(QueryModel).where(
+            QueryModel.created_at >= since,
+            Reflection.worked == True
+        )
+    )
+    
+    # CRP override count
+    overrides = await db.scalar(
+        select(func.count()).select_from(CRPResponse).join(QueryModel).where(
+            QueryModel.created_at >= since,
+            CRPResponse.overrides_ai == True
+        )
+    )
+    
+    # Queries by mode
+    mode_counts = {}
+    for mode in QueryMode:
+        count = await db.scalar(
+            select(func.count()).where(
+                QueryModel.created_at >= since,
+                QueryModel.mode == mode
+            )
+        )
+        mode_counts[mode.value] = count or 0
+    
+    return {
+        "period_days": days,
+        "total_queries": total_queries or 0,
+        "with_reflection": with_reflection or 0,
+        "worked": worked or 0,
+        "success_rate": round((worked / with_reflection * 100) if with_reflection else 0, 1),
+        "crp_overrides": overrides or 0,
+        "override_rate": round((overrides / total_queries * 100) if total_queries else 0, 1),
+        "queries_by_mode": mode_counts,
+    }
+

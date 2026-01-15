@@ -18,7 +18,11 @@ import {
     CreditCard,
     Settings,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    MessageCircle,
+    BookOpen,
+    Mic,
+    Lightbulb
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -34,6 +38,7 @@ export default function Layout({ children }: LayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
     const [darkMode, setDarkMode] = useState(false)
+    const [helpOpen, setHelpOpen] = useState(false)
 
     // Auto collapse on smaller desktop screens
     useEffect(() => {
@@ -74,13 +79,14 @@ export default function Layout({ children }: LayoutProps) {
             ]
         }
 
-        const basePath = role === 'admin' ? 'admin' : role === 'crp' || role === 'arp' ? 'crp' : 'teacher'
+        // Use role-specific basePath for each user type
+        const basePath = role === 'admin' ? 'admin' : role === 'crp' ? 'crp' : role === 'arp' ? 'arp' : 'teacher'
         const items = [
             { icon: Home, label: t('nav.home'), path: `/${basePath}` },
         ]
 
         if (role === 'crp' || role === 'arp') {
-            items.push({ icon: Sparkles, label: 'Feedback Assistant', path: '/crp/feedback-assist' })
+            items.push({ icon: Sparkles, label: 'Feedback Assistant', path: `/${basePath}/feedback-assist` })
         }
 
         items.push(
@@ -91,6 +97,7 @@ export default function Layout({ children }: LayoutProps) {
 
         return items
     }
+
 
     const sidebarWidth = sidebarCollapsed ? 'w-20' : 'w-72'
     const marginLeft = sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'
@@ -290,13 +297,90 @@ export default function Layout({ children }: LayoutProps) {
                 </main>
             </div>
 
-            {/* Floating Help Button */}
-            <button
-                className="fixed bottom-6 right-6 z-40 w-12 h-12 rounded-full text-white flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 hidden lg:flex"
-                style={{ background: 'linear-gradient(135deg, #264092 0%, #3451a8 100%)' }}
-            >
-                <HelpCircle className="w-5 h-5" />
-            </button>
+            {/* Floating Help Button and Panel */}
+            <div className="fixed bottom-6 right-6 z-40 hidden lg:block">
+                {/* Help Panel */}
+                {helpOpen && (
+                    <div className="absolute bottom-16 right-0 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+                        <div className="p-4 border-b border-gray-100 dark:border-gray-700" style={{ background: 'linear-gradient(135deg, #264092 0%, #3451a8 100%)' }}>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <HelpCircle className="w-5 h-5 text-white" />
+                                    <span className="font-semibold text-white">Quick Help</span>
+                                </div>
+                                <button onClick={() => setHelpOpen(false)} className="text-white/80 hover:text-white">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="p-4 space-y-4 max-h-96 overflow-y-auto">
+                            {/* Quick Tips */}
+                            <div>
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                    <Lightbulb className="w-4 h-4" style={{ color: '#EF951E' }} />
+                                    Quick Tips
+                                </h4>
+                                <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                                    <li className="flex items-start gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                                        Use voice input for natural queries
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                                        Add classroom context for better responses
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                                        Review your query history for insights
+                                    </li>
+                                </ul>
+                            </div>
+
+                            {/* Features */}
+                            <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                    <Sparkles className="w-4 h-4" style={{ color: '#264092' }} />
+                                    Key Features
+                                </h4>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                        <Mic className="w-3.5 h-3.5" style={{ color: '#EF951E' }} />
+                                        <span>Voice Input</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                        <BookOpen className="w-3.5 h-3.5" style={{ color: '#264092' }} />
+                                        <span>NCERT Aligned</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                        <MessageCircle className="w-3.5 h-3.5" style={{ color: '#10B981' }} />
+                                        <span>AI Responses</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                        <GraduationCap className="w-3.5 h-3.5" style={{ color: '#8B5CF6' }} />
+                                        <span>TLM Design</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Contact */}
+                            <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
+                                <p className="text-xs text-gray-500 dark:text-gray-500 text-center">
+                                    Need more help? Contact your DIET administrator
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Help Button */}
+                <button
+                    onClick={() => setHelpOpen(!helpOpen)}
+                    className={`w-12 h-12 rounded-full text-white flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 ${helpOpen ? 'rotate-45' : ''}`}
+                    style={{ background: 'linear-gradient(135deg, #264092 0%, #3451a8 100%)' }}
+                >
+                    {helpOpen ? <X className="w-5 h-5" /> : <HelpCircle className="w-5 h-5" />}
+                </button>
+            </div>
         </div>
     )
 }

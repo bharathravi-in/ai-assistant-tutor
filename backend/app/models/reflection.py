@@ -34,6 +34,10 @@ class Reflection(Base):
     voice_note_duration_sec: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     voice_note_transcript: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
+    # Analysis
+    pedagogical_sentiment: Mapped[Optional[str]] = mapped_column(String(50), nullable=True) # positive, frustrated, etc.
+    analysis_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True) # Internal AI analysis
+    
     # Text Reflection
     text_feedback: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
@@ -61,6 +65,8 @@ class CRPResponse(Base):
     response_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     voice_note_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     voice_note_duration_sec: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    observation_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    voice_note_transcript: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     # Tagging
     tag: Mapped[Optional[ResponseTag]] = mapped_column(Enum(ResponseTag), nullable=True)
@@ -69,8 +75,12 @@ class CRPResponse(Base):
     overrides_ai: Mapped[bool] = mapped_column(Boolean, default=False)
     override_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
+    # Best Practice flag
+    is_best_practice: Mapped[bool] = mapped_column(Boolean, default=False)
+    
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
     
     # Relationships
     query = relationship("Query", back_populates="crp_responses")

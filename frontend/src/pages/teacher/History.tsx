@@ -11,9 +11,13 @@ import {
     ChevronRight,
     Star,
     Trash2,
-    ArrowLeft
+    ArrowLeft,
+    FileQuestion,
+    Palette,
+    ShieldCheck,
+    Loader2
 } from 'lucide-react'
-import { teacherApi } from '../../services/api'
+import { teacherApi, aiApi } from '../../services/api'
 
 interface Query {
     id: number
@@ -274,12 +278,57 @@ export default function TeacherHistory() {
                                 </div>
 
                                 {/* Response */}
-                                <div className="p-6">
+                                <div className="p-6 border-b border-gray-100 dark:border-gray-700">
                                     <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">AI Response</h3>
                                     <div className="prose prose-sm dark:prose-invert max-w-none">
                                         {selectedQuery.ai_response?.split('\n').map((line, i) => (
                                             <p key={i} className="mb-2 text-gray-700 dark:text-gray-300">{line}</p>
                                         ))}
+                                    </div>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="p-6">
+                                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">Quick Actions</h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <button
+                                            onClick={() => window.location.href = `/teacher?mode=quiz&topic=${encodeURIComponent(selectedQuery.input_text)}`}
+                                            className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:from-purple-600 hover:to-purple-700 transition-all shadow-lg shadow-purple-500/20"
+                                        >
+                                            <div className="p-2 bg-white/20 rounded-lg">
+                                                <FileQuestion className="w-5 h-5" />
+                                            </div>
+                                            <div className="text-left">
+                                                <span className="font-semibold text-sm">Generate Quiz</span>
+                                                <p className="text-xs text-white/70">Create assessment</p>
+                                            </div>
+                                        </button>
+
+                                        <button
+                                            onClick={() => window.location.href = `/teacher?mode=tlm&topic=${encodeURIComponent(selectedQuery.input_text)}`}
+                                            className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 transition-all shadow-lg shadow-pink-500/20"
+                                        >
+                                            <div className="p-2 bg-white/20 rounded-lg">
+                                                <Palette className="w-5 h-5" />
+                                            </div>
+                                            <div className="text-left">
+                                                <span className="font-semibold text-sm">Design TLM</span>
+                                                <p className="text-xs text-white/70">Visual aids</p>
+                                            </div>
+                                        </button>
+
+                                        <button
+                                            onClick={() => window.location.href = `/teacher?mode=audit&topic=${encodeURIComponent(selectedQuery.input_text)}`}
+                                            className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg shadow-green-500/20"
+                                        >
+                                            <div className="p-2 bg-white/20 rounded-lg">
+                                                <ShieldCheck className="w-5 h-5" />
+                                            </div>
+                                            <div className="text-left">
+                                                <span className="font-semibold text-sm">NCERT Audit</span>
+                                                <p className="text-xs text-white/70">Check compliance</p>
+                                            </div>
+                                        </button>
                                     </div>
                                 </div>
                             </div>

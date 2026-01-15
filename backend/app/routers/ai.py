@@ -9,7 +9,10 @@ from app.database import get_db
 from app.models.user import User
 from app.models.query import Query, QueryMode
 from app.models.system_settings import SystemSettings
-from app.schemas.ai import AIRequest, AIResponse
+from app.schemas.ai import (
+    AIRequest, AIResponse, QuizRequest, QuizResponse,
+    TLMRequest, TLMResponse, AuditRequest, AuditResponse
+)
 from app.routers.auth import get_current_user
 from app.services.ai_orchestrator import AIOrchestrator
 from sqlalchemy import select
@@ -44,6 +47,10 @@ async def ask_ai(
             subject=request.subject,
             topic=request.topic,
             context=request.context,
+            media_path=request.media_path,
+            is_multigrade=request.is_multigrade,
+            class_size=request.class_size,
+            instructional_time_minutes=request.instructional_time_minutes,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI processing error: {str(e)}")
@@ -59,6 +66,9 @@ async def ask_ai(
         grade=request.grade,
         subject=request.subject,
         topic=request.topic,
+        is_multigrade=request.is_multigrade,
+        class_size=request.class_size,
+        instructional_time_minutes=request.instructional_time_minutes,
         ai_response=response.get("content"),
         response_language=request.language,
         processing_time_ms=processing_time,
@@ -76,6 +86,23 @@ async def ask_ai(
         "structured": response.get("structured"),
         "processing_time_ms": processing_time,
         "suggestions": response.get("suggestions", []),
+        "query": {
+            "id": query.id,
+            "user_id": query.user_id,
+            "mode": query.mode,
+            "input_text": query.input_text,
+            "input_language": query.input_language,
+            "grade": query.grade,
+            "subject": query.subject,
+            "topic": query.topic,
+            "ai_response": query.ai_response,
+            "response_language": query.response_language,
+            "processing_time_ms": query.processing_time_ms,
+            "is_resolved": query.is_resolved,
+            "requires_crp_review": query.requires_crp_review,
+            "created_at": query.created_at.isoformat() if query.created_at else None,
+            "responded_at": query.responded_at.isoformat() if query.responded_at else None,
+        }
     }
 
 
@@ -137,3 +164,99 @@ async def plan_lesson(
         topic=topic,
     )
     return await ask_ai(request, current_user, db)
+
+
+@router.post("/generate-quiz", response_model=QuizResponse)
+async def generate_quiz(
+    request: QuizRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Mode 4: Generate a quiz based on specific lesson content.
+    """
+    system_settings = await db.scalar(select(SystemSettings).limit(1))
+    orchestrator = AIOrchestrator(system_settings=system_settings)
+    
+    try:
+        quiz = await orchestrator.generate_quiz(
+            topic=request.topic,
+            content=request.content,
+            language=request.language,
+            level=request.level
+        )
+        
+        # If the LLM failed to return valid JSON, the orchestrator returns raw_response
+        if isinstance(quiz, dict) and "raw_response" in quiz:
+             raise HTTPException(status_code=500, detail="Failed to generate a structured quiz. Please try again.")
+             
+        if not quiz or not quiz.get("questions"):
+             raise HTTPException(status_code=500, detail="No questions were generated. Please try again.")
+             
+        return quiz
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        raise HTTPException(status_code=500, detail=f"Quiz generation error: {str(e)}")
+
+
+@router.post("/generate-tlm", response_model=TLMResponse)
+async def generate_tlm(
+    request: TLMRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Mode 5: Generate TLM (Visual/Physical) based on specific lesson content.
+    """
+    system_settings = await db.scalar(select(SystemSettings).limit(1))
+    orchestrator = AIOrchestrator(system_settings=system_settings)
+    
+    try:
+        tlm = await orchestrator.generate_tlm(
+            topic=request.topic,
+            content=request.content,
+            language=request.language
+        )
+        
+        if isinstance(tlm, dict) and "raw_response" in tlm:
+             raise HTTPException(status_code=500, detail="Failed to generate structured TLM. Please try again.")
+             
+        if not tlm or not tlm.get("diy_workshop"):
+             raise HTTPException(status_code=500, detail="No TLM content was generated. Please try again.")
+             
+        return tlm
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        raise HTTPException(status_code=500, detail=f"TLM generation error: {str(e)}")
+
+
+@router.post("/audit", response_model=AuditResponse)
+async def generate_audit(
+    request: AuditRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Mode 6: Audit content for NCERT compliance.
+    """
+    system_settings = await db.scalar(select(SystemSettings).limit(1))
+    orchestrator = AIOrchestrator(system_settings=system_settings)
+
+    try:
+        audit = await orchestrator.audit_content(
+            topic=request.topic,
+            content=request.content,
+            grade=request.grade,
+            subject=request.subject
+        )
+
+        if isinstance(audit, dict) and "raw_response" in audit:
+             raise HTTPException(status_code=500, detail="Failed to generate structured audit. Please try again.")
+
+        if not audit or "is_compliant" not in audit:
+             raise HTTPException(status_code=500, detail="No audit content was generated. Please try again.")
+
+        return audit
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        raise HTTPException(status_code=500, detail=f"Audit generation error: {str(e)}")

@@ -13,6 +13,8 @@ class ReflectionCreate(BaseModel):
     tried: bool
     worked: Optional[bool] = None
     text_feedback: Optional[str] = None
+    voice_note_url: Optional[str] = None
+    voice_note_transcript: Optional[str] = None
 
 
 class ReflectionResponse(BaseModel):
@@ -22,6 +24,7 @@ class ReflectionResponse(BaseModel):
     tried: bool
     worked: Optional[bool]
     voice_note_url: Optional[str]
+    voice_note_transcript: Optional[str]
     text_feedback: Optional[str]
     created_at: datetime
     
@@ -33,9 +36,14 @@ class CRPResponseCreate(BaseModel):
     """Schema for creating a CRP response."""
     query_id: int
     response_text: Optional[str] = None
+    voice_note_url: Optional[str] = None
+    voice_note_duration_sec: Optional[int] = None
     tag: Optional[ResponseTag] = None
     overrides_ai: bool = False
     override_reason: Optional[str] = None
+    observation_notes: Optional[str] = None
+    voice_note_transcript: Optional[str] = None
+
 
 
 class CRPResponseResponse(BaseModel):
@@ -47,6 +55,8 @@ class CRPResponseResponse(BaseModel):
     voice_note_url: Optional[str]
     tag: Optional[ResponseTag]
     overrides_ai: bool
+    observation_notes: Optional[str] = None
+    voice_note_transcript: Optional[str] = None
     created_at: datetime
     
     class Config:

@@ -9,7 +9,12 @@ import type {
     ReflectionCreate,
     Reflection,
     TeacherStats,
-    AdminDashboard
+    AdminDashboard,
+    Quiz,
+    TLM,
+    AuditResult,
+    CRPResponse,
+    CRPResponseCreate
 } from '../types'
 
 // Always use relative path - the dev server proxy handles routing to backend
@@ -110,6 +115,61 @@ export const aiApi = {
         const response = await api.post('/ai/plan', null, { params })
         return response.data
     },
+
+    generateQuiz: async (data: {
+        topic: string
+        content: string
+        language?: string
+        level?: string
+    }): Promise<Quiz> => {
+        const response = await api.post('/ai/generate-quiz', data)
+        return response.data
+    },
+
+    generateTLM: async (data: {
+        topic: string
+        content: string
+        language?: string
+    }): Promise<TLM> => {
+        const response = await api.post('/ai/generate-tlm', data)
+        return response.data
+    },
+
+    auditContent: async (data: {
+        topic: string
+        content: string
+        grade?: number
+        subject?: string
+    }): Promise<AuditResult> => {
+        const response = await api.post('/ai/audit', data)
+        return response.data
+    },
+}
+
+// Media endpoints
+export const mediaApi = {
+    upload: async (file: File): Promise<{ filename: string; content_type: string; url: string }> => {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await api.post('/media/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        return response.data
+    },
+
+    uploadVoice: async (file: File, purpose: 'reflection' | 'response' = 'reflection'): Promise<{
+        filename: string,
+        url: string,
+        transcript: string,
+        duration_sec: number
+    }> => {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await api.post(`/media/upload-voice?purpose=${purpose}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        return response.data
+    },
 }
 
 // Teacher endpoints
@@ -163,13 +223,7 @@ export const crpApi = {
         return response.data
     },
 
-    respond: async (data: {
-        query_id: number
-        response_text?: string
-        tag?: string
-        overrides_ai?: boolean
-        override_reason?: string
-    }) => {
+    respond: async (data: CRPResponseCreate): Promise<CRPResponse> => {
         const response = await api.post('/crp/respond', data)
         return response.data
     },
@@ -214,6 +268,22 @@ export const adminApi = {
         const response = await api.get('/admin/users', { params })
         return response.data
     },
+
+    // DIET Analytics
+    getClassroomContextAnalytics: async () => {
+        const response = await api.get('/admin/analytics/classroom-context')
+        return response.data
+    },
+
+    getReflectionSentimentAnalytics: async () => {
+        const response = await api.get('/admin/analytics/reflection-sentiment')
+        return response.data
+    },
+
+    getTrainingGaps: async (limit: number = 10) => {
+        const response = await api.get('/admin/analytics/training-gaps', { params: { limit } })
+        return response.data
+    },
 }
 
 // Settings endpoints
@@ -256,6 +326,9 @@ export const teacherSupportApi = {
         subject?: string
         topic?: string
         students_level?: string
+        is_multigrade?: boolean
+        class_size?: number
+        instructional_time_minutes?: number
     }) => {
         const response = await api.post('/teacher/classroom-help', data)
         return response.data
