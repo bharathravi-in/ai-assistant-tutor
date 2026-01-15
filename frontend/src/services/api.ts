@@ -381,6 +381,51 @@ export const crpSupportApi = {
     },
 }
 
+// Resources endpoints
+export const resourcesApi = {
+    getResources: async (params: {
+        page?: number
+        page_size?: number
+        category?: string
+        type?: string
+        grade?: string
+        subject?: string
+        search?: string
+        bookmarked_only?: boolean
+    }) => {
+        const response = await api.get('/resources', { params })
+        return response.data
+    },
+
+    getResource: async (id: number) => {
+        const response = await api.get(`/resources/${id}`)
+        return response.data
+    },
+
+    bookmarkResource: async (resourceId: number) => {
+        const response = await api.post(`/resources/${resourceId}/bookmark`)
+        return response.data
+    },
+
+    removeBookmark: async (resourceId: number) => {
+        const response = await api.delete(`/resources/${resourceId}/bookmark`)
+        return response.data
+    },
+
+    updateProgress: async (resourceId: number, data: {
+        progress_percent?: number
+        is_completed?: boolean
+    }) => {
+        const response = await api.post(`/resources/${resourceId}/progress`, data)
+        return response.data
+    },
+
+    getStats: async () => {
+        const response = await api.get('/resources/stats/summary')
+        return response.data
+    },
+}
+
 export default api
 
 

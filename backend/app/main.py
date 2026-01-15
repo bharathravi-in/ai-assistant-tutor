@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.database import init_db
-from app.routers import auth_router, teacher_router, crp_router, arp_router, admin_router, ai_router, media_router, alerts_router, billing_router, permissions_router, health_router
+from app.routers import auth_router, teacher_router, crp_router, arp_router, admin_router, ai_router, media_router, alerts_router, billing_router, permissions_router, health_router, resources_router
 from app.routers.superadmin import router as superadmin_router
 from app.routers.settings import router as settings_router
 
@@ -58,6 +58,7 @@ app.include_router(health_router, prefix="/api")
 app.include_router(superadmin_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(media_router, prefix="/api")
+app.include_router(resources_router, prefix="/api")
 
 
 

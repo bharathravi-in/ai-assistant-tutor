@@ -12,6 +12,7 @@ from app.routers.alerts import router as alerts_router
 from app.routers.billing import router as billing_router
 from app.routers.permissions import router as permissions_router
 from app.routers.health import router as health_router
+from app.routers.resources import router as resources_router
 
 __all__ = [
     "auth_router",
@@ -25,6 +26,7 @@ __all__ = [
     "billing_router",
     "permissions_router",
     "health_router",
+    "resources_router",
 ]
 
 

@@ -22,7 +22,15 @@ import {
     MessageCircle,
     BookOpen,
     Mic,
-    Lightbulb
+    Lightbulb,
+    Users,
+    AlertTriangle,
+    BarChart3,
+    FileText,
+    MessageSquare,
+    BookMarked,
+    Clipboard,
+    Bell
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -79,23 +87,40 @@ export default function Layout({ children }: LayoutProps) {
             ]
         }
 
-        // Use role-specific basePath for each user type
-        const basePath = role === 'admin' ? 'admin' : role === 'crp' ? 'crp' : role === 'arp' ? 'arp' : 'teacher'
-        const items = [
-            { icon: Home, label: t('nav.home'), path: `/${basePath}` },
-        ]
-
-        if (role === 'crp' || role === 'arp') {
-            items.push({ icon: Sparkles, label: 'Feedback Assistant', path: `/${basePath}/feedback-assist` })
+        if (role === 'admin') {
+            return [
+                { icon: Home, label: 'Dashboard', path: '/admin' },
+                { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' },
+                { icon: FileText, label: 'Content', path: '/admin/content' },
+                { icon: Users, label: 'Users', path: '/admin/users' },
+                { icon: Settings, label: 'Settings', path: '/admin/settings' },
+            ]
         }
 
-        items.push(
-            { icon: History, label: t('nav.history'), path: `/${basePath}/history` },
-            { icon: User, label: t('nav.profile'), path: `/${basePath}/profile` },
-            { icon: Settings, label: 'Settings', path: `/${basePath}/settings` }
-        )
+        if (role === 'crp' || role === 'arp') {
+            const basePath = role
+            return [
+                { icon: Home, label: 'Dashboard', path: `/${basePath}` },
+                { icon: Users, label: 'My Teachers', path: `/${basePath}/teachers` },
+                { icon: AlertTriangle, label: 'Interventions', path: `/${basePath}/interventions` },
+                { icon: Sparkles, label: 'Feedback Assistant', path: `/${basePath}/feedback-assist` },
+                { icon: BarChart3, label: 'Reports', path: `/${basePath}/reports` },
+                { icon: History, label: t('nav.history'), path: `/${basePath}/history` },
+                { icon: User, label: t('nav.profile'), path: `/${basePath}/profile` },
+                { icon: Settings, label: 'Settings', path: `/${basePath}/settings` }
+            ]
+        }
 
-        return items
+        // Teacher navigation - PRD aligned
+        return [
+            { icon: Home, label: t('nav.home'), path: '/teacher' },
+            { icon: MessageSquare, label: 'Ask AI', path: '/teacher/ask-question' },
+            { icon: Clipboard, label: 'Reflections', path: '/teacher/reflections' },
+            { icon: BookMarked, label: 'Resources', path: '/teacher/resources' },
+            { icon: History, label: t('nav.history'), path: '/teacher/history' },
+            { icon: User, label: t('nav.profile'), path: '/teacher/profile' },
+            { icon: Settings, label: 'Settings', path: '/teacher/settings' }
+        ]
     }
 
 
@@ -103,7 +128,7 @@ export default function Layout({ children }: LayoutProps) {
     const marginLeft = sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
             {/* Mobile sidebar overlay */}
             {sidebarOpen && (
                 <div
@@ -125,15 +150,17 @@ export default function Layout({ children }: LayoutProps) {
                 <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} p-4 border-b border-gray-100 dark:border-gray-700`}>
                     <Link to="/" className="flex items-center gap-3">
                         <div
-                            className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0"
-                            style={{ background: 'linear-gradient(135deg, #264092 0%, #3451a8 100%)' }}
+                            className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0 bg-gradient-to-br from-primary-500 to-primary-600"
                         >
                             <GraduationCap className="w-5 h-5 text-white" />
                         </div>
                         {!sidebarCollapsed && (
-                            <span className="font-bold text-gray-800 dark:text-white whitespace-nowrap">
-                                AI Teaching
-                            </span>
+                            <div>
+                                <span className="font-bold text-gray-800 dark:text-white whitespace-nowrap">
+                                    Gov-Tech
+                                </span>
+                                <p className="text-xs text-gray-500">AI Teaching</p>
+                            </div>
                         )}
                     </Link>
                     <button
@@ -147,10 +174,9 @@ export default function Layout({ children }: LayoutProps) {
                 {/* User info */}
                 {!sidebarCollapsed && (
                     <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-                        <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(38, 64, 146, 0.05)' }}>
+                        <div className="flex items-center gap-3 p-3 rounded-xl bg-primary-50 dark:bg-primary-900/20">
                             <div
-                                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                                style={{ background: 'linear-gradient(135deg, #EF951E 0%, #F69953 100%)' }}
+                                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-secondary-500 to-secondary-600"
                             >
                                 <User className="w-5 h-5 text-white" />
                             </div>
@@ -158,7 +184,7 @@ export default function Layout({ children }: LayoutProps) {
                                 <p className="font-semibold text-gray-800 dark:text-white truncate text-sm">
                                     {user?.name || user?.phone}
                                 </p>
-                                <p className="text-xs capitalize" style={{ color: '#264092' }}>
+                                <p className="text-xs capitalize text-primary-600 dark:text-primary-400">
                                     {user?.role}
                                 </p>
                             </div>
@@ -169,8 +195,7 @@ export default function Layout({ children }: LayoutProps) {
                 {sidebarCollapsed && (
                     <div className="p-3 border-b border-gray-100 dark:border-gray-700">
                         <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center mx-auto"
-                            style={{ background: 'linear-gradient(135deg, #EF951E 0%, #F69953 100%)' }}
+                            className="w-10 h-10 rounded-full flex items-center justify-center mx-auto bg-gradient-to-br from-secondary-500 to-secondary-600"
                         >
                             <User className="w-5 h-5 text-white" />
                         </div>
@@ -178,7 +203,7 @@ export default function Layout({ children }: LayoutProps) {
                 )}
 
                 {/* Navigation */}
-                <nav className={`p-3 space-y-1 flex-1`}>
+                <nav className={`p-3 space-y-1 flex-1 overflow-y-auto max-h-[calc(100vh-280px)]`}>
                     {getNavItems().map((item) => {
                         const isActive = location.pathname === item.path
                         return (
@@ -190,10 +215,9 @@ export default function Layout({ children }: LayoutProps) {
                                     flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200
                                     ${sidebarCollapsed ? 'justify-center' : ''}
                                     ${isActive
-                                        ? 'font-medium text-white shadow-lg'
+                                        ? 'font-medium text-white shadow-lg bg-gradient-to-r from-primary-500 to-primary-600'
                                         : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'}
                                 `}
-                                style={isActive ? { background: 'linear-gradient(135deg, #264092 0%, #3451a8 100%)' } : {}}
                                 title={sidebarCollapsed ? item.label : undefined}
                             >
                                 <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -252,7 +276,7 @@ export default function Layout({ children }: LayoutProps) {
                     {/* Logout */}
                     <button
                         onClick={handleLogout}
-                        className={`flex items-center gap-3 px-3 py-2.5 w-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
+                        className={`flex items-center gap-3 px-3 py-2.5 w-full text-accent-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
                         title={sidebarCollapsed ? 'Logout' : undefined}
                     >
                         <LogOut className="w-5 h-5" />
@@ -275,16 +299,22 @@ export default function Layout({ children }: LayoutProps) {
 
                         <div className="flex-1 lg:flex-none">
                             <h1 className="text-lg font-semibold text-gray-800 dark:text-white text-center lg:text-left lg:hidden">
-                                AI Teaching
+                                Gov-Tech
                             </h1>
                         </div>
 
                         {/* Desktop header content */}
                         <div className="hidden lg:flex items-center gap-4">
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700">
-                                <div className="w-2 h-2 rounded-full bg-green-500" />
-                                <span className="text-sm text-gray-600 dark:text-gray-300">AI Ready</span>
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary-50 dark:bg-secondary-900/20">
+                                <div className="w-2 h-2 rounded-full bg-secondary-500 animate-pulse" />
+                                <span className="text-sm text-secondary-600 dark:text-secondary-400 font-medium">AI Ready</span>
                             </div>
+
+                            {/* Notifications placeholder */}
+                            <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors relative">
+                                <Bell className="w-5 h-5 text-gray-500" />
+                                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent-500" />
+                            </button>
                         </div>
 
                         <div className="w-10 lg:hidden" />
@@ -298,11 +328,11 @@ export default function Layout({ children }: LayoutProps) {
             </div>
 
             {/* Floating Help Button and Panel */}
-            <div className="fixed bottom-6 right-6 z-40 hidden lg:block">
+            <div className="fixed bottom-6 right-6 z-40">
                 {/* Help Panel */}
                 {helpOpen && (
                     <div className="absolute bottom-16 right-0 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
-                        <div className="p-4 border-b border-gray-100 dark:border-gray-700" style={{ background: 'linear-gradient(135deg, #264092 0%, #3451a8 100%)' }}>
+                        <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-primary-500 to-primary-600">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <HelpCircle className="w-5 h-5 text-white" />
@@ -317,20 +347,20 @@ export default function Layout({ children }: LayoutProps) {
                             {/* Quick Tips */}
                             <div>
                                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                                    <Lightbulb className="w-4 h-4" style={{ color: '#EF951E' }} />
+                                    <Lightbulb className="w-4 h-4 text-warning-500" />
                                     Quick Tips
                                 </h4>
                                 <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
                                     <li className="flex items-start gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary-500 mt-1.5 flex-shrink-0" />
                                         Use voice input for natural queries
                                     </li>
                                     <li className="flex items-start gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary-500 mt-1.5 flex-shrink-0" />
                                         Add classroom context for better responses
                                     </li>
                                     <li className="flex items-start gap-2">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary-500 mt-1.5 flex-shrink-0" />
                                         Review your query history for insights
                                     </li>
                                 </ul>
@@ -339,24 +369,24 @@ export default function Layout({ children }: LayoutProps) {
                             {/* Features */}
                             <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
                                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                                    <Sparkles className="w-4 h-4" style={{ color: '#264092' }} />
+                                    <Sparkles className="w-4 h-4 text-primary-500" />
                                     Key Features
                                 </h4>
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                                        <Mic className="w-3.5 h-3.5" style={{ color: '#EF951E' }} />
+                                        <Mic className="w-3.5 h-3.5 text-secondary-500" />
                                         <span>Voice Input</span>
                                     </div>
                                     <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                                        <BookOpen className="w-3.5 h-3.5" style={{ color: '#264092' }} />
+                                        <BookOpen className="w-3.5 h-3.5 text-primary-500" />
                                         <span>NCERT Aligned</span>
                                     </div>
                                     <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                                        <MessageCircle className="w-3.5 h-3.5" style={{ color: '#10B981' }} />
+                                        <MessageCircle className="w-3.5 h-3.5 text-secondary-500" />
                                         <span>AI Responses</span>
                                     </div>
                                     <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                                        <GraduationCap className="w-3.5 h-3.5" style={{ color: '#8B5CF6' }} />
+                                        <GraduationCap className="w-3.5 h-3.5 text-primary-500" />
                                         <span>TLM Design</span>
                                     </div>
                                 </div>
@@ -375,10 +405,9 @@ export default function Layout({ children }: LayoutProps) {
                 {/* Help Button */}
                 <button
                     onClick={() => setHelpOpen(!helpOpen)}
-                    className={`w-12 h-12 rounded-full text-white flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 ${helpOpen ? 'rotate-45' : ''}`}
-                    style={{ background: 'linear-gradient(135deg, #264092 0%, #3451a8 100%)' }}
+                    className={`w-14 h-14 rounded-full text-white flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300 bg-gradient-to-br from-primary-500 to-primary-600 ${helpOpen ? 'rotate-45' : ''}`}
                 >
-                    {helpOpen ? <X className="w-5 h-5" /> : <HelpCircle className="w-5 h-5" />}
+                    {helpOpen ? <X className="w-6 h-6" /> : <HelpCircle className="w-6 h-6" />}
                 </button>
             </div>
         </div>

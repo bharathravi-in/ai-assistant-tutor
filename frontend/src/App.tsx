@@ -9,6 +9,11 @@ import TeacherDashboard from './pages/teacher/Dashboard'
 import TeacherProfile from './pages/teacher/Profile'
 import TeacherHistory from './pages/teacher/History'
 import TeacherSettings from './pages/teacher/Settings'
+import AskQuestion from './pages/teacher/AskQuestion'
+import AIResponse from './pages/teacher/AIResponse'
+import Resources from './pages/teacher/Resources'
+import ResourcePlayer from './pages/teacher/ResourcePlayer'
+import Reflections from './pages/teacher/Reflections'
 import CRPDashboard from './pages/crp/Dashboard'
 import FeedbackAssist from './pages/crp/FeedbackAssist'
 import ARPDashboard from './pages/arp/Dashboard'
@@ -30,7 +35,7 @@ function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?
         return <Navigate to="/login" replace />
     }
 
-    const userRole = user?.role?.toLowerCase()
+    const userRole = user?.role?.toLowerCase() || ''
     if (roles && user && !roles.includes(userRole)) {
         return <Navigate to="/" replace />
     }
@@ -80,6 +85,39 @@ function App() {
                     </Layout>
                 </ProtectedRoute>
             } />
+            <Route path="/teacher/ask-question" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <AskQuestion />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/ai-response" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <AIResponse />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/reflections" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <Reflections />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/resources" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <Resources />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/resources/:id" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <ResourcePlayer />
+                </ProtectedRoute>
+            } />
             <Route path="/teacher/profile" element={
                 <ProtectedRoute roles={['teacher']}>
                     <Layout>
@@ -118,6 +156,27 @@ function App() {
                     </Layout>
                 </ProtectedRoute>
             } />
+            <Route path="/crp/teachers" element={
+                <ProtectedRoute roles={['crp']}>
+                    <Layout>
+                        <CRPDashboard />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/crp/interventions" element={
+                <ProtectedRoute roles={['crp']}>
+                    <Layout>
+                        <CRPDashboard />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/crp/reports" element={
+                <ProtectedRoute roles={['crp']}>
+                    <Layout>
+                        <CRPDashboard />
+                    </Layout>
+                </ProtectedRoute>
+            } />
             <Route path="/crp/history" element={
                 <ProtectedRoute roles={['crp']}>
                     <Layout>
@@ -152,6 +211,27 @@ function App() {
                 <ProtectedRoute roles={['arp']}>
                     <Layout>
                         <FeedbackAssist />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/teachers" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <ARPDashboard />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/interventions" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <ARPDashboard />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/reports" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <ARPDashboard />
                     </Layout>
                 </ProtectedRoute>
             } />
