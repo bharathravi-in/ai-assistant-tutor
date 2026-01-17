@@ -11,8 +11,11 @@ import {
     Clock,
     TrendingUp,
     Lightbulb,
-    Heart
+    Heart,
+    Mic,
+    MicOff
 } from 'lucide-react'
+import { useVoiceInput } from '../../hooks/useVoiceInput'
 
 interface Reflection {
     id: number
@@ -45,9 +48,31 @@ export default function Reflections() {
     const [selectedType, setSelectedType] = useState<string>('daily')
     const [submitting, setSubmitting] = useState(false)
 
+    // Voice input for reflections
+    const {
+        isListening,
+        isSupported: voiceSupported,
+        startListening,
+        stopListening,
+    } = useVoiceInput({
+        language: 'en-IN',
+        onResult: (text) => {
+            setNewReflection(prev => prev + (prev ? ' ' : '') + text)
+        }
+    })
+
+    const toggleVoiceInput = () => {
+        if (isListening) {
+            stopListening()
+        } else {
+            startListening()
+        }
+    }
+
     useEffect(() => {
         loadReflections()
     }, [])
+
 
     const loadReflections = async () => {
         setLoading(true)
@@ -196,13 +221,32 @@ export default function Reflections() {
                                     </div>
                                 </div>
 
-                                {/* Text Input */}
-                                <textarea
-                                    value={newReflection}
-                                    onChange={(e) => setNewReflection(e.target.value)}
-                                    placeholder="Write your reflection here..."
-                                    className="w-full h-32 p-3 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 resize-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                />
+                                {/* Text Input with Voice */}
+                                <div className="relative">
+                                    <textarea
+                                        value={newReflection}
+                                        onChange={(e) => setNewReflection(e.target.value)}
+                                        placeholder="Write or speak your reflection..."
+                                        className="w-full h-32 p-3 pr-12 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 resize-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={toggleVoiceInput}
+                                        disabled={!voiceSupported}
+                                        className={`absolute right-3 top-3 p-2 rounded-lg transition-all ${isListening
+                                                ? 'bg-red-500 text-white animate-pulse'
+                                                : voiceSupported
+                                                    ? 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 hover:bg-primary-100 hover:text-primary-600'
+                                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            }`}
+                                        title={isListening ? 'Stop recording' : 'Start voice input'}
+                                    >
+                                        {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                                {isListening && (
+                                    <p className="text-xs text-red-500 mt-1 animate-pulse">🔴 Listening... speak now</p>
+                                )}
 
                                 {/* Actions */}
                                 <div className="flex gap-3 mt-4">

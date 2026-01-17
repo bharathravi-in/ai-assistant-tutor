@@ -21,6 +21,10 @@ class AIRequest(BaseModel):
     is_multigrade: Optional[bool] = False
     class_size: Optional[int] = None
     instructional_time_minutes: Optional[int] = None
+    
+    # Share with CRP for review
+    share_with_crp: Optional[bool] = False
+
 
 
 class QuizRequest(BaseModel):

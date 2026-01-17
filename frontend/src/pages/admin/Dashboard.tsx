@@ -96,15 +96,24 @@ export default function AdminDashboard() {
     }
 
     return (
-        <div className="space-y-8 animate-fade-in">
-            {/* Header */}
-            <div className="card-gradient">
-                <h1 className="text-2xl lg:text-3xl font-bold text-white">
-                    DIET Admin Dashboard
-                </h1>
-                <p className="text-white/80 mt-1">
-                    Evidence-based insights for training redesign
-                </p>
+        <div className="p-4 lg:p-6 space-y-8 animate-fade-in">
+            {/* Dashboard Header */}
+            <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-xl shadow-gray-200/50 dark:shadow-none overflow-hidden animate-fade-in p-8 lg:p-10">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                    <div className="flex items-start gap-5">
+                        <div className="w-14 h-14 rounded-2xl bg-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/20">
+                            <TrendingUp className="w-7 h-7 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+                                DIET Analytics Hub
+                            </h1>
+                            <p className="text-gray-500 font-medium mt-1">
+                                Evidence-based insights and educational performance monitoring
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Stats Grid */}
@@ -282,8 +291,8 @@ export default function AdminDashboard() {
                                         <p className="text-xs text-gray-500">Grade {gap.grade}</p>
                                     </div>
                                     <span className={`text-sm font-bold px-2 py-1 rounded-lg ${gap.needs_attention
-                                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                        : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                         }`}>
                                         {gap.success_rate}%
                                     </span>

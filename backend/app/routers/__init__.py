@@ -13,6 +13,8 @@ from app.routers.billing import router as billing_router
 from app.routers.permissions import router as permissions_router
 from app.routers.health import router as health_router
 from app.routers.resources import router as resources_router
+from app.routers.storage import router as storage_router
+from app.routers.config import router as config_router
 
 __all__ = [
     "auth_router",
@@ -27,6 +29,8 @@ __all__ = [
     "permissions_router",
     "health_router",
     "resources_router",
+    "storage_router",
+    "config_router",
 ]
 
 

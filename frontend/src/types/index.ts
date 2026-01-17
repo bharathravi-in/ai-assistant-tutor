@@ -69,6 +69,7 @@ export interface AIRequest {
     is_multigrade?: boolean
     class_size?: number
     instructional_time_minutes?: number
+    share_with_crp?: boolean
 }
 
 export interface AIResponse {

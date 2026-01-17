@@ -2,34 +2,49 @@
 User Schemas
 """
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Any
 from pydantic import BaseModel, Field
 from app.models.user import UserRole
 
 
 class UserCreate(BaseModel):
-    """Schema for creating a new user."""
+    """Schema for creating a new user with hierarchy support."""
     phone: str = Field(..., min_length=10, max_length=15)
     name: Optional[str] = None
+    email: Optional[str] = None
     role: UserRole = UserRole.TEACHER
     language: str = "en"
-    school_name: Optional[str] = None
-    school_district: Optional[str] = None
-    school_block: Optional[str] = None
-    school_state: Optional[str] = None
+    password: Optional[str] = None
+    
+    # Hierarchy Mappings
+    state_id: Optional[int] = None
+    district_id: Optional[int] = None
+    block_id: Optional[int] = None
+    cluster_id: Optional[int] = None
+    school_id: Optional[int] = None
+    assigned_arp_id: Optional[int] = None
+    
+    # Context (for teachers)
     grades_taught: Optional[List[int]] = None
     subjects_taught: Optional[List[str]] = None
-    password: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
     """Schema for updating a user."""
     name: Optional[str] = None
+    email: Optional[str] = None
     language: Optional[str] = None
-    school_name: Optional[str] = None
-    school_district: Optional[str] = None
-    school_block: Optional[str] = None
-    school_state: Optional[str] = None
+    is_active: Optional[bool] = None
+    
+    # Mappings
+    state_id: Optional[int] = None
+    district_id: Optional[int] = None
+    block_id: Optional[int] = None
+    cluster_id: Optional[int] = None
+    school_id: Optional[int] = None
+    assigned_arp_id: Optional[int] = None
+    
+    # Context
     grades_taught: Optional[List[int]] = None
     subjects_taught: Optional[List[str]] = None
 
@@ -39,14 +54,26 @@ class UserResponse(BaseModel):
     id: int
     phone: str
     name: Optional[str]
+    email: Optional[str]
     role: UserRole
     language: str
+    
+    # Mappings
+    state_id: Optional[int]
+    district_id: Optional[int]
+    block_id: Optional[int]
+    cluster_id: Optional[int]
+    school_id: Optional[int]
+    assigned_arp_id: Optional[int]
+    
+    # Denormalized compat fields
     school_name: Optional[str]
     school_district: Optional[str]
     school_block: Optional[str]
     school_state: Optional[str]
-    grades_taught: Optional[List[int]]
-    subjects_taught: Optional[List[str]]
+    
+    grades_taught: Optional[Any] = None
+    subjects_taught: Optional[Any] = None
     is_active: bool
     created_at: datetime
     

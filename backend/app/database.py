@@ -44,3 +44,44 @@ async def init_db():
     """Initialize database tables."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    
+    # Seed default users if none exist
+    await seed_default_users()
+
+
+async def seed_default_users():
+    """Create only SuperAdmin if the database is empty. Other users must be created via proper hierarchy."""
+    from passlib.context import CryptContext
+    from app.models.user import User, UserRole
+    
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    
+    async with async_session_maker() as session:
+        # Check if any users exist
+        from sqlalchemy import select, func
+        result = await session.execute(select(func.count(User.id)))
+        count = result.scalar()
+        
+        if count > 0:
+            return  # Users already exist
+        
+        print("🌱 Seeding SuperAdmin user...")
+        
+        # Only create SuperAdmin - no organization required
+        # Other users (Admin, ARP, CRP, Teacher) must be created through proper hierarchy:
+        # SuperAdmin → creates Org + Admin
+        # Admin → creates ARP/CRP
+        # ARP/CRP → creates Teachers
+        superadmin = User(
+            phone="9000000000",
+            name="Super Admin",
+            role=UserRole.SUPERADMIN,
+            hashed_password=pwd_context.hash("admin@123"),
+            is_active=True,
+            is_verified=True,
+        )
+        session.add(superadmin)
+        
+        await session.commit()
+        print("✅ SuperAdmin created (phone: 9000000000, password: admin@123)")
+

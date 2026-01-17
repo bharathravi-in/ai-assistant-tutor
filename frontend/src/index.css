@@ -2,37 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Gov-Tech PRD Color Palette */
+/* EducationAI PRD Color Palette - DIET Platform */
 :root {
-  /* Primary - Professional Blue */
-  --color-primary: #2563EB;
-  --color-primary-light: #3b82f6;
-  --color-primary-dark: #1d4ed8;
+  /* Primary - Deep Blue (trust and professionalism) */
+  --color-primary: #1E40AF;
+  --color-primary-light: #3B82F6;
+  --color-primary-dark: #1E3A8A;
 
-  /* Secondary - Success Green */
-  --color-secondary: #059669;
-  --color-secondary-light: #10b981;
-  --color-secondary-dark: #047857;
+  /* Secondary - Warm Gray (subtle text and secondary elements) */
+  --color-secondary: #6B7280;
+  --color-secondary-light: #9CA3AF;
+  --color-secondary-dark: #4B5563;
 
-  /* Accent - Alert Red */
-  --color-accent: #DC2626;
-  --color-accent-light: #ef4444;
-  --color-accent-dark: #b91c1c;
+  /* Accent - Emerald Green (success states and positive actions) */
+  --color-accent: #10B981;
+  --color-accent-light: #34D399;
+  --color-accent-dark: #059669;
 
   /* Background and Text */
   --color-background: #F8FAFC;
   --color-text: #1E293B;
 
   /* Supporting Colors */
-  --color-teal: #0d9488;
-  --color-success: #059669;
-  --color-warning: #f59e0b;
-  --color-danger: #DC2626;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #3B82F6;
 
   /* Neutrals */
-  --color-gray-light: #f1f5f9;
-  --color-gray: #64748b;
-  --color-gray-dark: #334155;
+  --color-gray-light: #F3F4F6;
+  --color-gray: #6B7280;
+  --color-gray-dark: #374151;
 }
 
 @layer base {
@@ -109,6 +109,28 @@
   .card-gradient {
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
     @apply relative overflow-hidden rounded-2xl p-6 text-white shadow-lg;
+  }
+
+  /* Header gradient - uses dynamic brand color */
+  .header-gradient {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+    @apply relative overflow-hidden rounded-2xl shadow-lg;
+  }
+
+  /* Sidebar active menu item - uses dynamic brand color */
+  .sidebar-active {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+    @apply text-white shadow-lg;
+  }
+
+  /* Text with brand color */
+  .text-brand {
+    color: var(--color-primary);
+  }
+
+  /* Border with brand color */
+  .border-brand {
+    border-color: var(--color-primary);
   }
 
   /* Success card - Green gradient */

@@ -419,3 +419,274 @@ async def get_resource_stats(
         "in_progress": in_progress_count,
         "completion_rate": round((completed_count / total_resources * 100) if total_resources > 0 else 0, 1)
     }
+
+
+# ==================== RESOURCE CREATION (Admin/CRP/ARP) ====================
+
+from app.routers.auth import require_role
+from app.models.user import UserRole
+
+
+class ResourceCreate(BaseModel):
+    """Schema for creating a new resource."""
+    title: str
+    description: Optional[str] = None
+    type: str  # video, document, guide, activity
+    category: str  # pedagogy, classroom, subject, assessment
+    grade: Optional[str] = None
+    subject: Optional[str] = None
+    duration: Optional[str] = None
+    content_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    tags: Optional[str] = None
+    is_featured: bool = False
+
+
+class ResourceUpdate(BaseModel):
+    """Schema for updating a resource."""
+    title: Optional[str] = None
+    description: Optional[str] = None
+    type: Optional[str] = None
+    category: Optional[str] = None
+    grade: Optional[str] = None
+    subject: Optional[str] = None
+    duration: Optional[str] = None
+    content_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    tags: Optional[str] = None
+    is_featured: Optional[bool] = None
+    is_active: Optional[bool] = None
+
+
+@router.post("", response_model=ResourceResponse)
+async def create_resource(
+    data: ResourceCreate,
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.CRP, UserRole.ARP, UserRole.SUPERADMIN)),
+    db: AsyncSession = Depends(get_db)
+):
+    """Create a new learning resource (Admin/CRP/ARP only)."""
+    try:
+        type_enum = ResourceType(data.type)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid type. Must be one of: {[t.value for t in ResourceType]}")
+    
+    try:
+        category_enum = ResourceCategory(data.category)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid category. Must be one of: {[c.value for c in ResourceCategory]}")
+    
+    resource = Resource(
+        title=data.title,
+        description=data.description,
+        type=type_enum,
+        category=category_enum,
+        grade=data.grade,
+        subject=data.subject,
+        duration=data.duration,
+        content_url=data.content_url,
+        thumbnail_url=data.thumbnail_url,
+        tags=data.tags,
+        is_featured=data.is_featured,
+        created_by_id=current_user.id,
+        organization_id=current_user.organization_id
+    )
+    
+    db.add(resource)
+    await db.commit()
+    await db.refresh(resource)
+    
+    return ResourceResponse(
+        id=resource.id,
+        title=resource.title,
+        description=resource.description,
+        type=resource.type.value,
+        category=resource.category.value,
+        grade=resource.grade,
+        subject=resource.subject,
+        duration=resource.duration,
+        content_url=resource.content_url,
+        thumbnail_url=resource.thumbnail_url,
+        is_bookmarked=False,
+        is_completed=False,
+        progress_percent=0,
+        view_count=0,
+        is_featured=resource.is_featured
+    )
+
+
+@router.put("/{resource_id}", response_model=ResourceResponse)
+async def update_resource(
+    resource_id: int,
+    data: ResourceUpdate,
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.CRP, UserRole.ARP, UserRole.SUPERADMIN)),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update a learning resource (Admin/CRP/ARP only)."""
+    result = await db.execute(
+        select(Resource).where(Resource.id == resource_id)
+    )
+    resource = result.scalar_one_or_none()
+    
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    
+    # Update fields
+    if data.title is not None:
+        resource.title = data.title
+    if data.description is not None:
+        resource.description = data.description
+    if data.type is not None:
+        try:
+            resource.type = ResourceType(data.type)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid type")
+    if data.category is not None:
+        try:
+            resource.category = ResourceCategory(data.category)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid category")
+    if data.grade is not None:
+        resource.grade = data.grade
+    if data.subject is not None:
+        resource.subject = data.subject
+    if data.duration is not None:
+        resource.duration = data.duration
+    if data.content_url is not None:
+        resource.content_url = data.content_url
+    if data.thumbnail_url is not None:
+        resource.thumbnail_url = data.thumbnail_url
+    if data.tags is not None:
+        resource.tags = data.tags
+    if data.is_featured is not None:
+        resource.is_featured = data.is_featured
+    if data.is_active is not None:
+        resource.is_active = data.is_active
+    
+    await db.commit()
+    await db.refresh(resource)
+    
+    bookmarks, progress = await get_user_resource_status(db, current_user.id, [resource_id])
+    prog = progress.get(resource_id, {})
+    
+    return ResourceResponse(
+        id=resource.id,
+        title=resource.title,
+        description=resource.description,
+        type=resource.type.value,
+        category=resource.category.value,
+        grade=resource.grade,
+        subject=resource.subject,
+        duration=resource.duration,
+        content_url=resource.content_url,
+        thumbnail_url=resource.thumbnail_url,
+        is_bookmarked=resource_id in bookmarks,
+        is_completed=prog.get("is_completed", False),
+        progress_percent=prog.get("progress_percent", 0),
+        view_count=resource.view_count,
+        is_featured=resource.is_featured
+    )
+
+
+@router.delete("/{resource_id}")
+async def delete_resource(
+    resource_id: int,
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.SUPERADMIN)),
+    db: AsyncSession = Depends(get_db)
+):
+    """Delete a learning resource (Admin only - soft delete)."""
+    result = await db.execute(
+        select(Resource).where(Resource.id == resource_id)
+    )
+    resource = result.scalar_one_or_none()
+    
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    
+    # Soft delete
+    resource.is_active = False
+    await db.commit()
+    
+    return {"message": "Resource deleted", "id": resource_id}
+
+
+# ==================== RESOURCE ANALYSIS (AI-POWERED) ====================
+
+from pydantic import BaseModel as PydanticBaseModel
+
+class ResourceQuestionRequest(PydanticBaseModel):
+    question: str
+
+
+@router.get("/{resource_id}/analyze")
+async def analyze_resource_content(
+    resource_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get AI-generated analysis and summary of a resource."""
+    from app.services.resource_analyzer import analyze_resource
+    
+    result = await db.execute(
+        select(Resource).where(Resource.id == resource_id)
+    )
+    resource = result.scalar_one_or_none()
+    
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    
+    if not resource.content_url:
+        return {
+            "success": False,
+            "summary": f"**{resource.title}**\n\nNo content URL available for analysis.",
+            "resource_id": resource_id
+        }
+    
+    analysis = await analyze_resource(
+        resource_id=resource_id,
+        title=resource.title,
+        content_url=resource.content_url,
+        category=resource.category,
+        grade=resource.grade,
+        subject=resource.subject
+    )
+    
+    return {
+        **analysis,
+        "resource_id": resource_id,
+        "title": resource.title
+    }
+
+
+@router.post("/{resource_id}/ask")
+async def ask_about_resource_content(
+    resource_id: int,
+    request: ResourceQuestionRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Ask an AI-powered question about a specific resource."""
+    from app.services.resource_analyzer import ask_about_resource
+    
+    result = await db.execute(
+        select(Resource).where(Resource.id == resource_id)
+    )
+    resource = result.scalar_one_or_none()
+    
+    if not resource:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    
+    response = await ask_about_resource(
+        resource_id=resource_id,
+        title=resource.title,
+        content_url=resource.content_url or "",
+        question=request.question,
+        category=resource.category,
+        grade=resource.grade,
+        subject=resource.subject
+    )
+    
+    return {
+        **response,
+        "resource_id": resource_id,
+        "question": request.question
+    }

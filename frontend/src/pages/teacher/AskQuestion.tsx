@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
     Send,
@@ -13,9 +13,13 @@ import {
     Star,
     AlertCircle,
     Zap,
-    Mic
+    Mic,
+    MicOff,
+    Share2
 } from 'lucide-react'
 import { aiApi } from '../../services/api'
+import { useVoiceInput } from '../../hooks/useVoiceInput'
+import { useMasterData } from '../../hooks/useMasterData'
 
 type QueryMode = 'explain' | 'assist' | 'plan'
 type UrgencyLevel = 'immediate' | 'today' | 'this_week'
@@ -52,6 +56,7 @@ export default function AskQuestion() {
     const [grade, setGrade] = useState<number | undefined>()
     const [subject, setSubject] = useState('')
     const [classSize, setClassSize] = useState<number | undefined>()
+    const [shareWithCRP, setShareWithCRP] = useState(false)
 
     // File upload
     const [filePreview, setFilePreview] = useState<string | null>(null)
@@ -60,6 +65,47 @@ export default function AskQuestion() {
 
     // Quick prompts
     const quickPrompts = defaultQuickPrompts
+
+    // Master data from API
+    const { grades: masterGrades, subjects: masterSubjects } = useMasterData()
+
+    // Voice input
+    const {
+        isListening,
+        isSupported: voiceSupported,
+        transcript,
+        error: voiceError,
+        startListening,
+        stopListening,
+    } = useVoiceInput({
+        language: 'en-IN',
+        onResult: (text) => {
+            setQuery(prev => prev + (prev ? ' ' : '') + text)
+        }
+    })
+
+    // Update query when transcript changes during listening
+    useEffect(() => {
+        if (isListening && transcript) {
+            // Show interim results in the textarea
+        }
+    }, [transcript, isListening])
+
+    // Show voice errors
+    useEffect(() => {
+        if (voiceError) {
+            setError(voiceError)
+        }
+    }, [voiceError])
+
+    const toggleVoiceInput = () => {
+        if (isListening) {
+            stopListening()
+        } else {
+            setError('')
+            startListening()
+        }
+    }
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -93,6 +139,7 @@ export default function AskQuestion() {
                 grade,
                 subject: subject || undefined,
                 language: 'en',
+                share_with_crp: shareWithCRP,
             })
 
             // Navigate to response page with the response data
@@ -210,8 +257,8 @@ export default function AskQuestion() {
                                         className="w-full px-3 py-2 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                     >
                                         <option value="">Select</option>
-                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => (
-                                            <option key={g} value={g}>Class {g}</option>
+                                        {masterGrades.map(g => (
+                                            <option key={g.id} value={g.number}>Class {g.number}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -223,12 +270,9 @@ export default function AskQuestion() {
                                         className="w-full px-3 py-2 rounded-lg bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                     >
                                         <option value="">Select</option>
-                                        <option value="Mathematics">Mathematics</option>
-                                        <option value="Science">Science</option>
-                                        <option value="English">English</option>
-                                        <option value="Hindi">Hindi</option>
-                                        <option value="Social Studies">Social Studies</option>
-                                        <option value="EVS">EVS</option>
+                                        {masterSubjects.map(s => (
+                                            <option key={s.id} value={s.name}>{s.name}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div>
@@ -254,7 +298,32 @@ export default function AskQuestion() {
                                     </select>
                                 </div>
                             </div>
+
+                            {/* Share with CRP Toggle */}
+                            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                                <label className="flex items-center justify-between cursor-pointer group">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                                            <Share2 className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Share with CRP for Review</p>
+                                            <p className="text-xs text-gray-500">Your mentor will be able to see this query and provide guidance</p>
+                                        </div>
+                                    </div>
+                                    <div className="relative">
+                                        <input
+                                            type="checkbox"
+                                            checked={shareWithCRP}
+                                            onChange={(e) => setShareWithCRP(e.target.checked)}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-500"></div>
+                                    </div>
+                                </label>
+                            </div>
                         </div>
+
 
                         {/* Error Display */}
                         {error && (
@@ -269,15 +338,26 @@ export default function AskQuestion() {
                         {/* Action Bar */}
                         <div className="p-4 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                {/* Voice Input Placeholder */}
+                                {/* Voice Input Button */}
                                 <button
                                     type="button"
-                                    className="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                                    title="Voice input (coming soon)"
-                                    disabled
+                                    onClick={toggleVoiceInput}
+                                    disabled={!voiceSupported}
+                                    className={`p-2.5 rounded-xl transition-all duration-200 ${isListening
+                                        ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30'
+                                        : voiceSupported
+                                            ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-primary-100 hover:text-primary-600'
+                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                                        }`}
+                                    title={isListening ? 'Stop recording' : voiceSupported ? 'Start voice input' : 'Voice input not supported'}
                                 >
-                                    <Mic className="w-5 h-5" />
+                                    {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                                 </button>
+                                {isListening && (
+                                    <span className="text-sm text-red-500 font-medium animate-pulse">
+                                        🔴 Listening...
+                                    </span>
+                                )}
 
                                 {/* File Upload */}
                                 <input

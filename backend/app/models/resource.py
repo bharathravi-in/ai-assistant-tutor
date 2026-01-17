@@ -54,6 +54,7 @@ class Resource(Base):
     
     # Organization scope
     organization_id = Column(Integer, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     
     # Relationships
     bookmarks = relationship("ResourceBookmark", back_populates="resource", cascade="all, delete-orphan")

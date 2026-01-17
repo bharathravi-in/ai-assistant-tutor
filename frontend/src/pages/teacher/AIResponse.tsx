@@ -22,12 +22,14 @@ import {
 
 interface ResponseState {
     response: {
-        response?: string
-        answer?: string
+        content?: string      // Main AI response field
+        response?: string     // Legacy field
+        answer?: string       // Legacy field
         summary?: string
         key_points?: string[]
         implementation_steps?: string[]
         resources?: { title: string; type: string }[]
+        structured?: Record<string, any>
     }
     originalQuery: string
     mode: string
@@ -64,10 +66,13 @@ export default function AIResponse() {
     }
 
     const { response, originalQuery, mode, grade, subject } = state
-    const content = response.response || response.answer || ''
+    // Check multiple possible fields for the main content
+    const content = response.content || response.response || response.answer || ''
+    const isError = content.toLowerCase().includes('error') || content.toLowerCase().includes('connection')
     const keyPoints = response.key_points || []
     const implementationSteps = response.implementation_steps || []
     const resources = response.resources || []
+
 
     const handleCopy = () => {
         navigator.clipboard.writeText(content)
@@ -154,11 +159,30 @@ export default function AIResponse() {
 
                     {/* Response Content */}
                     <div className="p-6">
-                        <div className="prose prose-gray dark:prose-invert max-w-none">
-                            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                                {content}
-                            </p>
-                        </div>
+                        {isError ? (
+                            <div className="text-center py-4">
+                                <AlertCircle className="w-12 h-12 text-accent-500 mx-auto mb-3" />
+                                <p className="text-accent-600 dark:text-accent-400 font-medium mb-2">
+                                    Connection Error
+                                </p>
+                                <p className="text-gray-500 text-sm mb-4">
+                                    {content || 'Unable to connect to AI service. Please check your internet connection and try again.'}
+                                </p>
+                                <Link
+                                    to="/teacher/ask-question"
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                                >
+                                    <RefreshCw className="w-4 h-4" />
+                                    Try Again
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="prose prose-gray dark:prose-invert max-w-none">
+                                <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                    {content || 'No response content available.'}
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Key Points */}
@@ -226,8 +250,8 @@ export default function AIResponse() {
                                 <button
                                     onClick={() => handleFeedback('helpful')}
                                     className={`p-2 rounded-lg transition-colors ${feedback === 'helpful'
-                                            ? 'bg-secondary-100 text-secondary-600'
-                                            : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500'
+                                        ? 'bg-secondary-100 text-secondary-600'
+                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500'
                                         }`}
                                 >
                                     <ThumbsUp className="w-4 h-4" />
@@ -235,8 +259,8 @@ export default function AIResponse() {
                                 <button
                                     onClick={() => handleFeedback('not_helpful')}
                                     className={`p-2 rounded-lg transition-colors ${feedback === 'not_helpful'
-                                            ? 'bg-accent-100 text-accent-600'
-                                            : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500'
+                                        ? 'bg-accent-100 text-accent-600'
+                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500'
                                         }`}
                                 >
                                     <ThumbsDown className="w-4 h-4" />
@@ -247,8 +271,8 @@ export default function AIResponse() {
                                 <button
                                     onClick={handleSave}
                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${isSaved
-                                            ? 'bg-warning-100 text-warning-600'
-                                            : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400'
+                                        ? 'bg-warning-100 text-warning-600'
+                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400'
                                         }`}
                                 >
                                     <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />

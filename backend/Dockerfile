@@ -26,8 +26,9 @@ RUN apt-get update && apt-get install -y \
 COPY --from=builder /root/.local /home/appuser/.local
 COPY . .
 
-# Create a non-root user
+# Create a non-root user and uploads directory
 RUN useradd -m appuser && \
+    mkdir -p /app/uploads && \
     chown -R appuser:appuser /app
 USER appuser
 

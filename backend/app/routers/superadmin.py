@@ -43,6 +43,10 @@ class OrganizationCreate(BaseModel):
     contact_email: Optional[str] = None
     contact_phone: Optional[str] = None
     subscription_plan: SubscriptionPlan = SubscriptionPlan.FREE
+    # Admin user fields - required to create org admin
+    admin_name: str = Field(..., min_length=2, max_length=100)
+    admin_phone: str = Field(..., min_length=10, max_length=15)
+    admin_password: str = Field(..., min_length=6)
 
 
 class OrganizationUpdate(BaseModel):
@@ -271,7 +275,10 @@ async def create_organization(
     current_user: User = Depends(require_superadmin),
     db: AsyncSession = Depends(get_db)
 ):
-    """Create a new organization."""
+    """Create a new organization with its admin user."""
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    
     # Check slug uniqueness
     existing = await db.scalar(
         select(Organization).where(Organization.slug == data.slug)
@@ -279,6 +286,14 @@ async def create_organization(
     if existing:
         raise HTTPException(status_code=400, detail="Organization slug already exists")
     
+    # Check admin phone uniqueness
+    existing_user = await db.scalar(
+        select(User).where(User.phone == data.admin_phone)
+    )
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Admin phone number already exists")
+    
+    # Create organization
     org = Organization(
         name=data.name,
         slug=data.slug,
@@ -290,6 +305,21 @@ async def create_organization(
     db.add(org)
     await db.commit()
     await db.refresh(org)
+    
+    # Create admin user linked to this organization
+    admin_user = User(
+        phone=data.admin_phone,
+        name=data.admin_name,
+        email=data.contact_email,
+        role=UserRole.ADMIN,
+        organization_id=org.id,
+        hashed_password=pwd_context.hash(data.admin_password),
+        is_active=True,
+        is_verified=True,
+        created_by_id=current_user.id
+    )
+    db.add(admin_user)
+    await db.commit()
     
     # Create default settings
     settings = OrganizationSettings(organization_id=org.id)
@@ -303,7 +333,7 @@ async def create_organization(
         action="organization.create",
         resource_type="organization",
         resource_id=org.id,
-        new_values={"name": org.name, "slug": org.slug}
+        new_values={"name": org.name, "slug": org.slug, "admin_phone": data.admin_phone}
     )
     db.add(audit)
     await db.commit()

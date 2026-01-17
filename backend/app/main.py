@@ -9,9 +9,12 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.database import init_db
-from app.routers import auth_router, teacher_router, crp_router, arp_router, admin_router, ai_router, media_router, alerts_router, billing_router, permissions_router, health_router, resources_router
+from app.routers import auth_router, teacher_router, crp_router, arp_router, admin_router, ai_router, media_router, alerts_router, billing_router, permissions_router, health_router, resources_router, storage_router, config_router
 from app.routers.superadmin import router as superadmin_router
 from app.routers.settings import router as settings_router
+from app.routers.feedback import router as feedback_router
+from app.routers.surveys import router as surveys_router
+from app.routers.programs import router as programs_router
 
 settings = get_settings()
 
@@ -59,13 +62,20 @@ app.include_router(superadmin_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(media_router, prefix="/api")
 app.include_router(resources_router, prefix="/api")
+app.include_router(storage_router, prefix="/api")
+# New role-based feature routers
+app.include_router(feedback_router, prefix="/api")
+app.include_router(surveys_router, prefix="/api")
+app.include_router(programs_router, prefix="/api")
+app.include_router(config_router, prefix="/api")
 
 
 
-
-# Mount static files for uploads
+# Mount static files for uploads - create directories first
 uploads_dir = "/app/uploads"
-os.makedirs(uploads_dir, exist_ok=True)
+for subdir in ["", "general", "resources", "audio", "media"]:
+    path = os.path.join(uploads_dir, subdir)
+    os.makedirs(path, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 @app.get("/")

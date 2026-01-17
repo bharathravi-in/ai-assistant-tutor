@@ -30,9 +30,12 @@ import {
     MessageSquare,
     BookMarked,
     Clipboard,
-    Bell
+    ClipboardList,
+    Inbox,
+    Database
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
+import NotificationBell from './NotificationBell'
 
 interface LayoutProps {
     children: React.ReactNode
@@ -90,25 +93,40 @@ export default function Layout({ children }: LayoutProps) {
         if (role === 'admin') {
             return [
                 { icon: Home, label: 'Dashboard', path: '/admin' },
-                { icon: BarChart3, label: 'Analytics', path: '/admin/analytics' },
-                { icon: FileText, label: 'Content', path: '/admin/content' },
+                { icon: BarChart3, label: 'Reports', path: '/admin/reports' },
+                { icon: FileText, label: 'Content', path: '/admin/content-list' },
                 { icon: Users, label: 'Users', path: '/admin/users' },
+                { icon: Building2, label: 'Schools', path: '/admin/schools' },
+                { icon: Database, label: 'Master Data', path: '/admin/master-data' },
+                { icon: BookOpen, label: 'Create Resource', path: '/admin/resources/create' },
                 { icon: Settings, label: 'Settings', path: '/admin/settings' },
             ]
         }
 
         if (role === 'crp' || role === 'arp') {
             const basePath = role
-            return [
+            const navItems = [
                 { icon: Home, label: 'Dashboard', path: `/${basePath}` },
                 { icon: Users, label: 'My Teachers', path: `/${basePath}/teachers` },
+                { icon: Inbox, label: 'Shared Queries', path: `/${basePath}/shared-queries` },
+                { icon: FileText, label: 'Teacher Resources', path: `/${basePath}/teacher-resources` },
+                { icon: MessageSquare, label: 'Request Feedback', path: `/${basePath}/request-feedback` },
+                { icon: Clipboard, label: 'Surveys', path: `/${basePath}/surveys` },
                 { icon: AlertTriangle, label: 'Interventions', path: `/${basePath}/interventions` },
                 { icon: Sparkles, label: 'Feedback Assistant', path: `/${basePath}/feedback-assist` },
+                { icon: BookOpen, label: 'Create Content', path: `/${basePath}/resources/create` },
                 { icon: BarChart3, label: 'Reports', path: `/${basePath}/reports` },
-                { icon: History, label: t('nav.history'), path: `/${basePath}/history` },
-                { icon: User, label: t('nav.profile'), path: `/${basePath}/profile` },
-                { icon: Settings, label: 'Settings', path: `/${basePath}/settings` }
             ]
+            // ARP-specific items
+            if (role === 'arp') {
+                navItems.push(
+                    { icon: Users, label: 'User Management', path: '/arp/users' },
+                    { icon: BookOpen, label: 'Programs', path: '/arp/programs' },
+                    { icon: BarChart3, label: 'Gap Analysis', path: '/arp/gap-analysis' }
+                )
+            }
+            navItems.push({ icon: Settings, label: 'Settings', path: `/${basePath}/settings` })
+            return navItems
         }
 
         // Teacher navigation - PRD aligned
@@ -117,6 +135,8 @@ export default function Layout({ children }: LayoutProps) {
             { icon: MessageSquare, label: 'Ask AI', path: '/teacher/ask-question' },
             { icon: Clipboard, label: 'Reflections', path: '/teacher/reflections' },
             { icon: BookMarked, label: 'Resources', path: '/teacher/resources' },
+            { icon: Inbox, label: 'Feedback', path: '/teacher/feedback-inbox' },
+            { icon: ClipboardList, label: 'Surveys', path: '/teacher/surveys' },
             { icon: History, label: t('nav.history'), path: '/teacher/history' },
             { icon: User, label: t('nav.profile'), path: '/teacher/profile' },
             { icon: Settings, label: 'Settings', path: '/teacher/settings' }
@@ -157,7 +177,7 @@ export default function Layout({ children }: LayoutProps) {
                         {!sidebarCollapsed && (
                             <div>
                                 <span className="font-bold text-gray-800 dark:text-white whitespace-nowrap">
-                                    Gov-Tech
+                                    EducationAI
                                 </span>
                                 <p className="text-xs text-gray-500">AI Teaching</p>
                             </div>
@@ -215,7 +235,7 @@ export default function Layout({ children }: LayoutProps) {
                                     flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200
                                     ${sidebarCollapsed ? 'justify-center' : ''}
                                     ${isActive
-                                        ? 'font-medium text-white shadow-lg bg-gradient-to-r from-primary-500 to-primary-600'
+                                        ? 'sidebar-active font-medium'
                                         : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'}
                                 `}
                                 title={sidebarCollapsed ? item.label : undefined}
@@ -299,7 +319,7 @@ export default function Layout({ children }: LayoutProps) {
 
                         <div className="flex-1 lg:flex-none">
                             <h1 className="text-lg font-semibold text-gray-800 dark:text-white text-center lg:text-left lg:hidden">
-                                Gov-Tech
+                                EducationAI
                             </h1>
                         </div>
 
@@ -310,11 +330,8 @@ export default function Layout({ children }: LayoutProps) {
                                 <span className="text-sm text-secondary-600 dark:text-secondary-400 font-medium">AI Ready</span>
                             </div>
 
-                            {/* Notifications placeholder */}
-                            <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors relative">
-                                <Bell className="w-5 h-5 text-gray-500" />
-                                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-accent-500" />
-                            </button>
+                            {/* Real Notification Bell */}
+                            <NotificationBell />
                         </div>
 
                         <div className="w-10 lg:hidden" />
@@ -322,7 +339,7 @@ export default function Layout({ children }: LayoutProps) {
                 </header>
 
                 {/* Page content */}
-                <main className="min-h-[calc(100vh-65px)]">
+                <main className="min-h-[calc(100vh-65px)] p-4 md:p-6 lg:p-8">
                     {children}
                 </main>
             </div>

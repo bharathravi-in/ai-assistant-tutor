@@ -49,12 +49,12 @@ export default function LoginPage() {
                 {/* Logo */}
                 <div className="relative z-10">
                     <div className="flex items-center gap-3">
-                        <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg" style={{ background: '#059669' }}>
+                        <div className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg" style={{ background: '#10B981' }}>
                             <GraduationCap className="w-8 h-8 text-white" />
                         </div>
                         <div>
-                            <span className="text-2xl font-bold text-white">Gov-Tech</span>
-                            <p className="text-white/70 text-sm">AI Teaching Assistant</p>
+                            <span className="text-2xl font-bold text-white">EducationAI</span>
+                            <p className="text-white/70 text-sm">DIET Teacher Support</p>
                         </div>
                     </div>
                 </div>
@@ -195,18 +195,6 @@ export default function LoginPage() {
                                 )}
                             </button>
                         </form>
-
-                        <div className="mt-6 text-center">
-                            <p className="text-gray-500">
-                                Don't have an account?{' '}
-                                <Link
-                                    to="/register"
-                                    className="font-semibold text-secondary-500 hover:text-secondary-600 transition-colors hover:underline"
-                                >
-                                    Sign up
-                                </Link>
-                            </p>
-                        </div>
                     </div>
 
                     {/* Language selector - Compact */}

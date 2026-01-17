@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Form
 from app.routers.auth import get_current_user, require_role
 from app.models.user import User, UserRole
 from app.utils.file_utils import save_upload_file
+from app.services.storage import get_storage_provider
 import os
 import uuid
 from datetime import datetime
+from typing import Optional
 
 router = APIRouter(prefix="/media", tags=["Media"])
 
@@ -45,8 +47,6 @@ async def upload_voice_note(
 ):
     """
     Upload a voice note for CRP responses or teacher reflections.
-    
-    Supported formats: audio/mpeg (mp3), audio/wav, audio/webm, audio/ogg
     """
     allowed_types = [
         "audio/mpeg", "audio/wav", "audio/webm", "audio/ogg", 
@@ -56,38 +56,36 @@ async def upload_voice_note(
     if file.content_type not in allowed_types:
         raise HTTPException(
             status_code=400,
-            detail=f"Audio type {file.content_type} not supported. Use MP3, WAV, WEBM, or OGG."
+            detail=f"Audio type {file.content_type} not supported."
         )
     
-    # Create directory if not exists
-    os.makedirs(VOICE_UPLOAD_DIR, exist_ok=True)
+    storage = get_storage_provider()
     
     # Generate unique filename
     ext = file.filename.split(".")[-1] if "." in file.filename else "webm"
     unique_name = f"{purpose}_{current_user.id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}.{ext}"
-    file_path = os.path.join(VOICE_UPLOAD_DIR, unique_name)
+    destination_path = f"voice/{unique_name}"
     
-    # Save file
+    # Keep a copy of content for local use (transcription) if needed
     content = await file.read()
-    with open(file_path, "wb") as f:
-        f.write(content)
     
-    # Calculate duration (approximate based on file size for now)
-    file_size_bytes = len(content)
-    # Rough estimate: 128kbps = 16KB/s for MP3
-    estimated_duration_sec = int(file_size_bytes / 16000)
+    # Upload to storage
+    path = await storage.upload_file(content, destination_path, content_type=file.content_type)
+    url = storage.get_file_url(path)
     
     # Auto-transcribe
     from app.services.transcription import TranscriptionService
     transcription_service = TranscriptionService()
-    transcript = await transcription_service.transcribe_audio(f"/uploads/voice/{unique_name}")
+    
+    # For transcription, we might still need a local path if using Gemini
+    # For now, we pass the relative URL as before
+    transcript = await transcription_service.transcribe_audio(url)
     
     return {
         "filename": unique_name,
         "content_type": file.content_type,
-        "url": f"/uploads/voice/{unique_name}",
-        "duration_sec": estimated_duration_sec,
-        "size_bytes": file_size_bytes,
+        "url": url,
+        "size_bytes": len(content),
         "purpose": purpose,
         "transcript": transcript
     }

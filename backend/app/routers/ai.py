@@ -78,6 +78,17 @@ async def ask_ai(
     await db.commit()
     await db.refresh(query)
     
+    # If teacher wants to share with CRP, create a QueryShare record
+    if request.share_with_crp:
+        from app.models.feedback import QueryShare
+        query_share = QueryShare(
+            query_id=query.id,
+            shared_with_id=None,  # Will be visible to all CRPs in district
+            is_reviewed=False
+        )
+        db.add(query_share)
+        await db.commit()
+    
     return {
         "query_id": query.id,
         "mode": request.mode.value,
@@ -86,6 +97,7 @@ async def ask_ai(
         "structured": response.get("structured"),
         "processing_time_ms": processing_time,
         "suggestions": response.get("suggestions", []),
+        "shared_with_crp": request.share_with_crp,
         "query": {
             "id": query.id,
             "user_id": query.user_id,
@@ -104,6 +116,7 @@ async def ask_ai(
             "responded_at": query.responded_at.isoformat() if query.responded_at else None,
         }
     }
+
 
 
 @router.post("/explain")

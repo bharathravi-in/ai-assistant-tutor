@@ -1,10 +1,12 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
+import { initializeTheme } from './hooks/useOrgSettings'
 
 // Pages
 import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import HelpPage from './pages/HelpPage'
 import TeacherDashboard from './pages/teacher/Dashboard'
 import TeacherProfile from './pages/teacher/Profile'
 import TeacherHistory from './pages/teacher/History'
@@ -14,13 +16,40 @@ import AIResponse from './pages/teacher/AIResponse'
 import Resources from './pages/teacher/Resources'
 import ResourcePlayer from './pages/teacher/ResourcePlayer'
 import Reflections from './pages/teacher/Reflections'
+import FeedbackInbox from './pages/teacher/FeedbackInbox'
+import TeacherSurveys from './pages/teacher/Surveys'
 import CRPDashboard from './pages/crp/Dashboard'
 import FeedbackAssist from './pages/crp/FeedbackAssist'
+import VisitSchedule from './pages/crp/VisitSchedule'
+import TeacherNetwork from './pages/crp/TeacherNetwork'
+import CRPReports from './pages/crp/Reports'
+import CreateTeacher from './pages/crp/CreateTeacher'
+import SharedQueryInbox from './pages/crp/SharedQueryInbox'
+import RequestFeedback from './pages/crp/RequestFeedback'
+import SurveyBuilder from './pages/crp/SurveyBuilder'
+import TeacherResources from './pages/crp/TeacherResources'
 import ARPDashboard from './pages/arp/Dashboard'
+import ARPTeachers from './pages/arp/Teachers'
+import ARPReports from './pages/arp/Reports'
+import UserManagement from './pages/arp/UserManagement'
+import ProgramBuilder from './pages/arp/ProgramBuilder'
+import GapAnalysis from './pages/arp/GapAnalysis'
 import AdminDashboard from './pages/admin/Dashboard'
+import CreateResource from './pages/admin/CreateResource'
+import AdminAnalytics from './pages/admin/Analytics'
+import AdminContent from './pages/admin/Content'
+import AdminUsers from './pages/admin/Users'
+import AdminSettings from './pages/admin/Settings'
+import SchoolConfig from './pages/admin/SchoolConfig'
+import MasterData from './pages/admin/MasterData'
+import OrgSettings from './pages/admin/OrgSettings'
+import BulkUserImport from './pages/admin/BulkUserImport'
+import ContentList from './pages/admin/ContentList'
+import Reports from './pages/admin/Reports'
 import SuperadminDashboard from './pages/superadmin/Dashboard'
 import OrganizationSettings from './pages/superadmin/OrganizationSettings'
 import OrganizationsList from './pages/superadmin/OrganizationsList'
+import CreateOrganization from './pages/superadmin/CreateOrganization'
 import PlansPage from './pages/superadmin/PlansPage'
 import SettingsPage from './pages/superadmin/SettingsPage'
 import AISettingsPage from './pages/superadmin/AISettingsPage'
@@ -64,11 +93,17 @@ function RoleBasedRedirect() {
 }
 
 function App() {
+    // Initialize theme from org settings on app load
+    useEffect(() => {
+        initializeTheme()
+    }, [])
+
     return (
         <Routes>
             {/* Public routes */}
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/help" element={<HelpPage />} />
 
             {/* Role-based redirect */}
             <Route path="/" element={
@@ -139,6 +174,20 @@ function App() {
                     </Layout>
                 </ProtectedRoute>
             } />
+            <Route path="/teacher/feedback-inbox" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <FeedbackInbox />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/surveys" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <TeacherSurveys />
+                    </Layout>
+                </ProtectedRoute>
+            } />
 
 
             {/* CRP routes */}
@@ -156,24 +205,31 @@ function App() {
                     </Layout>
                 </ProtectedRoute>
             } />
+            <Route path="/crp/resources/create" element={
+                <ProtectedRoute roles={['crp']}>
+                    <Layout>
+                        <CreateResource />
+                    </Layout>
+                </ProtectedRoute>
+            } />
             <Route path="/crp/teachers" element={
                 <ProtectedRoute roles={['crp']}>
                     <Layout>
-                        <CRPDashboard />
+                        <TeacherNetwork />
                     </Layout>
                 </ProtectedRoute>
             } />
             <Route path="/crp/interventions" element={
                 <ProtectedRoute roles={['crp']}>
                     <Layout>
-                        <CRPDashboard />
+                        <VisitSchedule />
                     </Layout>
                 </ProtectedRoute>
             } />
             <Route path="/crp/reports" element={
                 <ProtectedRoute roles={['crp']}>
                     <Layout>
-                        <CRPDashboard />
+                        <CRPReports />
                     </Layout>
                 </ProtectedRoute>
             } />
@@ -198,6 +254,41 @@ function App() {
                     </Layout>
                 </ProtectedRoute>
             } />
+            <Route path="/crp/create-teacher" element={
+                <ProtectedRoute roles={['crp']}>
+                    <Layout>
+                        <CreateTeacher />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/crp/shared-queries" element={
+                <ProtectedRoute roles={['crp']}>
+                    <Layout>
+                        <SharedQueryInbox />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/crp/request-feedback" element={
+                <ProtectedRoute roles={['crp']}>
+                    <Layout>
+                        <RequestFeedback />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/crp/surveys" element={
+                <ProtectedRoute roles={['crp']}>
+                    <Layout>
+                        <SurveyBuilder />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/crp/teacher-resources" element={
+                <ProtectedRoute roles={['crp']}>
+                    <Layout>
+                        <TeacherResources />
+                    </Layout>
+                </ProtectedRoute>
+            } />
 
             {/* ARP routes */}
             <Route path="/arp" element={
@@ -214,24 +305,31 @@ function App() {
                     </Layout>
                 </ProtectedRoute>
             } />
+            <Route path="/arp/resources/create" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <CreateResource />
+                    </Layout>
+                </ProtectedRoute>
+            } />
             <Route path="/arp/teachers" element={
                 <ProtectedRoute roles={['arp']}>
                     <Layout>
-                        <ARPDashboard />
+                        <ARPTeachers />
                     </Layout>
                 </ProtectedRoute>
             } />
             <Route path="/arp/interventions" element={
                 <ProtectedRoute roles={['arp']}>
                     <Layout>
-                        <ARPDashboard />
+                        <VisitSchedule />
                     </Layout>
                 </ProtectedRoute>
             } />
             <Route path="/arp/reports" element={
                 <ProtectedRoute roles={['arp']}>
                     <Layout>
-                        <ARPDashboard />
+                        <ARPReports />
                     </Layout>
                 </ProtectedRoute>
             } />
@@ -256,12 +354,138 @@ function App() {
                     </Layout>
                 </ProtectedRoute>
             } />
+            <Route path="/arp/shared-queries" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <SharedQueryInbox />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/teacher-resources" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <TeacherResources />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/request-feedback" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <RequestFeedback />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/surveys" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <SurveyBuilder />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/users" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <UserManagement />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/programs" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <ProgramBuilder />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/gap-analysis" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <GapAnalysis />
+                    </Layout>
+                </ProtectedRoute>
+            } />
 
             {/* Admin routes */}
-            <Route path="/admin/*" element={
+            <Route path="/admin" element={
                 <ProtectedRoute roles={['admin']}>
                     <Layout>
                         <AdminDashboard />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/resources/create" element={
+                <ProtectedRoute roles={['admin', 'crp', 'arp']}>
+                    <Layout>
+                        <CreateResource />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/analytics" element={
+                <ProtectedRoute roles={['admin']}>
+                    <Layout>
+                        <AdminAnalytics />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/content" element={
+                <ProtectedRoute roles={['admin']}>
+                    <Layout>
+                        <AdminContent />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/users" element={
+                <ProtectedRoute roles={['admin']}>
+                    <Layout>
+                        <AdminUsers />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/settings" element={
+                <ProtectedRoute roles={['admin']}>
+                    <Layout>
+                        <AdminSettings />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/schools" element={
+                <ProtectedRoute roles={['admin']}>
+                    <Layout>
+                        <SchoolConfig />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/master-data" element={
+                <ProtectedRoute roles={['admin']}>
+                    <Layout>
+                        <MasterData />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/org-settings" element={
+                <ProtectedRoute roles={['admin']}>
+                    <Layout>
+                        <OrgSettings />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/users/import" element={
+                <ProtectedRoute roles={['admin']}>
+                    <Layout>
+                        <BulkUserImport />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/content-list" element={
+                <ProtectedRoute roles={['admin']}>
+                    <Layout>
+                        <ContentList />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/reports" element={
+                <ProtectedRoute roles={['admin']}>
+                    <Layout>
+                        <Reports />
                     </Layout>
                 </ProtectedRoute>
             } />
@@ -278,6 +502,13 @@ function App() {
                 <ProtectedRoute roles={['superadmin']}>
                     <Layout>
                         <OrganizationsList />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/superadmin/organizations/new" element={
+                <ProtectedRoute roles={['superadmin']}>
+                    <Layout>
+                        <CreateOrganization />
                     </Layout>
                 </ProtectedRoute>
             } />
