@@ -35,7 +35,8 @@ export default function FeedbackAssist() {
     // Form state
     const [teacherName, setTeacherName] = useState('')
     const [classObserved, setClassObserved] = useState('')
-    const [subjectTopic, setSubjectTopic] = useState('')
+    const [subject, setSubject] = useState('')
+    const [topicTaught, setTopicTaught] = useState('')
     const [observationNotes, setObservationNotes] = useState('')
     const [keyAreas, setKeyAreas] = useState<string[]>([])
     const [newArea, setNewArea] = useState('')
@@ -48,9 +49,9 @@ export default function FeedbackAssist() {
             const result = await crpSupportApi.generateFeedback({
                 teacher_name: teacherName,
                 class_observed: classObserved,
-                subject_topic: subjectTopic,
+                subject: subject,
+                topic_taught: topicTaught,
                 observation_notes: observationNotes,
-                language: i18n.language
             })
             setFeedback(result.feedback)
         } catch (error) {
@@ -152,15 +153,26 @@ export default function FeedbackAssist() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subject/Topic</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subject</label>
                                     <input
                                         type="text"
-                                        value={subjectTopic}
-                                        onChange={(e) => setSubjectTopic(e.target.value)}
-                                        placeholder="e.g. Math / Fractions"
+                                        value={subject}
+                                        onChange={(e) => setSubject(e.target.value)}
+                                        placeholder="e.g. Mathematics"
                                         className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-primary-500 transition-all"
                                     />
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Topic Taught</label>
+                                <input
+                                    type="text"
+                                    value={topicTaught}
+                                    onChange={(e) => setTopicTaught(e.target.value)}
+                                    placeholder="e.g. Fractions and Decimals"
+                                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-primary-500 transition-all"
+                                />
                             </div>
 
                             <div>

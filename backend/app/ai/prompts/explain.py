@@ -10,6 +10,9 @@ def get_explain_prompt(
     grade: Optional[int] = None,
     subject: Optional[str] = None,
     topic: Optional[str] = None,
+    is_multigrade: bool = False,
+    class_size: Optional[int] = None,
+    instructional_time_minutes: Optional[int] = None,
 ) -> str:
     """
     Generate a prompt for explaining how to teach a concept.
@@ -22,6 +25,12 @@ def get_explain_prompt(
         context_parts.append(f"Subject: {subject}")
     if topic:
         context_parts.append(f"Topic: {topic}")
+    if is_multigrade:
+        context_parts.append("Class Type: Multigrade (multiple grades in one room)")
+    if class_size:
+        context_parts.append(f"Class Size: {class_size} students")
+    if instructional_time_minutes:
+        context_parts.append(f"Instructional Time: {instructional_time_minutes} minutes")
     
     context = "\n".join(context_parts) if context_parts else "General teaching"
     

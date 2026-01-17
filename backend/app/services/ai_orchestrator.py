@@ -10,6 +10,9 @@ from app.models.query import QueryMode
 from app.ai.prompts.explain import get_explain_prompt
 from app.ai.prompts.assist import get_assist_prompt
 from app.ai.prompts.plan import get_plan_prompt
+from app.ai.prompts.quiz_agent import get_quiz_prompt
+from app.ai.prompts.tlm_agent import get_tlm_prompt
+from app.ai.prompts.ncert_agent import get_ncert_prompt
 from app.ai.llm_client import LLMClient
 from app.utils.json_utils import extract_and_repair_json
 
@@ -39,6 +42,10 @@ class AIOrchestrator:
         subject: Optional[str] = None,
         topic: Optional[str] = None,
         context: Optional[str] = None,
+        media_path: Optional[str] = None,
+        is_multigrade: bool = False,
+        class_size: Optional[int] = None,
+        instructional_time_minutes: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Process a teaching request through the appropriate AI mode.
@@ -54,12 +61,18 @@ class AIOrchestrator:
                 grade=grade,
                 subject=subject,
                 topic=topic,
+                is_multigrade=is_multigrade,
+                class_size=class_size,
+                instructional_time_minutes=instructional_time_minutes,
             )
         elif mode == QueryMode.ASSIST:
             prompt = get_assist_prompt(
                 situation=input_text,
                 language=language,
                 context=context,
+                is_multigrade=is_multigrade,
+                class_size=class_size,
+                instructional_time_minutes=instructional_time_minutes,
             )
         elif mode == QueryMode.PLAN:
             prompt = get_plan_prompt(
@@ -68,12 +81,15 @@ class AIOrchestrator:
                 grade=grade,
                 subject=subject,
                 topic=topic,
+                is_multigrade=is_multigrade,
+                class_size=class_size,
+                instructional_time_minutes=instructional_time_minutes,
             )
         else:
             raise ValueError(f"Unknown mode: {mode}")
         
         # Get response from LLM
-        response = await self.llm_client.generate(prompt, language=language)
+        response = await self.llm_client.generate(prompt, language=language, media_path=media_path)
         
         # Parse structured response
         structured = self._parse_response(response, mode)
@@ -89,6 +105,76 @@ class AIOrchestrator:
             "structured": structured,
             "suggestions": suggestions,
         }
+    
+    async def generate_quiz(
+        self,
+        topic: str,
+        content: str,
+        language: str = "en",
+        level: str = "medium"
+    ) -> Dict[str, Any]:
+        """
+        Specialized method to generate a quiz from lesson content.
+        """
+        prompt = get_quiz_prompt(
+            topic=topic,
+            content=content,
+            language=language,
+            level=level
+        )
+        
+        response = await self.llm_client.generate(prompt, language=language)
+        
+        # Parse using the robust extraction logic
+        structured = self._parse_response(response, None) # Mode None for raw extraction
+        
+        return structured
+    
+    async def generate_tlm(
+        self,
+        topic: str,
+        content: str,
+        language: str = "en"
+    ) -> Dict[str, Any]:
+        """
+        Specialized method to generate TLM (Visual/Physical) from lesson content.
+        """
+        prompt = get_tlm_prompt(
+            topic=topic,
+            content=content,
+            language=language
+        )
+        
+        response = await self.llm_client.generate(prompt, language=language)
+        
+        # Parse using the robust extraction logic
+        structured = self._parse_response(response, None)
+        
+        return structured
+
+    async def audit_content(
+        self,
+        topic: str,
+        content: str,
+        grade: Optional[int] = None,
+        subject: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Audit teaching content for NCERT compliance.
+        """
+        prompt = get_ncert_prompt(
+            topic=topic,
+            content=content,
+            grade=grade,
+            subject=subject
+        )
+
+        response = await self.llm_client.generate(prompt)
+
+        # Parse using the robust extraction logic
+        structured = self._parse_response(response, None)
+
+        return structured
     
     def _parse_response(self, response: str, mode: QueryMode) -> Dict[str, Any]:
         """Parse LLM response into structured format with EXTREME robust JSON extraction."""
@@ -261,6 +347,12 @@ class AIOrchestrator:
                     desc = act.get("description", "")
                     act_text.append(f"**{i}. {name}** ({duration} min)\n{desc}")
                 parts.append(f"📝 **Activities**\n\n" + "\n\n".join(act_text))
+
+        if "multi_grade_adaptations" in data:
+            parts.append(f"🏫 **Multigrade Adaptations**\n{data['multi_grade_adaptations']}")
+
+        if "low_tlm_alternatives" in data:
+            parts.append(f"📦 **Low-TLM Alternatives**\n{data['low_tlm_alternatives']}")
         
         if "exit_questions" in data:
             questions = data["exit_questions"]

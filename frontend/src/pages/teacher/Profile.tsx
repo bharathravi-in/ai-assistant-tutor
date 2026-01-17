@@ -16,6 +16,7 @@ import {
     Users
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
+import { useMasterData } from '../../hooks/useMasterData'
 
 const LANGUAGES = [
     { code: 'en', name: 'English', flag: '🇺🇸' },
@@ -25,10 +26,10 @@ const LANGUAGES = [
     { code: 'kn', name: 'ಕನ್ನಡ', flag: '🇮🇳' },
 ]
 
-const GRADES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12']
-const SUBJECTS = ['Mathematics', 'Science', 'English', 'Hindi', 'Social Studies', 'EVS', 'Computer Science']
-
 export default function TeacherProfile() {
+    const { grades: masterGrades, subjects: masterSubjects } = useMasterData()
+    const GRADES = masterGrades.map(g => String(g.number))
+    const SUBJECTS = masterSubjects.map(s => s.name)
     const { t } = useTranslation()
     const { user } = useAuthStore()
     const [saved, setSaved] = useState(false)
@@ -219,8 +220,8 @@ export default function TeacherProfile() {
                                             key={grade}
                                             onClick={() => toggleGrade(grade)}
                                             className={`w-10 h-10 rounded-lg text-sm font-medium transition-all ${profile.grades_taught.includes(grade)
-                                                    ? 'text-white shadow-md'
-                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                                                ? 'text-white shadow-md'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
                                                 }`}
                                             style={profile.grades_taught.includes(grade) ? { background: '#264092' } : {}}
                                         >
@@ -237,8 +238,8 @@ export default function TeacherProfile() {
                                             key={subject}
                                             onClick={() => toggleSubject(subject)}
                                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${profile.subjects_taught.includes(subject)
-                                                    ? 'text-white shadow-md'
-                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                                                ? 'text-white shadow-md'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
                                                 }`}
                                             style={profile.subjects_taught.includes(subject) ? { background: '#EF951E' } : {}}
                                         >
@@ -269,8 +270,8 @@ export default function TeacherProfile() {
                                             key={lang.code}
                                             onClick={() => handleLanguageChange(lang.code)}
                                             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${profile.language === lang.code
-                                                    ? 'text-white shadow-md'
-                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                                                ? 'text-white shadow-md'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
                                                 }`}
                                             style={profile.language === lang.code ? { background: '#264092' } : {}}
                                         >

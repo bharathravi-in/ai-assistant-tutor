@@ -87,7 +87,7 @@ export default function OrganizationsList() {
                     </div>
                 </div>
                 <button
-                    onClick={() => navigate('/superadmin')}
+                    onClick={() => navigate('/superadmin/organizations/new')}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium hover:shadow-lg transition-all"
                 >
                     <Plus className="w-5 h-5" />

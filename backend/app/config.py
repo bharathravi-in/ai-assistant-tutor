@@ -41,6 +41,18 @@ class Settings(BaseSettings):
     default_language: str = "en"
     supported_languages: str = "en,hi,ta,te,kn,mr"
     
+    # Storage Configuration
+    document_storage_type: str = "local"  # local, gcp - defaults to local for dev
+    gcp_storage_bucket: str = "rfp_proposal"
+    gcp_storage_credentials: str = "./service-account-key.json"
+    gcp_knowledge_prefix: str = "knowledge"
+    gcp_rfp_req_prefix: str = "rfp_requirement"
+    gcp_rfp_proposal_prefix: str = "rfp_proposal"
+    
+    # Email Configuration
+    gmail_email: str = ""
+    gmail_app_password: str = ""
+    
     @property
     def cors_origins_list(self) -> List[str]:
         return [origin.strip() for origin in self.cors_origins.split(",")]

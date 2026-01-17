@@ -12,12 +12,12 @@ def get_classroom_help_prompt(
     topic: Optional[str] = None,
     students_level: Optional[str] = None,
     language: str = "en",
+    is_multigrade: bool = False,
+    class_size: Optional[int] = None,
+    instructional_time_minutes: Optional[int] = None,
 ) -> str:
     """
     Generate a prompt for classroom implementation help.
-    
-    This is for teachers who are STUCK during a lesson and need
-    immediate, practical guidance.
     """
     
     context_parts = []
@@ -29,6 +29,12 @@ def get_classroom_help_prompt(
         context_parts.append(f"Topic being taught: {topic}")
     if students_level:
         context_parts.append(f"Students' current level: {students_level}")
+    if is_multigrade:
+        context_parts.append("Class Type: Multigrade (multiple grades in one room)")
+    if class_size:
+        context_parts.append(f"Class Size: {class_size} students")
+    if instructional_time_minutes:
+        context_parts.append(f"Remaining Time: {instructional_time_minutes} minutes")
     
     context = "\n".join(context_parts) if context_parts else "General classroom"
     

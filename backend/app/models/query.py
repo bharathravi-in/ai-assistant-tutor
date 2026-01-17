@@ -4,7 +4,7 @@ Query Model - Stores teacher queries and AI responses
 import enum
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, DateTime, Enum, Text, Integer, ForeignKey, JSON
+from sqlalchemy import String, DateTime, Enum, Text, Integer, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -34,6 +34,11 @@ class Query(Base):
     grade: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     subject: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     topic: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    
+    # Theme 1: Classroom Context
+    is_multigrade: Mapped[bool] = mapped_column(Boolean, default=False)
+    class_size: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    instructional_time_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     
     # AI Response
     ai_response: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

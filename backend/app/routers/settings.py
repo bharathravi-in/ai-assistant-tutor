@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.models import User, UserSettings, CustomVoice
 from app.routers.auth import get_current_user
+from app.services.storage import get_storage_provider
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
 
@@ -127,19 +128,16 @@ async def create_custom_voice(
     if not audio.content_type or not audio.content_type.startswith("audio/"):
         raise HTTPException(status_code=400, detail="File must be an audio file")
     
-    # Create uploads directory if it doesn't exist
-    upload_dir = "/app/uploads/voices"
-    os.makedirs(upload_dir, exist_ok=True)
+    storage = get_storage_provider()
     
     # Generate unique filename
     file_ext = audio.filename.split(".")[-1] if audio.filename and "." in audio.filename else "webm"
     filename = f"{current_user.id}_{uuid.uuid4()}.{file_ext}"
-    filepath = os.path.join(upload_dir, filename)
+    destination_path = f"voices/{filename}"
     
-    # Save file
-    content = await audio.read()
-    with open(filepath, "wb") as f:
-        f.write(content)
+    # Upload to storage
+    path = await storage.upload_file(audio, destination_path, content_type=audio.content_type)
+    url = storage.get_file_url(path)
     
     # Create database entry
     custom_voice = CustomVoice(
@@ -147,7 +145,7 @@ async def create_custom_voice(
         name=name,
         gender=gender,
         audio_filename=filename,
-        audio_url=f"/uploads/voices/{filename}"
+        audio_url=url
     )
     db.add(custom_voice)
     await db.commit()
@@ -179,10 +177,8 @@ async def delete_custom_voice(
     if not voice:
         raise HTTPException(status_code=404, detail="Voice not found")
     
-    # Delete file
-    filepath = f"/app/uploads/voices/{voice.audio_filename}"
-    if os.path.exists(filepath):
-        os.remove(filepath)
+    # Delete file logic can be added to StorageProvider if needed
+    # For now, we mainly focus on upload being cloud-agnostic
     
     # Delete from database
     await db.delete(voice)

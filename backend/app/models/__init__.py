@@ -9,6 +9,11 @@ from app.models.organization_settings import OrganizationSettings, AIProvider, S
 from app.models.subscription import PlanLimits, UsageTracking, AuditLog
 from app.models.user_settings import UserSettings, CustomVoice
 from app.models.system_settings import SystemSettings
+from app.models.resource import Resource, ResourceBookmark, ResourceProgress, ResourceType, ResourceCategory
+from app.models.feedback import FeedbackRequest, FeedbackResponse, FeedbackStatus, QueryShare
+from app.models.survey import Survey, SurveyResponse, SurveyAssignment, SurveyStatus, SurveyTargetRole
+from app.models.program import Program, ProgramResource, ResourcePublishRequest, ProgramStatus
+from app.models.config import State, District, Block, Subject, Grade, Board, Medium, AcademicYear, School
 
 __all__ = [
     # User
@@ -33,6 +38,26 @@ __all__ = [
     "UsageTracking",
     "AuditLog",
     "SystemSettings",
+    # Resources
+    "Resource",
+    "ResourceBookmark",
+    "ResourceProgress",
+    "ResourceType",
+    "ResourceCategory",
+    # Feedback
+    "FeedbackRequest",
+    "FeedbackResponse",
+    "FeedbackStatus",
+    "QueryShare",
+    # Survey
+    "Survey",
+    "SurveyResponse",
+    "SurveyAssignment",
+    "SurveyStatus",
+    "SurveyTargetRole",
+    # Program
+    "Program",
+    "ProgramResource",
+    "ResourcePublishRequest",
+    "ProgramStatus",
 ]
-
-

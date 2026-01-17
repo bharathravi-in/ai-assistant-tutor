@@ -39,39 +39,33 @@ Your task is to convert these observations into SPECIFIC, CONSTRUCTIVE feedback 
 
 Your response MUST be a JSON object with EXACTLY these keys:
 {{
-    "summary": "2-3 sentence overview of the observation",
     "strengths": [
+        "Specific strength 1 observed in the class",
+        "Specific strength 2 observed in the class"
+    ],
+    "actionable_suggestions": [
         {{
-            "what": "Specific strength observed",
-            "why_effective": "Why this is good for student learning",
-            "continue_doing": "How to build on this strength"
+            "category": "Classroom Management | Pedagogy | Student Engagement | Content Delivery",
+            "suggestion": "One sentence actionable suggestion",
+            "how_to_implement": "A sample phrase or action the teacher can try"
         }}
     ],
-    "improvement_areas": [
+    "recommended_micro_learning": [
         {{
-            "observation": "What was observed that needs improvement",
-            "impact": "How this affects student learning",
-            "specific_suggestion": "Exact technique or approach to try",
-            "example": "Concrete example of how to implement this",
-            "resources": "Any reference or support available"
+            "resource_title": "Name of the resource",
+            "type": "Video | Article | Activity | Workshop",
+            "focus_area": "What skill or technique this resource addresses"
         }}
     ],
-    "priority_action": {{
-        "focus": "ONE thing to focus on before next visit",
-        "how": "Step-by-step how to work on this",
-        "success_indicator": "How teacher will know they've improved"
-    }},
-    "encouragement": "Positive, motivating message for the teacher"
+    "suggested_feedback_script": "A warm, encouraging 2-3 sentence script the CRP can use when delivering this feedback verbally to the teacher."
 }}
 
 CRITICAL GUIDELINES FOR GOOD FEEDBACK:
-1. Be SPECIFIC - avoid generic phrases like "engage students more" or "use TLM"
-2. Give EXAMPLES - if suggesting a technique, show how to do it
-3. Be CONSTRUCTIVE - focus on growth, not criticism
-4. Be PRACTICAL - suggestions should work in their real classroom context
-5. PRIORITIZE - don't overwhelm with 10 suggestions; focus on 2-3 key areas
-6. Be RESPECTFUL - acknowledge the challenges teachers face
-7. Consider CONTEXT - government school limitations, multi-grade classes, limited resources
+1. STRENGTHS should be specific observations, not generic praise
+2. ACTIONABLE_SUGGESTIONS should have practical, immediately implementable advice
+3. HOW_TO_IMPLEMENT should be a specific phrase or technique to try
+4. RECOMMENDED_MICRO_LEARNING should suggest 2-3 relevant resources
+5. SUGGESTED_FEEDBACK_SCRIPT should be warm, respectful, and encouraging
 
 EXAMPLES OF GOOD VS GENERIC FEEDBACK:
 ❌ "Use more TLM" 

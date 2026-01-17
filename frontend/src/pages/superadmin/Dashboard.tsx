@@ -46,7 +46,7 @@ export default function SuperadminDashboard() {
     const [stats, setStats] = useState<DashboardStats | null>(null)
     const [loading, setLoading] = useState(true)
     const [showCreateModal, setShowCreateModal] = useState(false)
-    const [newOrg, setNewOrg] = useState({ name: '', slug: '', contact_email: '', subscription_plan: 'free' })
+    const [newOrg, setNewOrg] = useState({ name: '', slug: '', contact_email: '', subscription_plan: 'free', admin_name: '', admin_phone: '', admin_password: '' })
 
     useEffect(() => {
         fetchDashboard()
@@ -82,7 +82,7 @@ export default function SuperadminDashboard() {
             })
             if (response.ok) {
                 setShowCreateModal(false)
-                setNewOrg({ name: '', slug: '', contact_email: '', subscription_plan: 'free' })
+                setNewOrg({ name: '', slug: '', contact_email: '', subscription_plan: 'free', admin_name: '', admin_phone: '', admin_password: '' })
                 fetchDashboard()
             }
         } catch (err) {
@@ -120,7 +120,7 @@ export default function SuperadminDashboard() {
                     </div>
                 </div>
                 <button
-                    onClick={() => setShowCreateModal(true)}
+                    onClick={() => navigate('/superadmin/organizations/new')}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium hover:shadow-lg transition-all"
                 >
                     <Plus className="w-5 h-5" />
@@ -322,67 +322,116 @@ export default function SuperadminDashboard() {
             {/* Create Organization Modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6">
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
                         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
                             Create New Organization
                         </h2>
                         <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Organization Name
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newOrg.name}
-                                    onChange={(e) => {
-                                        setNewOrg({
-                                            ...newOrg,
-                                            name: e.target.value,
-                                            slug: generateSlug(e.target.value)
-                                        })
-                                    }}
-                                    className="input"
-                                    placeholder="Acme Schools"
-                                />
+                            {/* Organization Details */}
+                            <div className="pb-4 border-b border-gray-200 dark:border-gray-700">
+                                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Organization Details</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Organization Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newOrg.name}
+                                            onChange={(e) => {
+                                                setNewOrg({
+                                                    ...newOrg,
+                                                    name: e.target.value,
+                                                    slug: generateSlug(e.target.value)
+                                                })
+                                            }}
+                                            className="input"
+                                            placeholder="Acme Schools"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Slug (URL-friendly) *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newOrg.slug}
+                                            onChange={(e) => setNewOrg({ ...newOrg, slug: e.target.value })}
+                                            className="input"
+                                            placeholder="acme-schools"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Contact Email
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={newOrg.contact_email}
+                                            onChange={(e) => setNewOrg({ ...newOrg, contact_email: e.target.value })}
+                                            className="input"
+                                            placeholder="admin@acme.edu"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Subscription Plan
+                                        </label>
+                                        <select
+                                            value={newOrg.subscription_plan}
+                                            onChange={(e) => setNewOrg({ ...newOrg, subscription_plan: e.target.value })}
+                                            className="input"
+                                        >
+                                            <option value="free">Free</option>
+                                            <option value="starter">Starter</option>
+                                            <option value="professional">Professional</option>
+                                            <option value="enterprise">Enterprise</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
+
+                            {/* Admin User Details */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Slug (URL-friendly)
-                                </label>
-                                <input
-                                    type="text"
-                                    value={newOrg.slug}
-                                    onChange={(e) => setNewOrg({ ...newOrg, slug: e.target.value })}
-                                    className="input"
-                                    placeholder="acme-schools"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Contact Email
-                                </label>
-                                <input
-                                    type="email"
-                                    value={newOrg.contact_email}
-                                    onChange={(e) => setNewOrg({ ...newOrg, contact_email: e.target.value })}
-                                    className="input"
-                                    placeholder="admin@acme.edu"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Subscription Plan
-                                </label>
-                                <select
-                                    value={newOrg.subscription_plan}
-                                    onChange={(e) => setNewOrg({ ...newOrg, subscription_plan: e.target.value })}
-                                    className="input"
-                                >
-                                    <option value="free">Free</option>
-                                    <option value="starter">Starter</option>
-                                    <option value="professional">Professional</option>
-                                    <option value="enterprise">Enterprise</option>
-                                </select>
+                                <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3">Admin User</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Admin Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={newOrg.admin_name || ''}
+                                            onChange={(e) => setNewOrg({ ...newOrg, admin_name: e.target.value })}
+                                            className="input"
+                                            placeholder="John Doe"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Admin Phone *
+                                        </label>
+                                        <input
+                                            type="tel"
+                                            value={newOrg.admin_phone || ''}
+                                            onChange={(e) => setNewOrg({ ...newOrg, admin_phone: e.target.value })}
+                                            className="input"
+                                            placeholder="9876543210"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Admin Password *
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={newOrg.admin_password || ''}
+                                            onChange={(e) => setNewOrg({ ...newOrg, admin_password: e.target.value })}
+                                            className="input"
+                                            placeholder="••••••••"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div className="flex gap-3 mt-6">
@@ -394,7 +443,7 @@ export default function SuperadminDashboard() {
                             </button>
                             <button
                                 onClick={createOrganization}
-                                disabled={!newOrg.name || !newOrg.slug}
+                                disabled={!newOrg.name || !newOrg.slug || !newOrg.admin_name || !newOrg.admin_phone || !newOrg.admin_password}
                                 className="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium disabled:opacity-50"
                             >
                                 Create Organization
