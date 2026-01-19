@@ -106,7 +106,23 @@ async def create_reflection(
         tried=reflection_data.tried,
         worked=reflection_data.worked,
         text_feedback=reflection_data.text_feedback,
+        voice_note_url=reflection_data.voice_note_url,
+        voice_note_transcript=reflection_data.voice_note_transcript,
     )
+    
+    # If transcript exists, analyze pedagogical sentiment
+    if reflection.voice_note_transcript:
+        from app.services.transcription import TranscriptionService
+        import json
+        
+        t_service = TranscriptionService()
+        analysis = await t_service.analyze_pedagogical_sentiment(reflection.voice_note_transcript)
+        
+        reflection.pedagogical_sentiment = analysis.get("sentiment")
+        reflection.analysis_json = json.dumps(analysis)
+        
+        # If teacher is frustrated, we could flag this query?
+        # For now just store it.
     
     db.add(reflection)
     
@@ -193,6 +209,9 @@ class ClassroomHelpRequest(BaseModel):
     subject: Optional[str] = None
     topic: Optional[str] = None
     students_level: Optional[str] = None  # e.g., "below grade level", "mixed abilities"
+    is_multigrade: bool = False
+    class_size: Optional[int] = None
+    instructional_time_minutes: Optional[int] = None
 
 
 class MicroLearningRequest(BaseModel):
@@ -222,6 +241,9 @@ async def get_classroom_help(
         subject=request.subject,
         topic=request.topic,
         students_level=request.students_level,
+        is_multigrade=request.is_multigrade,
+        class_size=request.class_size,
+        instructional_time_minutes=request.instructional_time_minutes,
     )
     
     # Get AI response
@@ -253,6 +275,9 @@ async def get_classroom_help(
         grade=request.grade,
         subject=request.subject,
         topic=request.topic,
+        is_multigrade=request.is_multigrade,
+        class_size=request.class_size,
+        instructional_time_minutes=request.instructional_time_minutes,
     )
     db.add(new_query)
     await db.commit()

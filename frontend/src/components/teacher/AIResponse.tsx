@@ -14,16 +14,42 @@ import {
     BookOpen,
     Eye,
     TrendingUp,
-    Shield
+    Shield,
+    BrainCircuit,
+    Palette,
+    FileText,
+    MessageCircle,
+    Copy,
+    Share2,
+    ShieldCheck,
+    Paperclip
 } from 'lucide-react'
-import type { AIResponse as AIResponseType, QueryMode } from '../../types'
+import type { AIResponse as AIResponseType, QueryMode, AuditResult } from '../../types'
+import NCERTBadge from './NCERTBadge'
 
 interface AIResponseProps {
     response: AIResponseType
     mode: QueryMode
+    onGenerateQuiz?: (topic: string, content: string) => void
+    isQuizLoading?: boolean
+    onGenerateTLM?: (topic: string, content: string) => void
+    isTLMLoading?: boolean
+    onAudit?: (topic: string, content: string) => void
+    isAuditLoading?: boolean
+    auditResult?: AuditResult
 }
 
-export default function AIResponse({ response, mode }: AIResponseProps) {
+export default function AIResponse({
+    response,
+    mode,
+    onGenerateQuiz,
+    isQuizLoading,
+    onGenerateTLM,
+    isTLMLoading,
+    onAudit,
+    isAuditLoading,
+    auditResult,
+}: AIResponseProps) {
     const { t } = useTranslation()
 
     const RenderValue = ({ value }: { value: any }) => {
@@ -301,7 +327,52 @@ export default function AIResponse({ response, mode }: AIResponseProps) {
                 <span className="text-[10px] text-gray-400 font-mono">{response.processing_time_ms}ms</span>
             </div>
 
+            {/* NCERT Compliance Badge */}
+            {auditResult && (
+                <div className="flex justify-end pr-2 -mb-2 relative z-10">
+                    <NCERTBadge audit={auditResult} isLoading={isAuditLoading} />
+                </div>
+            )}
+
+            {/* Uploaded Reference Context */}
+            {response.query?.media_path && (
+                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm animate-slide-up">
+                    <div className="flex items-center gap-2 mb-3 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                        <Paperclip className="w-4 h-4" />
+                        <span>Reference Material Provided</span>
+                    </div>
+                    <div className="flex items-start gap-4">
+                        {response.query.media_path.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? (
+                            <div className="relative group cursor-pointer" onClick={() => window.open(response.query!.media_path!, '_blank')}>
+                                <img
+                                    src={response.query.media_path}
+                                    alt="Reference"
+                                    className="w-24 h-24 object-cover rounded-xl border border-gray-100 dark:border-gray-700 group-hover:opacity-90 transition-opacity whitespace-pre-wrap"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 rounded-xl">
+                                    <Eye className="w-6 h-6 text-white" />
+                                </div>
+                            </div>
+                        ) : (
+                            <div
+                                className="w-24 h-24 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                onClick={() => window.open(response.query!.media_path!, '_blank')}
+                            >
+                                <FileText className="w-8 h-8 text-gray-400" />
+                                <span className="text-[10px] text-gray-500 font-medium">View PDF</span>
+                            </div>
+                        )}
+                        <div className="flex-1 py-1">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed italic">
+                                "The AI has analyzed this document to provide the context for the teaching tips below."
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {renderContent()}
+
 
             {response.suggestions && response.suggestions.length > 0 && (
                 <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800">
@@ -316,6 +387,89 @@ export default function AIResponse({ response, mode }: AIResponseProps) {
                             </button>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {/* Agentic Power-up Cards */}
+            {(mode === 'explain' || mode === 'plan') && (onGenerateQuiz || onGenerateTLM) && (
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 animate-slide-up">
+                    {/* The Quiz Genie */}
+                    {onGenerateQuiz && (
+                        <div className="p-6 bg-gradient-to-br from-purple-600 to-indigo-700 rounded-3xl shadow-xl shadow-purple-500/20 text-white flex flex-col justify-between gap-6 group hover:scale-[1.02] transition-all">
+                            <div className="flex items-center gap-4 text-left">
+                                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
+                                    <BrainCircuit className="w-8 h-8 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold">The Quiz Genie</h3>
+                                    <p className="text-white/70 text-sm">Instantly turn this into a student assessment.</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    const topicName = response.query?.topic || 'Current Lesson'
+                                    onGenerateQuiz(topicName, response.content)
+                                }}
+                                disabled={isQuizLoading}
+                                className="w-full px-6 py-4 bg-white text-purple-700 rounded-2xl font-bold hover:bg-purple-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/10 disabled:opacity-50"
+                            >
+                                {isQuizLoading ? <RotateCw className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                                Generate Quiz
+                            </button>
+                        </div>
+                    )}
+
+                    {/* The TLM Designer */}
+                    {onGenerateTLM && (
+                        <div className="p-6 bg-gradient-to-br from-indigo-600 to-emerald-600 rounded-3xl shadow-xl shadow-indigo-500/20 text-white flex flex-col justify-between gap-6 group hover:scale-[1.02] transition-all">
+                            <div className="flex items-center gap-4 text-left">
+                                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
+                                    <Palette className="w-8 h-8 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold">The TLM Designer</h3>
+                                    <p className="text-white/70 text-sm">Create visual kits and DIY physical aids.</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    const topicName = response.query?.topic || 'Current Lesson'
+                                    onGenerateTLM(topicName, response.content)
+                                }}
+                                disabled={isTLMLoading}
+                                className="w-full px-6 py-4 bg-white text-emerald-700 rounded-2xl font-bold hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/10 disabled:opacity-50"
+                            >
+                                {isTLMLoading ? <RotateCw className="w-5 h-5 animate-spin" /> : <Palette className="w-5 h-5" />}
+                                Design Aids
+                            </button>
+                        </div>
+                    )}
+
+                    {/* The NCERT Auditor */}
+                    {onAudit && !auditResult && (
+                        <div className="p-6 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl shadow-xl shadow-blue-500/20 text-white flex flex-col justify-between gap-6 group hover:scale-[1.02] transition-all">
+                            <div className="flex items-center gap-4 text-left">
+                                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
+                                    <ShieldCheck className="w-8 h-8 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold">The NCERT Auditor</h3>
+                                    <p className="text-white/70 text-sm">Verify compliance with national standards.</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    const topicName = response.query?.topic || 'Current Lesson'
+                                    onAudit(topicName, response.content)
+                                }}
+                                disabled={isAuditLoading}
+                                className="w-full px-6 py-4 bg-white text-indigo-700 rounded-2xl font-bold hover:bg-blue-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/10 disabled:opacity-50"
+                            >
+                                {isAuditLoading ? <RotateCw className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
+                                Audit Curriculum
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

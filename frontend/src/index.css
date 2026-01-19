@@ -2,18 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom color palette */
+/* EducationAI PRD Color Palette - DIET Platform */
 :root {
-  --color-primary: #264092;
-  --color-primary-light: #3451a8;
-  --color-primary-dark: #1c3070;
-  --color-secondary: #373434;
-  --color-accent: #EF951E;
-  --color-accent-light: #F69953;
-  --color-accent-dark: #D67E0B;
-  --color-yellow: #F5C94C;
-  --color-gray-custom: #95989F;
-  --color-peach: #F9D9A4;
+  /* Primary - Deep Blue (trust and professionalism) */
+  --color-primary: #1E40AF;
+  --color-primary-light: #3B82F6;
+  --color-primary-dark: #1E3A8A;
+
+  /* Secondary - Warm Gray (subtle text and secondary elements) */
+  --color-secondary: #6B7280;
+  --color-secondary-light: #9CA3AF;
+  --color-secondary-dark: #4B5563;
+
+  /* Accent - Emerald Green (success states and positive actions) */
+  --color-accent: #10B981;
+  --color-accent-light: #34D399;
+  --color-accent-dark: #059669;
+
+  /* Background and Text */
+  --color-background: #F8FAFC;
+  --color-text: #1E293B;
+
+  /* Supporting Colors */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #3B82F6;
+
+  /* Neutrals */
+  --color-gray-light: #F3F4F6;
+  --color-gray: #6B7280;
+  --color-gray-dark: #374151;
 }
 
 @layer base {
@@ -23,7 +42,9 @@
 
   /* Light mode by default - clean and accessible */
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply bg-slate-50 text-slate-900 antialiased;
+    background-color: var(--color-background);
+    color: var(--color-text);
   }
 
   /* Dark mode override */
@@ -43,7 +64,7 @@
     @apply px-5 py-2.5 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-95;
   }
 
-  /* Primary button - Navy with Orange accent */
+  /* Primary button - Professional Blue */
   .btn-primary {
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
     @apply btn text-white hover:shadow-lg;
@@ -53,13 +74,19 @@
     background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
   }
 
-  /* Accent button - Orange gradient */
+  /* Secondary button - Success Green */
+  .btn-success {
+    background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-light) 100%);
+    @apply btn text-white hover:shadow-lg;
+  }
+
+  /* Accent button - Alert Red */
   .btn-accent {
     background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
     @apply btn text-white hover:shadow-lg;
   }
 
-  /* Secondary button */
+  /* Secondary outline button */
   .btn-secondary {
     @apply btn bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700 dark:hover:bg-gray-700;
   }
@@ -78,13 +105,41 @@
     @apply card hover:shadow-lg hover:-translate-y-0.5;
   }
 
-  /* Gradient card for highlighted content - Navy */
+  /* Gradient card for highlighted content - Professional Blue */
   .card-gradient {
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
     @apply relative overflow-hidden rounded-2xl p-6 text-white shadow-lg;
   }
 
-  /* Accent card - Orange gradient */
+  /* Header gradient - uses dynamic brand color */
+  .header-gradient {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+    @apply relative overflow-hidden rounded-2xl shadow-lg;
+  }
+
+  /* Sidebar active menu item - uses dynamic brand color */
+  .sidebar-active {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+    @apply text-white shadow-lg;
+  }
+
+  /* Text with brand color */
+  .text-brand {
+    color: var(--color-primary);
+  }
+
+  /* Border with brand color */
+  .border-brand {
+    border-color: var(--color-primary);
+  }
+
+  /* Success card - Green gradient */
+  .card-success {
+    background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-light) 100%);
+    @apply relative overflow-hidden rounded-2xl p-6 text-white shadow-lg;
+  }
+
+  /* Accent card - Alert Red gradient */
   .card-accent {
     background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
     @apply relative overflow-hidden rounded-2xl p-6 text-white shadow-lg;
@@ -93,7 +148,7 @@
   /* Input fields */
   .input {
     @apply w-full px-4 py-3 rounded-xl bg-white border border-gray-200 text-gray-900 placeholder-gray-400 transition-all duration-200 dark:bg-gray-800 dark:border-gray-600 dark:text-white;
-    --tw-ring-color: rgba(38, 64, 146, 0.2);
+    --tw-ring-color: rgba(37, 99, 235, 0.2);
   }
 
   .input:focus {
@@ -108,12 +163,12 @@
 
   .mode-card.active {
     border-color: var(--color-primary);
-    background: rgba(38, 64, 146, 0.05);
+    background: rgba(37, 99, 235, 0.05);
     @apply shadow-lg;
   }
 
   .dark .mode-card.active {
-    background: rgba(38, 64, 146, 0.2);
+    background: rgba(37, 99, 235, 0.2);
   }
 
   /* Response sections */
@@ -124,6 +179,12 @@
 
   /* Floating action button */
   .fab {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+    @apply fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full text-white flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300;
+  }
+
+  /* Emergency FAB - Red for urgent help */
+  .fab-emergency {
     background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
     @apply fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full text-white flex items-center justify-center shadow-lg hover:shadow-xl hover:scale-110 transition-all duration-300;
   }
@@ -134,18 +195,23 @@
   }
 
   .badge-primary {
-    background: rgba(38, 64, 146, 0.1);
+    background: rgba(37, 99, 235, 0.1);
     color: var(--color-primary);
   }
 
   .dark .badge-primary {
-    background: rgba(38, 64, 146, 0.3);
+    background: rgba(37, 99, 235, 0.3);
     color: #60a5fa;
   }
 
+  .badge-secondary {
+    background: rgba(5, 150, 105, 0.1);
+    color: var(--color-secondary);
+  }
+
   .badge-accent {
-    background: rgba(239, 149, 30, 0.15);
-    color: var(--color-accent-dark);
+    background: rgba(220, 38, 38, 0.1);
+    color: var(--color-accent);
   }
 
   .badge-success {
@@ -158,45 +224,233 @@
 
   /* Sidebar nav item active */
   .nav-item-active {
-    background: linear-gradient(90deg, rgba(38, 64, 146, 0.1) 0%, transparent 100%);
+    background: linear-gradient(90deg, rgba(37, 99, 235, 0.1) 0%, transparent 100%);
     border-left: 3px solid var(--color-primary);
     color: var(--color-primary);
   }
 
   .dark .nav-item-active {
-    background: linear-gradient(90deg, rgba(38, 64, 146, 0.3) 0%, transparent 100%);
+    background: linear-gradient(90deg, rgba(37, 99, 235, 0.3) 0%, transparent 100%);
     color: #60a5fa;
+  }
+
+  /* Quick action button - Used on dashboard */
+  .quick-action {
+    @apply flex flex-col items-center gap-2 p-4 rounded-xl bg-white border border-gray-200 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary-500 hover:-translate-y-0.5;
+  }
+
+  .quick-action:hover .quick-action-icon {
+    @apply scale-110;
+  }
+
+  .quick-action-icon {
+    @apply w-12 h-12 rounded-full flex items-center justify-center transition-transform duration-200;
   }
 }
 
 @layer utilities {
 
-  /* Gradient text - Navy to accent */
+  /* Gradient text - Professional Blue */
   .gradient-text {
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  /* Soft mesh background pattern - Navy theme */
+  /* Glassmorphism card */
+  .glass {
+    @apply backdrop-blur-xl bg-white/70 border border-white/20 shadow-xl;
+  }
+
+  .dark .glass {
+    @apply bg-gray-900/70 border-gray-700/30;
+  }
+
+  /* Glass card variant */
+  .glass-card {
+    @apply glass rounded-2xl p-6;
+  }
+
+  /* Premium gradient backgrounds */
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+  }
+
+  .bg-gradient-secondary {
+    background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-secondary-light) 100%);
+  }
+
+  .bg-gradient-accent {
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-light) 100%);
+  }
+
+  .bg-gradient-warm {
+    background: linear-gradient(135deg, #f97316 0%, #ec4899 50%, #8b5cf6 100%);
+  }
+
+  .bg-gradient-cool {
+    background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #8b5cf6 100%);
+  }
+
+  .bg-gradient-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  }
+
+  /* Animated gradient */
+  .bg-gradient-animated {
+    background: linear-gradient(-45deg, var(--color-primary), var(--color-primary-light), var(--color-secondary), var(--color-teal));
+    background-size: 400% 400%;
+    animation: gradient 8s ease infinite;
+  }
+
+  /* Soft mesh background pattern - Blue theme */
   .mesh-bg {
-    background-color: #f8fafc;
+    background-color: var(--color-background);
     background-image:
-      radial-gradient(at 40% 20%, rgba(38, 64, 146, 0.08) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, rgba(239, 149, 30, 0.08) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, rgba(38, 64, 146, 0.04) 0px, transparent 50%),
-      radial-gradient(at 80% 50%, rgba(246, 153, 83, 0.04) 0px, transparent 50%),
-      radial-gradient(at 0% 100%, rgba(38, 64, 146, 0.06) 0px, transparent 50%);
+      radial-gradient(at 40% 20%, rgba(37, 99, 235, 0.08) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, rgba(5, 150, 105, 0.08) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, rgba(37, 99, 235, 0.04) 0px, transparent 50%),
+      radial-gradient(at 80% 50%, rgba(5, 150, 105, 0.04) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(37, 99, 235, 0.06) 0px, transparent 50%);
   }
 
   /* Dark mesh background */
   .dark .mesh-bg {
     background-color: #111827;
     background-image:
-      radial-gradient(at 40% 20%, rgba(38, 64, 146, 0.15) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, rgba(239, 149, 30, 0.1) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, rgba(38, 64, 146, 0.08) 0px, transparent 50%);
+      radial-gradient(at 40% 20%, rgba(37, 99, 235, 0.15) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, rgba(5, 150, 105, 0.1) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, rgba(37, 99, 235, 0.08) 0px, transparent 50%);
+  }
+
+  /* Animations */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out forwards;
+  }
+
+  .animate-slide-down {
+    animation: slideDown 0.4s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out forwards;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite;
+  }
+
+  /* Stat card with number animation */
+  .stat-card {
+    @apply relative overflow-hidden rounded-2xl p-6 transition-all duration-300;
+  }
+
+  .stat-card::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+  }
+
+  .stat-card:hover::before {
+    @apply opacity-100;
+  }
+
+  /* Hover lift effect */
+  .hover-lift {
+    @apply transition-all duration-300;
+  }
+
+  .hover-lift:hover {
+    @apply -translate-y-1 shadow-xl;
+  }
+
+  /* Clickable row */
+  .row-hover {
+    @apply transition-colors duration-200 cursor-pointer;
+  }
+
+  .row-hover:hover {
+    @apply bg-gray-50 dark:bg-gray-800/50;
+  }
+}
+
+/* Keyframe Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 5px rgba(37, 99, 235, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.6);
   }
 }
 
@@ -218,14 +472,14 @@
   @apply bg-gray-400 dark:bg-gray-500;
 }
 
-/* Selection - Navy theme */
+/* Selection - Professional Blue theme */
 ::selection {
-  background: rgba(38, 64, 146, 0.2);
+  background: rgba(37, 99, 235, 0.2);
   color: var(--color-primary);
 }
 
 .dark ::selection {
-  background: rgba(38, 64, 146, 0.4);
+  background: rgba(37, 99, 235, 0.4);
   color: white;
 }
 
@@ -278,4 +532,28 @@
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+}
+
+/* Print / PDF Export Utilities */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  /* Force background colors and remove dark mode for print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    text-shadow: none !important;
+  }
+
+  /* Force light mode colors */
+  .dark {
+    color-scheme: light !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
 }

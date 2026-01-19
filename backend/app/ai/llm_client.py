@@ -2,6 +2,7 @@
 LLM Client - Abstraction layer for LLM providers
 Supports multi-tenant organization-specific API keys
 """
+import os
 from typing import Optional
 from app.config import get_settings
 from app.utils.encryption import decrypt_value
@@ -40,7 +41,7 @@ class LLMClient:
         else:
             self.provider = settings.llm_provider.lower()
             self._api_key = self._get_env_api_key()
-            self._model = self._get_default_model()
+            self._model = self._get_env_model()
         
         self._init_client()
     
@@ -128,6 +129,16 @@ class LLMClient:
             return settings.litellm_api_key
         return None
     
+    def _get_env_model(self) -> str:
+        """Get model name from environment variables."""
+        if self.provider == "openai":
+            return os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        elif self.provider == "gemini":
+            return os.getenv("GEMINI_MODEL", "gemini-pro")
+        elif self.provider == "litellm":
+            return settings.litellm_model or "gpt-4o-mini"
+        return self._get_default_model()
+    
     def _get_default_model(self) -> str:
         """Get default model for provider."""
         if self.provider == "openai":
@@ -206,6 +217,7 @@ class LLMClient:
         language: str = "en",
         max_tokens: int = 4000,
         temperature: float = 0.7,
+        media_path: Optional[str] = None
     ) -> str:
         """
         Generate a response from the LLM.
@@ -215,6 +227,7 @@ class LLMClient:
             language: Response language preference
             max_tokens: Maximum tokens in response
             temperature: Creativity parameter (0-1)
+            media_path: Optional path to a media file (image/document)
         
         Returns:
             Generated text response
@@ -231,7 +244,7 @@ class LLMClient:
         if self.provider == "openai":
             return await self._generate_openai(prompt, max_tokens, temperature)
         elif self.provider == "gemini":
-            return await self._generate_gemini(prompt, max_tokens, temperature)
+            return await self._generate_gemini(prompt, max_tokens, temperature, media_path)
         elif self.provider == "azure_openai":
             return await self._generate_azure_openai(prompt, max_tokens, temperature)
         elif self.provider == "anthropic":
@@ -274,11 +287,44 @@ class LLMClient:
         except Exception as e:
             return f"Error generating response: {str(e)}"
     
-    async def _generate_gemini(self, prompt: str, max_tokens: int, temperature: float) -> str:
+    async def _generate_gemini(self, prompt: str, max_tokens: int, temperature: float, media_path: Optional[str] = None) -> str:
         """Generate using Google Gemini."""
         try:
+            import google.generativeai as genai
+            
+            content_parts = [prompt]
+            
+            if media_path:
+                # media_path could be like /uploads/voice/filename.webm or /uploads/filename.jpg
+                filename = media_path.split("/")[-1]
+                
+                # Try common locations
+                possible_paths = [
+                    os.path.join("uploads", filename),
+                    os.path.join("uploads", "voice", filename),
+                    os.path.join("uploads", "voices", filename),
+                    os.path.join("/app/uploads", filename),
+                    os.path.join("/app/uploads/voice", filename),
+                    # Direct path if it's already absolute or relative and exists
+                    media_path.lstrip("/"),
+                    media_path
+                ]
+                
+                actual_path = None
+                for path in possible_paths:
+                    if os.path.exists(path) and os.path.isfile(path):
+                        actual_path = path
+                        break
+                
+                if actual_path:
+                    # Upload and add to content parts
+                    uploaded_file = genai.upload_file(path=actual_path)
+                    content_parts.append(uploaded_file)
+                else:
+                    print(f"Warning: Media file not found for Gemini: {media_path}")
+            
             response = await self._client.generate_content_async(
-                prompt,
+                content_parts,
                 generation_config={
                     "max_output_tokens": max_tokens,
                     "temperature": temperature,

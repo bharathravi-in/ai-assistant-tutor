@@ -70,3 +70,4 @@ htmlcov/
 .cache/
 *.bak
 *.tmp
+backend/service-account-key.json

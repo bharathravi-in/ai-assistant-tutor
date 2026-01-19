@@ -9,7 +9,12 @@ import type {
     ReflectionCreate,
     Reflection,
     TeacherStats,
-    AdminDashboard
+    AdminDashboard,
+    Quiz,
+    TLM,
+    AuditResult,
+    CRPResponse,
+    CRPResponseCreate
 } from '../types'
 
 // Always use relative path - the dev server proxy handles routing to backend
@@ -35,7 +40,12 @@ api.interceptors.response.use(
     (error) => {
         if (error.response?.status === 401) {
             localStorage.removeItem('token')
-            window.location.href = '/login'
+            // Only redirect if not already on login page to prevent infinite loop
+            if (!window.location.pathname.includes('/login') &&
+                !window.location.pathname.includes('/register') &&
+                !window.location.pathname.includes('/forgot-password')) {
+                window.location.href = '/login'
+            }
         }
         return Promise.reject(error)
     }
@@ -74,6 +84,32 @@ export const authApi = {
     },
 }
 
+// Config endpoints (public access for dropdowns)
+export const configApi = {
+    getStates: async () => {
+        const response = await api.get('/admin/config/public/states')
+        return response.data
+    },
+    getDistricts: async (stateId?: number) => {
+        const response = await api.get('/admin/config/public/districts', { params: { state_id: stateId } })
+        return response.data
+    },
+    getBlocks: async (districtId?: number) => {
+        const response = await api.get('/admin/config/public/blocks', { params: { district_id: districtId } })
+        return response.data
+    },
+    getClusters: async (blockId?: number) => {
+        const response = await api.get('/admin/config/public/clusters', { params: { block_id: blockId } })
+        return response.data
+    },
+    getSchools: async (districtId?: number, blockId?: number, clusterId?: number) => {
+        const response = await api.get('/admin/config/public/schools', {
+            params: { district_id: districtId, block_id: blockId, cluster_id: clusterId }
+        })
+        return response.data
+    },
+}
+
 // AI endpoints
 export const aiApi = {
     ask: async (request: AIRequest): Promise<AIResponse> => {
@@ -108,6 +144,61 @@ export const aiApi = {
         topic?: string
     }): Promise<AIResponse> => {
         const response = await api.post('/ai/plan', null, { params })
+        return response.data
+    },
+
+    generateQuiz: async (data: {
+        topic: string
+        content: string
+        language?: string
+        level?: string
+    }): Promise<Quiz> => {
+        const response = await api.post('/ai/generate-quiz', data)
+        return response.data
+    },
+
+    generateTLM: async (data: {
+        topic: string
+        content: string
+        language?: string
+    }): Promise<TLM> => {
+        const response = await api.post('/ai/generate-tlm', data)
+        return response.data
+    },
+
+    auditContent: async (data: {
+        topic: string
+        content: string
+        grade?: number
+        subject?: string
+    }): Promise<AuditResult> => {
+        const response = await api.post('/ai/audit', data)
+        return response.data
+    },
+}
+
+// Media endpoints
+export const mediaApi = {
+    upload: async (file: File): Promise<{ filename: string; content_type: string; url: string }> => {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await api.post('/media/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        return response.data
+    },
+
+    uploadVoice: async (file: File, purpose: 'reflection' | 'response' = 'reflection'): Promise<{
+        filename: string,
+        url: string,
+        transcript: string,
+        duration_sec: number
+    }> => {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await api.post(`/media/upload-voice?purpose=${purpose}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        })
         return response.data
     },
 }
@@ -163,19 +254,139 @@ export const crpApi = {
         return response.data
     },
 
-    respond: async (data: {
-        query_id: number
-        response_text?: string
-        tag?: string
-        overrides_ai?: boolean
-        override_reason?: string
-    }) => {
+    respond: async (data: CRPResponseCreate): Promise<CRPResponse> => {
         const response = await api.post('/crp/respond', data)
         return response.data
     },
 
     getStats: async () => {
         const response = await api.get('/crp/stats')
+        return response.data
+    },
+
+    // Teacher Network
+    getTeachers: async (status?: string) => {
+        const response = await api.get('/crp/teachers', { params: { status } })
+        return response.data
+    },
+
+    // Visits
+    getVisits: async (status?: string) => {
+        const response = await api.get('/crp/visits', { params: { status } })
+        return response.data
+    },
+
+    createVisit: async (data: {
+        school: string
+        teacher_name: string
+        date: string
+        time: string
+        purpose: string
+        notes?: string
+    }) => {
+        const response = await api.post('/crp/visits', data)
+        return response.data
+    },
+
+    updateVisit: async (visitId: number, data: { status: string; notes?: string }) => {
+        const response = await api.patch(`/crp/visits/${visitId}`, data)
+        return response.data
+    },
+
+    deleteVisit: async (visitId: number) => {
+        const response = await api.delete(`/crp/visits/${visitId}`)
+        return response.data
+    },
+
+    // Teacher Management
+    createTeacher: async (data: {
+        name: string
+        phone: string
+        password: string
+        school_name?: string
+        school_district?: string
+        grades?: number[]
+        subjects?: string[]
+    }) => {
+        const response = await api.post('/crp/teachers', data)
+        return response.data
+    },
+
+    // Shared Query Inbox
+    getSharedQueries: async (params: {
+        page?: number
+        page_size?: number
+        reviewed?: boolean
+    } = {}) => {
+        const response = await api.get('/crp/shared-queries', { params })
+        return response.data
+    },
+
+    reviewSharedQuery: async (shareId: number, notes?: string) => {
+        const response = await api.post(`/crp/shared-queries/${shareId}/review`, null, {
+            params: { notes }
+        })
+        return response.data
+    },
+}
+
+// ARP endpoints
+export const arpApi = {
+    getDashboard: async () => {
+        const response = await api.get('/arp/dashboard')
+        return response.data
+    },
+    getTrends: async (params: { days?: number } = {}) => {
+        const response = await api.get('/arp/trends/recurring-gaps', { params })
+        return response.data
+    },
+    getSubjectDifficulty: async (params: { days?: number } = {}) => {
+        const response = await api.get('/arp/trends/subject-difficulty', { params })
+        return response.data
+    },
+    getHeatmap: async (params: { days?: number } = {}) => {
+        const response = await api.get('/arp/trends/grade-heatmap', { params })
+        return response.data
+    },
+    getReviews: async (params: { page?: number; page_size?: number } = {}) => {
+        const response = await api.get('/arp/review/ai-responses', { params })
+        return response.data
+    },
+    getTrainingGaps: async (params: { days?: number } = {}) => {
+        const response = await api.get('/arp/training/gap-mapping', { params })
+        return response.data
+    },
+    getCrpPerformance: async () => {
+        const response = await api.get('/arp/crps')
+        return response.data
+    },
+    getDistrictPerformance: async () => {
+        const response = await api.get('/arp/reports/districts')
+        return response.data
+    },
+
+    // User Management
+    getUsers: async (params: {
+        role?: string
+        page?: number
+        page_size?: number
+    } = {}) => {
+        const response = await api.get('/arp/users', { params })
+        return response.data
+    },
+
+    createUser: async (data: any) => {
+        const response = await api.post('/arp/users', data)
+        return response.data
+    },
+
+    updateUser: async (userId: number, data: any) => {
+        const response = await api.put(`/arp/users/${userId}`, data)
+        return response.data
+    },
+
+    toggleUserStatus: async (userId: number) => {
+        const response = await api.post(`/arp/users/${userId}/toggle-status`)
         return response.data
     },
 }
@@ -212,6 +423,22 @@ export const adminApi = {
         page_size?: number
     }) => {
         const response = await api.get('/admin/users', { params })
+        return response.data
+    },
+
+    // DIET Analytics
+    getClassroomContextAnalytics: async () => {
+        const response = await api.get('/admin/analytics/classroom-context')
+        return response.data
+    },
+
+    getReflectionSentimentAnalytics: async () => {
+        const response = await api.get('/admin/analytics/reflection-sentiment')
+        return response.data
+    },
+
+    getTrainingGaps: async (limit: number = 10) => {
+        const response = await api.get('/admin/analytics/training-gaps', { params: { limit } })
         return response.data
     },
 }
@@ -256,6 +483,9 @@ export const teacherSupportApi = {
         subject?: string
         topic?: string
         students_level?: string
+        is_multigrade?: boolean
+        class_size?: number
+        instructional_time_minutes?: number
     }) => {
         const response = await api.post('/teacher/classroom-help', data)
         return response.data
@@ -308,6 +538,300 @@ export const crpSupportApi = {
     },
 }
 
+// Resources endpoints
+export const resourcesApi = {
+    getResources: async (params: {
+        page?: number
+        page_size?: number
+        category?: string
+        type?: string
+        grade?: string
+        subject?: string
+        search?: string
+        bookmarked_only?: boolean
+    }) => {
+        const response = await api.get('/resources', { params })
+        return response.data
+    },
+
+    getResource: async (id: number) => {
+        const response = await api.get(`/resources/${id}`)
+        return response.data
+    },
+
+    bookmarkResource: async (resourceId: number) => {
+        const response = await api.post(`/resources/${resourceId}/bookmark`)
+        return response.data
+    },
+
+    removeBookmark: async (resourceId: number) => {
+        const response = await api.delete(`/resources/${resourceId}/bookmark`)
+        return response.data
+    },
+
+    updateProgress: async (resourceId: number, data: {
+        progress_percent?: number
+        is_completed?: boolean
+    }) => {
+        const response = await api.post(`/resources/${resourceId}/progress`, data)
+        return response.data
+    },
+
+    getStats: async () => {
+        const response = await api.get('/resources/stats/summary')
+        return response.data
+    },
+
+    // Resource CRUD (Admin/CRP/ARP)
+    createResource: async (data: {
+        title: string
+        description?: string
+        type: string
+        category: string
+        grade?: string
+        subject?: string
+        duration?: string
+        content_url?: string
+        thumbnail_url?: string
+        tags?: string
+        is_featured?: boolean
+    }) => {
+        const response = await api.post('/resources', data)
+        return response.data
+    },
+
+    updateResource: async (resourceId: number, data: {
+        title?: string
+        description?: string
+        type?: string
+        category?: string
+        grade?: string
+        subject?: string
+        duration?: string
+        content_url?: string
+        thumbnail_url?: string
+        tags?: string
+        is_featured?: boolean
+        is_active?: boolean
+    }) => {
+        const response = await api.put(`/resources/${resourceId}`, data)
+        return response.data
+    },
+
+    deleteResource: async (resourceId: number) => {
+        const response = await api.delete(`/resources/${resourceId}`)
+        return response.data
+    },
+
+    analyzeResource: async (resourceId: number) => {
+        const response = await api.get(`/resources/${resourceId}/analyze`)
+        return response.data
+    },
+
+    askAboutResource: async (resourceId: number, question: string) => {
+        const response = await api.post(`/resources/${resourceId}/ask`, { question })
+        return response.data
+    },
+}
+
+export const storageApi = {
+    uploadFile: async (file: File, folder: string = 'general') => {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('folder', folder)
+
+        const response = await api.post('/storage/upload', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        })
+        return response.data
+    },
+
+    getSignedUrl: async (path: string, expiration: number = 60) => {
+        const response = await api.get('/storage/signed-url', {
+            params: { path, expiration }
+        })
+        return response.data
+    },
+}
+
+// Feedback endpoints
+export const feedbackApi = {
+    // Get pending feedback requests for current user
+    getInbox: async () => {
+        const response = await api.get('/feedback/inbox')
+        return response.data
+    },
+
+    // Get feedback requests sent by current user
+    getSent: async () => {
+        const response = await api.get('/feedback/sent')
+        return response.data
+    },
+
+    // Create a feedback request (CRP/ARP only)
+    createRequest: async (data: {
+        target_user_id: number
+        title: string
+        description?: string
+        questions: Array<{
+            text: string
+            type: string
+            options?: string[]
+            required: boolean
+        }>
+        due_date?: string
+    }) => {
+        const response = await api.post('/feedback/request', data)
+        return response.data
+    },
+
+    // Submit response to a feedback request
+    submitResponse: async (data: {
+        request_id: number
+        answers: Array<{ question_index: number; answer: string }>
+        additional_notes?: string
+    }) => {
+        const response = await api.post('/feedback/respond', data)
+        return response.data
+    },
+
+    // Get responses for a feedback request (requester only)
+    getResponses: async (requestId: number) => {
+        const response = await api.get(`/feedback/responses/${requestId}`)
+        return response.data
+    },
+}
+
+// Survey endpoints
+export const surveyApi = {
+    // Create a new survey
+    create: async (data: {
+        title: string
+        description?: string
+        questions: Array<{
+            question: string
+            type: string
+            options?: string[]
+            required: boolean
+        }>
+        target_role?: string
+        target_user_ids?: number[]
+        start_date?: string
+        end_date?: string
+    }) => {
+        const response = await api.post('/surveys/', data)
+        return response.data
+    },
+
+    // Generate survey using AI
+    generate: async (data: {
+        context: string
+        target_user_ids?: number[]
+        num_questions?: number
+    }) => {
+        const response = await api.post('/surveys/generate', data)
+        return response.data
+    },
+
+    // Publish a survey
+    publish: async (surveyId: number) => {
+        const response = await api.post(`/surveys/${surveyId}/publish`)
+        return response.data
+    },
+
+    // Get surveys created by current user
+    getMySurveys: async () => {
+        const response = await api.get('/surveys/my-surveys')
+        return response.data
+    },
+
+    // Get surveys assigned to current user
+    getAssigned: async () => {
+        const response = await api.get('/surveys/assigned')
+        return response.data
+    },
+
+    // Submit response to a survey
+    submitResponse: async (data: {
+        survey_id: number
+        answers: Array<{ question_index: number; answer: string }>
+    }) => {
+        const response = await api.post('/surveys/respond', data)
+        return response.data
+    },
+
+    // Get responses for a survey (creator only)
+    getResponses: async (surveyId: number) => {
+        const response = await api.get(`/surveys/${surveyId}/responses`)
+        return response.data
+    },
+}
+
+// Program/Library endpoints
+export const programApi = {
+    // Create a new program
+    create: async (data: {
+        name: string
+        description?: string
+        grade?: number
+        subject?: string
+        cover_image_url?: string
+    }) => {
+        const response = await api.post('/programs/', data)
+        return response.data
+    },
+
+    // List programs
+    list: async (statusFilter?: string) => {
+        const response = await api.get('/programs/', {
+            params: statusFilter ? { status_filter: statusFilter } : undefined
+        })
+        return response.data
+    },
+
+    // Add resource to program
+    addResource: async (programId: number, data: {
+        resource_id: number
+        section_name?: string
+        order?: number
+    }) => {
+        const response = await api.post(`/programs/${programId}/resources`, data)
+        return response.data
+    },
+
+    // Get program resources
+    getResources: async (programId: number) => {
+        const response = await api.get(`/programs/${programId}/resources`)
+        return response.data
+    },
+
+    // Publish program
+    publish: async (programId: number) => {
+        const response = await api.post(`/programs/${programId}/publish`)
+        return response.data
+    },
+
+    // Request to publish a resource
+    requestPublish: async (resourceId: number) => {
+        const response = await api.post('/programs/publish-request', { resource_id: resourceId })
+        return response.data
+    },
+
+    // Get pending publish requests (CRP/ARP)
+    getPublishRequests: async () => {
+        const response = await api.get('/programs/publish-requests')
+        return response.data
+    },
+
+    // Review publish request
+    reviewPublishRequest: async (requestId: number, approve: boolean, notes?: string) => {
+        const response = await api.post(`/programs/publish-requests/${requestId}/review`, null, {
+            params: { approve, notes }
+        })
+        return response.data
+    },
+}
+
 export default api
-
-

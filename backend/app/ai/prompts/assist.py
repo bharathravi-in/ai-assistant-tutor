@@ -8,18 +8,25 @@ def get_assist_prompt(
     situation: str,
     language: str = "en",
     context: Optional[str] = None,
+    is_multigrade: bool = False,
+    class_size: Optional[int] = None,
+    instructional_time_minutes: Optional[int] = None,
 ) -> str:
     """
     Generate a prompt for classroom management assistance.
-    
-    The AI will provide:
-    - Immediate action (next 2-5 minutes)
-    - Classroom management strategy
-    - Teaching pivot suggestion
-    - Fallback option
     """
     
-    additional_context = f"\nADDITIONAL CONTEXT: {context}" if context else ""
+    context_parts = []
+    if context:
+        context_parts.append(f"Additional Context: {context}")
+    if is_multigrade:
+        context_parts.append("Class Type: Multigrade (multiple grades in one room)")
+    if class_size:
+        context_parts.append(f"Class Size: {class_size} students")
+    if instructional_time_minutes:
+        context_parts.append(f"Remaining Time: {instructional_time_minutes} minutes")
+        
+    additional_context = "\n".join(context_parts) if context_parts else ""
     
     prompt = f"""You are an experienced classroom management expert helping a government school teacher in India. The teacher is facing a REAL-TIME classroom challenge and needs IMMEDIATE, practical guidance.
 

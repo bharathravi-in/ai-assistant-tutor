@@ -43,6 +43,23 @@ class User(Base):
     language: Mapped[str] = mapped_column(String(10), default="en")
     
     # School Information (for teachers)
+    school_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("schools.id", ondelete="SET NULL"), nullable=True
+    )
+    cluster_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("clusters.id", ondelete="SET NULL"), nullable=True
+    )
+    block_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("blocks.id", ondelete="SET NULL"), nullable=True
+    )
+    district_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("districts.id", ondelete="SET NULL"), nullable=True
+    )
+    state_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("states.id", ondelete="SET NULL"), nullable=True
+    )
+    
+    # Text fallbacks/denormalized info (keeping for compatibility)
     school_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     school_district: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     school_block: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -56,6 +73,20 @@ class User(Base):
     hashed_password: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # Created by (for tracking who created this user - e.g., CRP creates teacher)
+    created_by_id: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+    
+    # Assigned ARP (for CRPs)
+    assigned_arp_id: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
     
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
