@@ -18,6 +18,7 @@ import {
     Loader2
 } from 'lucide-react'
 import { teacherApi, aiApi } from '../../services/api'
+import MarkdownRenderer from '../../components/common/MarkdownRenderer'
 
 interface Query {
     id: number
@@ -280,12 +281,11 @@ export default function TeacherHistory() {
                                 {/* Response */}
                                 <div className="p-6 border-b border-gray-100 dark:border-gray-700">
                                     <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">AI Response</h3>
-                                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                                        {selectedQuery.ai_response?.split('\n').map((line, i) => (
-                                            <p key={i} className="mb-2 text-gray-700 dark:text-gray-300">{line}</p>
-                                        ))}
+                                    <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                        <MarkdownRenderer content={selectedQuery.ai_response || 'No response available.'} />
                                     </div>
                                 </div>
+
 
                                 {/* Action Buttons */}
                                 <div className="p-6">

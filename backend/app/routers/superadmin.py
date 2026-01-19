@@ -777,10 +777,14 @@ async def test_ai_connection(
         # Try a simple completion
         response = await client.generate("Say 'Connection successful!' in exactly 3 words.", max_tokens=50)
         
+        if not response:
+            return {"success": False, "message": "No response received from AI provider. Check your API key."}
+        
         if "demo" in response.lower() or "configure" in response.lower():
             return {"success": False, "message": "No valid API key configured for this provider"}
         
         return {"success": True, "message": f"Connection successful! Response: {response[:100]}..."}
+
     
     except Exception as e:
         return {"success": False, "message": f"Connection failed: {str(e)}"}

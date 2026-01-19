@@ -81,6 +81,7 @@ export interface AIResponse {
     processing_time_ms: number
     suggestions: string[]
     query?: Query
+    query_type?: 'topic_based' | 'general'  // Query classification for conditional UI
 }
 
 export interface QuickPrompt {

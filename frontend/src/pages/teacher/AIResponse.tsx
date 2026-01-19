@@ -17,8 +17,14 @@ import {
     AlertCircle,
     CheckCircle,
     Lightbulb,
-    ChevronRight
+    ChevronRight,
+    FileQuestion,
+    Palette,
+    ShieldCheck,
+    Loader2
 } from 'lucide-react'
+import { aiApi } from '../../services/api'
+import MarkdownRenderer from '../../components/common/MarkdownRenderer'
 
 interface ResponseState {
     response: {
@@ -30,11 +36,13 @@ interface ResponseState {
         implementation_steps?: string[]
         resources?: { title: string; type: string }[]
         structured?: Record<string, any>
+        query_type?: 'topic_based' | 'general'  // Query classification
     }
     originalQuery: string
     mode: string
     grade?: number
     subject?: string
+    queryType?: 'topic_based' | 'general'  // Also at root level
 }
 
 export default function AIResponse() {
@@ -45,6 +53,15 @@ export default function AIResponse() {
     const [feedback, setFeedback] = useState<'helpful' | 'not_helpful' | null>(null)
     const [copied, setCopied] = useState(false)
     const [isSaved, setIsSaved] = useState(false)
+
+    // Action button states
+    const [loadingQuiz, setLoadingQuiz] = useState(false)
+    const [loadingTLM, setLoadingTLM] = useState(false)
+    const [loadingAudit, setLoadingAudit] = useState(false)
+    const [generatedQuiz, setGeneratedQuiz] = useState<any>(null)
+    const [generatedTLM, setGeneratedTLM] = useState<any>(null)
+    const [auditResult, setAuditResult] = useState<any>(null)
+    const [actionError, setActionError] = useState<string | null>(null)
 
     if (!state?.response) {
         return (
@@ -73,6 +90,10 @@ export default function AIResponse() {
     const implementationSteps = response.implementation_steps || []
     const resources = response.resources || []
 
+    // Determine query type - check response first, then root state
+    const queryType = response.query_type || state.queryType || 'topic_based'
+    const isTopicBased = queryType === 'topic_based'
+
 
     const handleCopy = () => {
         navigator.clipboard.writeText(content)
@@ -99,6 +120,58 @@ export default function AIResponse() {
             const utterance = new SpeechSynthesisUtterance(content)
             utterance.lang = 'en-IN'
             window.speechSynthesis.speak(utterance)
+        }
+    }
+
+    const handleGenerateQuiz = async () => {
+        setLoadingQuiz(true)
+        setActionError(null)
+        try {
+            const quiz = await aiApi.generateQuiz({
+                topic: originalQuery,
+                content: content,
+                language: 'en'
+            })
+            setGeneratedQuiz(quiz)
+        } catch (err: any) {
+            setActionError('Failed to generate quiz. Please try again.')
+        } finally {
+            setLoadingQuiz(false)
+        }
+    }
+
+    const handleGenerateTLM = async () => {
+        setLoadingTLM(true)
+        setActionError(null)
+        try {
+            const tlm = await aiApi.generateTLM({
+                topic: originalQuery,
+                content: content,
+                language: 'en'
+            })
+            setGeneratedTLM(tlm)
+        } catch (err: any) {
+            setActionError('Failed to generate TLM. Please try again.')
+        } finally {
+            setLoadingTLM(false)
+        }
+    }
+
+    const handleAudit = async () => {
+        setLoadingAudit(true)
+        setActionError(null)
+        try {
+            const audit = await aiApi.auditContent({
+                topic: originalQuery,
+                content: content,
+                grade: grade,
+                subject: subject
+            })
+            setAuditResult(audit)
+        } catch (err: any) {
+            setActionError('Failed to audit content. Please try again.')
+        } finally {
+            setLoadingAudit(false)
         }
     }
 
@@ -157,7 +230,7 @@ export default function AIResponse() {
                         </div>
                     </div>
 
-                    {/* Response Content */}
+                    {/* Response Content - Using MarkdownRenderer */}
                     <div className="p-6">
                         {isError ? (
                             <div className="text-center py-4">
@@ -177,10 +250,8 @@ export default function AIResponse() {
                                 </Link>
                             </div>
                         ) : (
-                            <div className="prose prose-gray dark:prose-invert max-w-none">
-                                <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                                    {content || 'No response content available.'}
-                                </p>
+                            <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                <MarkdownRenderer content={content || 'No response content available.'} />
                             </div>
                         )}
                     </div>
@@ -238,6 +309,145 @@ export default function AIResponse() {
                                         <ChevronRight className="w-3 h-3 ml-auto" />
                                     </div>
                                 ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Topic-Based Action Buttons - Only show for topic-based queries */}
+                    {isTopicBased && !isError && (
+                        <div className="px-6 pb-6">
+                            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-2">
+                                <Sparkles className="w-4 h-4 text-purple-500" />
+                                Quick Actions
+                            </h3>
+
+                            {actionError && (
+                                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-600 dark:text-red-400 text-sm">
+                                    {actionError}
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <button
+                                    onClick={handleGenerateQuiz}
+                                    disabled={loadingQuiz}
+                                    className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:from-purple-600 hover:to-purple-700 transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50"
+                                >
+                                    <div className="p-2 bg-white/20 rounded-lg">
+                                        {loadingQuiz ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileQuestion className="w-5 h-5" />}
+                                    </div>
+                                    <div className="text-left">
+                                        <span className="font-semibold text-sm">Generate Quiz</span>
+                                        <p className="text-xs text-white/70">Create assessment</p>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={handleGenerateTLM}
+                                    disabled={loadingTLM}
+                                    className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 transition-all shadow-lg shadow-pink-500/20 disabled:opacity-50"
+                                >
+                                    <div className="p-2 bg-white/20 rounded-lg">
+                                        {loadingTLM ? <Loader2 className="w-5 h-5 animate-spin" /> : <Palette className="w-5 h-5" />}
+                                    </div>
+                                    <div className="text-left">
+                                        <span className="font-semibold text-sm">Design TLM</span>
+                                        <p className="text-xs text-white/70">Visual aids</p>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={handleAudit}
+                                    disabled={loadingAudit}
+                                    className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg shadow-green-500/20 disabled:opacity-50"
+                                >
+                                    <div className="p-2 bg-white/20 rounded-lg">
+                                        {loadingAudit ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
+                                    </div>
+                                    <div className="text-left">
+                                        <span className="font-semibold text-sm">NCERT Audit</span>
+                                        <p className="text-xs text-white/70">Check compliance</p>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Generated Quiz Display */}
+                    {generatedQuiz && (
+                        <div className="px-6 pb-6">
+                            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
+                                <FileQuestion className="w-4 h-4 text-purple-500" />
+                                Generated Quiz
+                            </h3>
+                            <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 space-y-4">
+                                {generatedQuiz.questions?.map((q: any, idx: number) => (
+                                    <div key={idx} className="p-3 bg-white dark:bg-gray-800 rounded-lg">
+                                        <p className="font-medium text-gray-900 dark:text-white mb-2">
+                                            {idx + 1}. {q.question}
+                                        </p>
+                                        {q.options && (
+                                            <ul className="space-y-1 ml-4">
+                                                {q.options.map((opt: string, optIdx: number) => (
+                                                    <li key={optIdx} className="text-sm text-gray-600 dark:text-gray-400">
+                                                        {String.fromCharCode(65 + optIdx)}. {opt}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Generated TLM Display */}
+                    {generatedTLM && (
+                        <div className="px-6 pb-6">
+                            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
+                                <Palette className="w-4 h-4 text-pink-500" />
+                                Teaching Learning Material
+                            </h3>
+                            <div className="bg-pink-50 dark:bg-pink-900/20 rounded-xl p-4">
+                                <MarkdownRenderer content={generatedTLM.diy_workshop || generatedTLM.description || JSON.stringify(generatedTLM, null, 2)} />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Audit Result Display */}
+                    {auditResult && (
+                        <div className="px-6 pb-6">
+                            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4 text-green-500" />
+                                NCERT Compliance Audit
+                            </h3>
+                            <div className={`rounded-xl p-4 ${auditResult.is_compliant ? 'bg-green-50 dark:bg-green-900/20' : 'bg-yellow-50 dark:bg-yellow-900/20'}`}>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className={`w-3 h-3 rounded-full ${auditResult.is_compliant ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                                    <span className={`font-semibold ${auditResult.is_compliant ? 'text-green-700 dark:text-green-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
+                                        {auditResult.is_compliant ? 'NCERT Compliant' : 'Needs Review'}
+                                    </span>
+                                    {auditResult.compliance_score && (
+                                        <span className="text-sm text-gray-500 ml-auto">
+                                            Score: {auditResult.compliance_score}%
+                                        </span>
+                                    )}
+                                </div>
+                                {auditResult.feedback && (
+                                    <MarkdownRenderer content={auditResult.feedback} />
+                                )}
+                                {auditResult.suggestions && auditResult.suggestions.length > 0 && (
+                                    <div className="mt-3">
+                                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Suggestions:</p>
+                                        <ul className="space-y-1">
+                                            {auditResult.suggestions.map((s: string, idx: number) => (
+                                                <li key={idx} className="text-sm text-gray-600 dark:text-gray-400 flex items-start gap-2">
+                                                    <span className="text-yellow-500">•</span> {s}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

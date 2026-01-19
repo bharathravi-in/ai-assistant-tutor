@@ -15,7 +15,8 @@ import {
     FileText,
     ArrowRight
 } from 'lucide-react'
-import { surveyApi, crpApi } from '../../services/api'
+import { surveyApi, crpApi, arpApi } from '../../services/api'
+import { useAuthStore } from '../../stores/authStore'
 
 interface Teacher {
     id: number
@@ -42,6 +43,7 @@ interface Survey {
 }
 
 export default function SurveyBuilder() {
+    const { user } = useAuthStore()
     const [surveys, setSurveys] = useState<Survey[]>([])
     const [loading, setLoading] = useState(true)
     const [generating, setGenerating] = useState(false)
@@ -71,16 +73,27 @@ export default function SurveyBuilder() {
     useEffect(() => {
         loadSurveys()
         loadTeachers()
-    }, [])
+    }, [user?.role])
 
     const loadTeachers = async () => {
         try {
-            const data = await crpApi.getTeachers()
-            setTeachers(Array.isArray(data) ? data : (data.items || []))
+            let data: any
+            // Use role-appropriate API for loading teachers
+            if (user?.role === 'arp') {
+                // ARP can see all teachers in their district
+                data = await arpApi.getUsers({ role: 'teacher', page_size: 100 })
+                setTeachers(Array.isArray(data) ? data : (data.items || []))
+            } else {
+                // CRP gets their assigned teachers
+                data = await crpApi.getTeachers()
+                setTeachers(Array.isArray(data) ? data : (data.items || []))
+            }
         } catch (err) {
             console.error('Failed to load teachers:', err)
+            setTeachers([])
         }
     }
+
 
     const loadSurveys = async () => {
         try {
@@ -256,10 +269,10 @@ export default function SurveyBuilder() {
                                 <div key={step.id} className="flex items-center flex-1">
                                     <div className={`flex items-center gap-3 ${currentStep >= step.id ? 'text-primary-600' : 'text-gray-400'}`}>
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${currentStep > step.id
-                                                ? 'bg-green-500 text-white'
-                                                : currentStep === step.id
-                                                    ? 'bg-primary-500 text-white'
-                                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-500'
+                                            ? 'bg-green-500 text-white'
+                                            : currentStep === step.id
+                                                ? 'bg-primary-500 text-white'
+                                                : 'bg-gray-200 dark:bg-gray-700 text-gray-500'
                                             }`}>
                                             {currentStep > step.id ? <Check className="w-5 h-5" /> : step.id}
                                         </div>
@@ -529,13 +542,13 @@ export default function SurveyBuilder() {
                                             <label
                                                 key={teacher.id}
                                                 className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${selectedTeachers.includes(teacher.id)
-                                                        ? 'border-primary-300 bg-primary-50 dark:bg-primary-900/20'
-                                                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                                                    ? 'border-primary-300 bg-primary-50 dark:bg-primary-900/20'
+                                                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
                                                     }`}
                                             >
                                                 <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${selectedTeachers.includes(teacher.id)
-                                                        ? 'bg-primary-500 border-primary-500'
-                                                        : 'border-gray-300 dark:border-gray-600'
+                                                    ? 'bg-primary-500 border-primary-500'
+                                                    : 'border-gray-300 dark:border-gray-600'
                                                     }`}>
                                                     {selectedTeachers.includes(teacher.id) && (
                                                         <Check className="w-3 h-3 text-white" />

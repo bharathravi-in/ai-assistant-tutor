@@ -149,7 +149,8 @@ export default function AskQuestion() {
                     originalQuery: query,
                     mode,
                     grade,
-                    subject
+                    subject,
+                    queryType: response.query_type || 'topic_based'
                 }
             })
         } catch (err: any) {

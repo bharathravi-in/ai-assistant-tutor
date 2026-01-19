@@ -51,10 +51,15 @@ async def init_db():
 
 async def seed_default_users():
     """Create only SuperAdmin if the database is empty. Other users must be created via proper hierarchy."""
+    import os
     from passlib.context import CryptContext
     from app.models.user import User, UserRole
     
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    
+    # Get super admin credentials from environment variables
+    super_admin_phone = os.getenv("SUPER_ADMIN_MOBILE", "9000000000")
+    super_admin_password = os.getenv("SUPER_ADMIN_PASSWORD", "admin@123")
     
     async with async_session_maker() as session:
         # Check if any users exist
@@ -73,15 +78,16 @@ async def seed_default_users():
         # Admin → creates ARP/CRP
         # ARP/CRP → creates Teachers
         superadmin = User(
-            phone="9000000000",
+            phone=super_admin_phone,
             name="Super Admin",
             role=UserRole.SUPERADMIN,
-            hashed_password=pwd_context.hash("admin@123"),
+            hashed_password=pwd_context.hash(super_admin_password),
             is_active=True,
             is_verified=True,
         )
         session.add(superadmin)
         
         await session.commit()
-        print("✅ SuperAdmin created (phone: 9000000000, password: admin@123)")
+        print(f"✅ SuperAdmin created (phone: {super_admin_phone})")
+
 

@@ -20,6 +20,68 @@ from sqlalchemy import select
 router = APIRouter(prefix="/ai", tags=["AI"])
 
 
+def classify_query_type(input_text: str, mode: str, subject: str = None, topic: str = None) -> str:
+    """
+    Classify a query as 'topic_based' (curriculum/subject related) or 'general' (classroom management, admin).
+    Uses keyword matching for fast classification without additional LLM calls.
+    """
+    text_lower = input_text.lower()
+    
+    # If subject or topic is explicitly provided, it's topic-based
+    if subject or topic:
+        return "topic_based"
+    
+    # If mode is 'explain' or 'plan', it's likely topic-based
+    if mode in ['explain', 'EXPLAIN', 'plan', 'PLAN']:
+        return "topic_based"
+    
+    # Topic-based keywords (curriculum, subjects, concepts)
+    topic_keywords = [
+        # Math
+        'math', 'mathematics', 'fraction', 'fractions', 'decimal', 'algebra', 'geometry',
+        'equation', 'multiplication', 'division', 'addition', 'subtraction', 'percentage',
+        'number', 'numbers', 'counting', 'arithmetic', 'calculus', 'trigonometry',
+        # Science
+        'science', 'physics', 'chemistry', 'biology', 'photosynthesis', 'ecosystem',
+        'atom', 'molecule', 'cell', 'plant', 'animal', 'human body', 'solar system',
+        'gravity', 'force', 'energy', 'electricity', 'magnet', 'water cycle',
+        # Languages
+        'grammar', 'noun', 'verb', 'pronoun', 'sentence', 'essay', 'poem', 'poetry',
+        'reading', 'writing', 'comprehension', 'vocabulary', 'spelling', 'hindi', 'english',
+        # Social Studies
+        'history', 'geography', 'civics', 'constitution', 'democracy', 'freedom struggle',
+        'map', 'continent', 'country', 'river', 'mountain', 'climate',
+        # Other subjects
+        'computer', 'programming', 'art', 'music', 'environment', 'evs',
+        # Educational terms
+        'teach', 'explain', 'concept', 'topic', 'lesson', 'chapter', 'class ', 'grade ',
+        'ncert', 'textbook', 'syllabus', 'curriculum', 'learning objective'
+    ]
+    
+    # General/classroom management keywords
+    general_keywords = [
+        'classroom management', 'discipline', 'behavior', 'behaviour', 'noisy',
+        'distraction', 'attention', 'parent meeting', 'parents', 'attendance',
+        'seating arrangement', 'motivation', 'engage', 'bored students',
+        'slow learner', 'special needs', 'inclusion', 'assessment strategy',
+        'grading', 'feedback', 'communication', 'conflict', 'bullying',
+        'time management', 'schedule', 'homework', 'assignment'
+    ]
+    
+    # Check for topic keywords first (they're more specific to curriculum)
+    for keyword in topic_keywords:
+        if keyword in text_lower:
+            return "topic_based"
+    
+    # Check for general keywords
+    for keyword in general_keywords:
+        if keyword in text_lower:
+            return "general"
+    
+    # Default to topic_based if uncertain (better to show more options)
+    return "topic_based"
+
+
 @router.post("/ask", response_model=dict)
 async def ask_ai(
     request: AIRequest,
@@ -89,6 +151,14 @@ async def ask_ai(
         db.add(query_share)
         await db.commit()
     
+    # Classify the query type
+    query_type = classify_query_type(
+        input_text=request.input_text,
+        mode=request.mode.value if hasattr(request.mode, 'value') else str(request.mode),
+        subject=request.subject,
+        topic=request.topic
+    )
+    
     return {
         "query_id": query.id,
         "mode": request.mode.value,
@@ -98,6 +168,7 @@ async def ask_ai(
         "processing_time_ms": processing_time,
         "suggestions": response.get("suggestions", []),
         "shared_with_crp": request.share_with_crp,
+        "query_type": query_type,  # "topic_based" or "general"
         "query": {
             "id": query.id,
             "user_id": query.user_id,
