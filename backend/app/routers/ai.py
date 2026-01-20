@@ -119,7 +119,7 @@ async def ask_ai(
     
     processing_time = int((time.time() - start_time) * 1000)
     
-    # Store query in database
+    # Store query in database with structured data
     query = Query(
         user_id=current_user.id,
         mode=request.mode,
@@ -134,6 +134,8 @@ async def ask_ai(
         ai_response=response.get("content"),
         response_language=request.language,
         processing_time_ms=processing_time,
+        # Store structured data in response_metadata for history retrieval
+        response_metadata={"structured": response.get("structured")} if response.get("structured") else None,
     )
     
     db.add(query)

@@ -850,4 +850,112 @@ export const programApi = {
     },
 }
 
+// Content API - Teacher-created content with approval workflow
+export const contentApi = {
+    // Create new content (starts as draft)
+    create: async (data: {
+        title: string
+        content_type: string
+        description: string
+        content_json?: any
+        grade?: number
+        subject?: string
+        topic?: string
+        tags?: string[]
+    }) => {
+        const response = await api.post('/content/', data)
+        return response.data
+    },
+
+    // Get teacher's own content
+    getMyContent: async (params: {
+        page?: number
+        page_size?: number
+        status?: string
+    } = {}) => {
+        const response = await api.get('/content/my', { params })
+        return response.data
+    },
+
+    // Get content by ID
+    getById: async (id: number) => {
+        const response = await api.get(`/content/${id}`)
+        return response.data
+    },
+
+    // Update draft content
+    update: async (id: number, data: {
+        title?: string
+        content_type?: string
+        description?: string
+        content_json?: any
+        grade?: number
+        subject?: string
+        topic?: string
+        tags?: string[]
+    }) => {
+        const response = await api.put(`/content/${id}`, data)
+        return response.data
+    },
+
+    // Submit for review (draft → pending)
+    submit: async (id: number) => {
+        const response = await api.post(`/content/${id}/submit`)
+        return response.data
+    },
+
+    // Delete draft content
+    delete: async (id: number) => {
+        const response = await api.delete(`/content/${id}`)
+        return response.data
+    },
+
+    // Get pending content for review (CRP/ARP)
+    getPending: async (params: {
+        page?: number
+        page_size?: number
+        content_type?: string
+    } = {}) => {
+        const response = await api.get('/content/pending/review', { params })
+        return response.data
+    },
+
+    // Review content (approve/reject)
+    review: async (id: number, data: { approved: boolean; review_notes?: string }) => {
+        const response = await api.post(`/content/${id}/review`, data)
+        return response.data
+    },
+
+    // Browse content library
+    browseLibrary: async (params: {
+        page?: number
+        page_size?: number
+        content_type?: string
+        grade?: number
+        subject?: string
+        search?: string
+    } = {}) => {
+        const response = await api.get('/content/library/browse', { params })
+        return response.data
+    },
+
+    // Semantic search
+    search: async (data: {
+        query: string
+        content_type?: string
+        grade?: number
+        subject?: string
+        limit?: number
+    }) => {
+        const response = await api.post('/content/search', data)
+        return response.data
+    },
+
+    // Like/unlike content
+    toggleLike: async (id: number) => {
+        const response = await api.post(`/content/${id}/like`)
+        return response.data
+    },
+}
+
 export default api

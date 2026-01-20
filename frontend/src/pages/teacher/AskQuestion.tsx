@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
     Send,
     Loader2,
@@ -79,6 +80,7 @@ const getStringContent = (content: any): string => {
 }
 
 export default function AskQuestion() {
+    const [searchParams] = useSearchParams()
     const [query, setQuery] = useState('')
     const [mode, setMode] = useState<QueryMode>('explain')
     const [loading, setLoading] = useState(false)
@@ -137,6 +139,50 @@ export default function AskQuestion() {
             responseRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
     }, [aiResponse])
+
+    // Load history query from URL params
+    useEffect(() => {
+        const historyId = searchParams.get('historyId')
+
+        if (historyId) {
+            // Fetch the history query from API
+            const loadHistoryQuery = async () => {
+                try {
+                    setLoading(true)
+                    const response = await teacherApi.getQuery(parseInt(historyId))
+
+                    if (response) {
+                        // Set the mode
+                        const queryMode = (response.mode?.toLowerCase() || 'explain') as QueryMode
+                        if (['explain', 'assist', 'plan'].includes(queryMode)) {
+                            setMode(queryMode)
+                        }
+
+                        // Set the original query
+                        setOriginalQuery(response.input_text || '')
+                        setQuery(response.input_text || '')
+
+                        // Set the AI response
+                        setAiResponse({
+                            content: response.ai_response || '',
+                            structured: (response as any).structured,
+                            query_type: 'topic_based',
+                            query_id: parseInt(historyId),
+                            mode: queryMode
+                        })
+                    }
+                } catch (error) {
+                    console.error('Failed to load history query:', error)
+                    setError('Failed to load history query.')
+                } finally {
+                    setLoading(false)
+                }
+            }
+
+            loadHistoryQuery()
+        }
+    }, [searchParams])
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

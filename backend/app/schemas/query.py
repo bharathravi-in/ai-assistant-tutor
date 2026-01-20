@@ -2,8 +2,8 @@
 Query Schemas
 """
 from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from typing import Optional, List, Any
+from pydantic import BaseModel, Field, computed_field
 from app.models.query import QueryMode
 
 
@@ -34,9 +34,20 @@ class QueryResponse(BaseModel):
     requires_crp_review: bool
     created_at: datetime
     responded_at: Optional[datetime]
+    response_metadata: Optional[dict] = None
+    
+    # Computed field to extract structured from response_metadata for API serialization
+    @computed_field
+    @property
+    def structured(self) -> Optional[Any]:
+        if self.response_metadata and isinstance(self.response_metadata, dict):
+            return self.response_metadata.get("structured")
+        return None
     
     class Config:
         from_attributes = True
+
+
 
 
 class QueryListResponse(BaseModel):

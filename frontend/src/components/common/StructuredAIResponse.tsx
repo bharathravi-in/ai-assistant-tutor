@@ -51,7 +51,7 @@ interface Example {
 interface VisualAidIdea {
     title?: string
     name?: string
-    materials: string
+    materials?: string
     description?: string
     instructions?: string
     usage?: string
@@ -271,9 +271,16 @@ function SectionCard({ sectionKey, children, defaultExpanded = true }: SectionCa
 
 // Render mnemonics and hooks - handles both string[] and object[] formats
 function MnemonicsHooksContent({ items }: { items: (string | { type: string; content: string })[] }) {
+    // Safety check - ensure items is an array
+    const safeItems = Array.isArray(items) ? items : []
+
+    if (safeItems.length === 0) {
+        return <p className="text-gray-500 dark:text-gray-400 text-sm">No mnemonics or hooks available.</p>
+    }
+
     return (
         <div className="space-y-3">
-            {items.map((item, idx) => {
+            {safeItems.map((item, idx) => {
                 // Handle string format
                 if (typeof item === 'string') {
                     return (
@@ -396,12 +403,15 @@ function VisualAidContent({ item }: { item: VisualAidIdea }) {
                 {title}
             </h4>
 
-            <div className="p-3 rounded-lg bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-700">
-                <h5 className="font-medium text-pink-700 dark:text-pink-300 mb-2 flex items-center gap-1 text-sm">
-                    <ListChecks className="w-4 h-4" /> Materials Needed
-                </h5>
-                <p className="text-gray-700 dark:text-gray-300 text-sm">{item.materials}</p>
-            </div>
+            {/* Only show Materials Needed if materials data exists */}
+            {item.materials && (
+                <div className="p-3 rounded-lg bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-700">
+                    <h5 className="font-medium text-pink-700 dark:text-pink-300 mb-2 flex items-center gap-1 text-sm">
+                        <ListChecks className="w-4 h-4" /> Materials Needed
+                    </h5>
+                    <p className="text-gray-700 dark:text-gray-300 text-sm">{item.materials}</p>
+                </div>
+            )}
 
             {instructionsList.length > 0 && (
                 <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
@@ -412,7 +422,9 @@ function VisualAidContent({ item }: { item: VisualAidIdea }) {
                                 <span className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
                                     {idx + 1}
                                 </span>
-                                <span>{instruction.replace(/^\d+[.)]\s*/, '')}</span>
+                                <span className="prose prose-sm dark:prose-invert max-w-none">
+                                    <MarkdownRenderer content={instruction.replace(/^\d+[.)]\s*/, '')} />
+                                </span>
                             </li>
                         ))}
                     </ol>

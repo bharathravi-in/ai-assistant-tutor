@@ -47,6 +47,16 @@ def upgrade() -> None:
     )
     op.create_index('ix_blocks_district_id', 'blocks', ['district_id'])
 
+    # Clusters table
+    op.create_table('clusters',
+        sa.Column('id', sa.Integer(), primary_key=True),
+        sa.Column('name', sa.String(100), nullable=False),
+        sa.Column('block_id', sa.Integer(), sa.ForeignKey('blocks.id'), nullable=False),
+        sa.Column('is_active', sa.Boolean(), default=True),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.func.now()),
+    )
+    op.create_index('ix_clusters_block_id', 'clusters', ['block_id'])
+
     # Subjects table
     op.create_table('subjects',
         sa.Column('id', sa.Integer(), primary_key=True),
@@ -96,6 +106,24 @@ def upgrade() -> None:
         sa.Column('is_active', sa.Boolean(), default=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now()),
     )
+
+    # Schools table
+    op.create_table('schools',
+        sa.Column('id', sa.Integer(), primary_key=True),
+        sa.Column('name', sa.String(200), nullable=False),
+        sa.Column('code', sa.String(50), nullable=True),
+        sa.Column('block_id', sa.Integer(), sa.ForeignKey('blocks.id'), nullable=False),
+        sa.Column('cluster_id', sa.Integer(), sa.ForeignKey('clusters.id'), nullable=True),
+        sa.Column('board_id', sa.Integer(), sa.ForeignKey('boards.id'), nullable=True),
+        sa.Column('medium_id', sa.Integer(), sa.ForeignKey('mediums.id'), nullable=True),
+        sa.Column('address', sa.String(500), nullable=True),
+        sa.Column('teacher_count', sa.Integer(), default=0),
+        sa.Column('student_count', sa.Integer(), default=0),
+        sa.Column('is_active', sa.Boolean(), default=True),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.func.now()),
+    )
+    op.create_index('ix_schools_block_id', 'schools', ['block_id'])
+    op.create_index('ix_schools_cluster_id', 'schools', ['cluster_id'])
 
     # Seed initial data for Indian states
     op.execute("""
@@ -173,6 +201,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.drop_table('schools')
+    op.drop_table('clusters')
     op.drop_table('academic_years')
     op.drop_table('mediums')
     op.drop_table('boards')
