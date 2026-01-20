@@ -14,6 +14,7 @@ from app.models.feedback import FeedbackRequest, FeedbackResponse, FeedbackStatu
 from app.models.survey import Survey, SurveyResponse, SurveyAssignment, SurveyStatus, SurveyTargetRole
 from app.models.program import Program, ProgramResource, ResourcePublishRequest, ProgramStatus
 from app.models.config import State, District, Block, Subject, Grade, Board, Medium, AcademicYear, School
+from app.models.teacher_content import TeacherContent, ContentLike, ContentStatus, ContentType
 
 __all__ = [
     # User
@@ -60,4 +61,9 @@ __all__ = [
     "ProgramResource",
     "ResourcePublishRequest",
     "ProgramStatus",
+    # Teacher Content
+    "TeacherContent",
+    "ContentLike",
+    "ContentStatus",
+    "ContentType",
 ]

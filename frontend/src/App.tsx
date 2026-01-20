@@ -18,9 +18,13 @@ import ResourcePlayer from './pages/teacher/ResourcePlayer'
 import Reflections from './pages/teacher/Reflections'
 import FeedbackInbox from './pages/teacher/FeedbackInbox'
 import TeacherSurveys from './pages/teacher/Surveys'
+import ContentCreator from './pages/teacher/ContentCreator'
+import MyContent from './pages/teacher/MyContent'
+import ContentLibrary from './pages/common/ContentLibrary'
 import CRPDashboard from './pages/crp/Dashboard'
 import FeedbackAssist from './pages/crp/FeedbackAssist'
 import VisitSchedule from './pages/crp/VisitSchedule'
+import ContentApproval from './pages/crp/ContentApproval'
 import TeacherNetwork from './pages/crp/TeacherNetwork'
 import CRPReports from './pages/crp/Reports'
 import CreateTeacher from './pages/crp/CreateTeacher'
@@ -188,6 +192,34 @@ function App() {
                     </Layout>
                 </ProtectedRoute>
             } />
+            <Route path="/teacher/content/create" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <ContentCreator />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/content/edit/:id" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <ContentCreator />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/my-content" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <MyContent />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/content-library" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <ContentLibrary />
+                    </Layout>
+                </ProtectedRoute>
+            } />
 
 
             {/* CRP routes */}
@@ -286,6 +318,20 @@ function App() {
                 <ProtectedRoute roles={['crp']}>
                     <Layout>
                         <TeacherResources />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/crp/content-approval" element={
+                <ProtectedRoute roles={['crp']}>
+                    <Layout>
+                        <ContentApproval />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/crp/content-library" element={
+                <ProtectedRoute roles={['crp']}>
+                    <Layout>
+                        <ContentLibrary />
                     </Layout>
                 </ProtectedRoute>
             } />
@@ -400,6 +446,20 @@ function App() {
                 <ProtectedRoute roles={['arp']}>
                     <Layout>
                         <GapAnalysis />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/content-approval" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <ContentApproval />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/content-library" element={
+                <ProtectedRoute roles={['arp']}>
+                    <Layout>
+                        <ContentLibrary />
                     </Layout>
                 </ProtectedRoute>
             } />

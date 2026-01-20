@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
     History,
     Search,
-    BookOpen,
+    Lightbulb,
     Users,
-    ClipboardList,
-    MessageSquare,
     Clock,
+    MessageSquare,
     ChevronRight,
     Star,
     Trash2,
     ArrowLeft,
     FileQuestion,
     Palette,
-    ShieldCheck
+    ShieldCheck,
+    Sparkles,
+    CheckCircle,
+    Loader2
 } from 'lucide-react'
 import { teacherApi } from '../../services/api'
 import StructuredAIResponse from '../../components/common/StructuredAIResponse'
@@ -29,16 +31,16 @@ interface Query {
     created_at: string
 }
 
-const modeIcons: Record<string, typeof BookOpen> = {
-    EXPLAIN: BookOpen,
+const modeIcons: Record<string, typeof Lightbulb> = {
+    EXPLAIN: Lightbulb,
     ASSIST: Users,
-    PLAN: ClipboardList,
+    PLAN: Clock,
 }
 
 const modeColors: Record<string, string> = {
-    EXPLAIN: '#264092',
-    ASSIST: '#EF951E',
-    PLAN: '#22c55e',
+    EXPLAIN: '#2563EB',
+    ASSIST: '#059669',
+    PLAN: '#7C3AED',
 }
 
 const modeLabels: Record<string, string> = {
@@ -49,12 +51,54 @@ const modeLabels: Record<string, string> = {
 
 export default function TeacherHistory() {
     const { language: selectedLanguage } = useTranslation()
+    const navigate = useNavigate()
     const [searchParams] = useSearchParams()
     const [queries, setQueries] = useState<Query[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [filterMode, setFilterMode] = useState<string | null>(searchParams.get('mode'))
     const [selectedQuery, setSelectedQuery] = useState<Query | null>(null)
+
+    // Redirect to Ask AI page with history ID
+    const handleViewQuery = (query: Query) => {
+        navigate(`/teacher/ask-question?historyId=${query.id}`)
+    }
+
+
+    // Reflection state
+    const [reflectionRating, setReflectionRating] = useState<number | null>(null)
+    const [reflectionSubmitted, setReflectionSubmitted] = useState(false)
+    const [submittingReflection, setSubmittingReflection] = useState(false)
+
+    // Reset reflection state when selected query changes
+    useEffect(() => {
+        setReflectionSubmitted(false)
+        setReflectionRating(null)
+    }, [selectedQuery])
+
+    // Submit reflection to backend
+    const handleReflectionSubmit = async () => {
+        if (reflectionRating === null || !selectedQuery?.id) return
+
+        setSubmittingReflection(true)
+        try {
+            await teacherApi.submitReflection({
+                query_id: selectedQuery.id,
+                tried: true,
+                worked: reflectionRating >= 3,
+                text_feedback: `Rating: ${reflectionRating}/5`
+            })
+            setReflectionSubmitted(true)
+        } catch (err: any) {
+            console.error('Failed to submit reflection:', err)
+            // Still show success if it's a duplicate error
+            if (err.response?.status === 400 && err.response?.data?.detail?.includes('already exists')) {
+                setReflectionSubmitted(true)
+            }
+        } finally {
+            setSubmittingReflection(false)
+        }
+    }
 
     useEffect(() => {
         loadHistory()
@@ -132,22 +176,15 @@ export default function TeacherHistory() {
     return (
         <div className="min-h-[calc(100vh-80px)] p-4 lg:p-8">
             <div className="max-w-6xl mx-auto">
-                {/* Header */}
-                <div
-                    className="relative rounded-3xl p-6 lg:p-8 text-white overflow-hidden mb-6"
-                    style={{ background: 'linear-gradient(135deg, #264092 0%, #1c3070 100%)' }}
-                >
-                    <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20" style={{ background: '#EF951E', transform: 'translate(30%, -40%)' }} />
-
-                    <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(239, 149, 30, 0.9)' }}>
-                                <History className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h1 className="text-2xl lg:text-3xl font-bold">Query History</h1>
-                                <p className="text-white/70">{queries.length} total queries</p>
-                            </div>
+                {/* Header - Consistent with AskQuestion.tsx */}
+                <div className="mb-8">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                            <History className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Query History</h1>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{queries.length} total queries found</p>
                         </div>
                     </div>
                 </div>
@@ -199,7 +236,7 @@ export default function TeacherHistory() {
                                         return (
                                             <button
                                                 key={query.id}
-                                                onClick={() => setSelectedQuery(query)}
+                                                onClick={() => handleViewQuery(query)}
                                                 className={`w-full text-left bg-white dark:bg-gray-800 p-4 rounded-2xl border transition-all hover:shadow-md ${isSelected ? 'shadow-lg' : 'border-gray-100 dark:border-gray-700'
                                                     }`}
                                                 style={isSelected ? { borderColor: modeColors[query.mode] } : {}}
@@ -243,55 +280,43 @@ export default function TeacherHistory() {
                     {/* Query Detail */}
                     <div className={`${selectedQuery ? '' : 'hidden lg:block'} lg:col-span-2`}>
                         {selectedQuery ? (
-                            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-                                {/* Detail Header */}
-                                <div
-                                    className="p-6 text-white"
-                                    style={{ background: `linear-gradient(135deg, ${modeColors[selectedQuery.mode]} 0%, ${modeColors[selectedQuery.mode]}dd 100%)` }}
-                                >
-                                    <div className="flex items-center justify-between mb-4">
+                            <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                                {/* Header - matching AskQuestion.tsx style */}
+                                <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-700">
+                                    <div className="flex items-center gap-3">
                                         <button
                                             onClick={() => setSelectedQuery(null)}
-                                            className="lg:hidden flex items-center gap-2 text-white/80 hover:text-white"
+                                            className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                         >
-                                            <ArrowLeft className="w-5 h-5" />
-                                            Back
+                                            <ArrowLeft className="w-5 h-5 text-gray-500" />
                                         </button>
-                                        <div className="flex gap-2 ml-auto">
-                                            <button className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors">
-                                                <Star className="w-5 h-5" />
-                                            </button>
-                                            <button className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors text-red-200">
-                                                <Trash2 className="w-5 h-5" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-xl bg-white/20">
-                                            {(() => {
-                                                const ModeIcon = modeIcons[selectedQuery.mode] || MessageSquare
-                                                return <ModeIcon className="w-6 h-6" />
-                                            })()}
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                                            <Sparkles className="w-5 h-5 text-white" />
                                         </div>
                                         <div>
-                                            <span className="text-sm font-medium text-white/80">{modeLabels[selectedQuery.mode]} Mode</span>
-                                            <p className="text-xs text-white/60">
-                                                {formatDate(selectedQuery.created_at)} at {formatTime(selectedQuery.created_at)}
-                                            </p>
+                                            <h3 className="font-semibold text-gray-900 dark:text-white">AI Response</h3>
+                                            <p className="text-xs text-gray-500 capitalize">Mode: {modeLabels[selectedQuery.mode]} • {formatDate(selectedQuery.created_at)} at {formatTime(selectedQuery.created_at)}</p>
                                         </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                                            <Star className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                                        </button>
+                                        <button className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
+                                            <Trash2 className="w-4 h-4 text-gray-500 dark:text-gray-400 hover:text-red-500" />
+                                        </button>
                                     </div>
                                 </div>
 
-                                {/* Question */}
-                                <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-                                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Your Question</h3>
+                                {/* Your Question - highlighted background like AskQuestion.tsx */}
+                                <div className="px-6 py-4 bg-blue-50/50 dark:bg-blue-900/10 border-b border-gray-100 dark:border-gray-700">
+                                    <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Your Question</p>
                                     <p className="text-gray-800 dark:text-white">{selectedQuery.input_text}</p>
                                 </div>
 
-                                {/* Response */}
-                                <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-                                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">AI Response</h3>
-                                    <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                {/* Response Content */}
+                                <div className="p-6">
+                                    <div className="overflow-y-auto custom-scrollbar">
                                         <StructuredAIResponse
                                             content={selectedQuery.ai_response || 'No response available.'}
                                             structured={selectedQuery.structured}
@@ -301,49 +326,78 @@ export default function TeacherHistory() {
                                     </div>
                                 </div>
 
-
-                                {/* Action Buttons */}
-                                <div className="p-6">
-                                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4">Quick Actions</h3>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                {/* Quick Actions - horizontal layout like AskQuestion.tsx */}
+                                <div className="px-6 pb-6">
+                                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Quick Actions</p>
+                                    <div className="flex gap-3">
                                         <button
                                             onClick={() => window.location.href = `/teacher?mode=quiz&topic=${encodeURIComponent(selectedQuery.input_text)}`}
-                                            className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:from-purple-600 hover:to-purple-700 transition-all shadow-lg shadow-purple-500/20"
+                                            className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium hover:shadow-lg transition-all"
                                         >
-                                            <div className="p-2 bg-white/20 rounded-lg">
-                                                <FileQuestion className="w-5 h-5" />
-                                            </div>
-                                            <div className="text-left">
-                                                <span className="font-semibold text-sm">Generate Quiz</span>
-                                                <p className="text-xs text-white/70">Create assessment</p>
-                                            </div>
+                                            <FileQuestion className="w-5 h-5" />
+                                            Generate Quiz
                                         </button>
-
                                         <button
                                             onClick={() => window.location.href = `/teacher?mode=tlm&topic=${encodeURIComponent(selectedQuery.input_text)}`}
-                                            className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 text-white hover:from-pink-600 hover:to-rose-600 transition-all shadow-lg shadow-pink-500/20"
+                                            className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white font-medium hover:shadow-lg transition-all"
                                         >
-                                            <div className="p-2 bg-white/20 rounded-lg">
-                                                <Palette className="w-5 h-5" />
-                                            </div>
-                                            <div className="text-left">
-                                                <span className="font-semibold text-sm">Design TLM</span>
-                                                <p className="text-xs text-white/70">Visual aids</p>
-                                            </div>
+                                            <Palette className="w-5 h-5" />
+                                            Design TLM
                                         </button>
-
                                         <button
                                             onClick={() => window.location.href = `/teacher?mode=audit&topic=${encodeURIComponent(selectedQuery.input_text)}`}
-                                            className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 transition-all shadow-lg shadow-green-500/20"
+                                            className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-green-500 text-white font-medium hover:shadow-lg transition-all"
                                         >
-                                            <div className="p-2 bg-white/20 rounded-lg">
-                                                <ShieldCheck className="w-5 h-5" />
-                                            </div>
-                                            <div className="text-left">
-                                                <span className="font-semibold text-sm">NCERT Audit</span>
-                                                <p className="text-xs text-white/70">Check compliance</p>
-                                            </div>
+                                            <ShieldCheck className="w-5 h-5" />
+                                            NCERT Audit
                                         </button>
+                                    </div>
+                                </div>
+
+                                {/* Reflection Section - matching AskQuestion.tsx */}
+                                <div className="px-6 py-8 bg-gray-50/50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-700">
+                                    <div className="max-w-xl mx-auto text-center">
+                                        {!reflectionSubmitted ? (
+                                            <>
+                                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">How was this response?</h4>
+                                                <p className="text-sm text-gray-500 mb-6">Your feedback helps us improve the AI for your classroom needs.</p>
+
+                                                <div className="flex items-center justify-center gap-2 mb-8">
+                                                    {[1, 2, 3, 4, 5].map((star) => (
+                                                        <button
+                                                            key={star}
+                                                            onClick={() => setReflectionRating(star)}
+                                                            className={`p-2 transition-all transform hover:scale-110 ${(reflectionRating || 0) >= star
+                                                                ? 'text-yellow-400'
+                                                                : 'text-gray-300 dark:text-gray-600'
+                                                                }`}
+                                                        >
+                                                            <Star className={`w-8 h-8 ${(reflectionRating || 0) >= star ? 'fill-current' : ''}`} />
+                                                        </button>
+                                                    ))}
+                                                </div>
+
+                                                <button
+                                                    onClick={handleReflectionSubmit}
+                                                    disabled={reflectionRating === null || submittingReflection}
+                                                    className="w-full sm:w-auto px-8 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold flex items-center justify-center gap-2 hover:bg-gray-800 dark:hover:bg-gray-100 transition-all disabled:opacity-50"
+                                                >
+                                                    {submittingReflection ? (
+                                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                                    ) : (
+                                                        'Submit Feedback'
+                                                    )}
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500">
+                                                <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
+                                                    <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+                                                </div>
+                                                <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Thank you!</h4>
+                                                <p className="text-gray-500 dark:text-gray-400">Your feedback has been recorded.</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

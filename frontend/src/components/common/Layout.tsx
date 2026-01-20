@@ -32,7 +32,10 @@ import {
     Clipboard,
     ClipboardList,
     Inbox,
-    Database
+    Database,
+    Library,
+    CheckSquare,
+    PenTool
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import NotificationBell from './NotificationBell'
@@ -115,6 +118,8 @@ export default function Layout({ children }: LayoutProps) {
                 { icon: AlertTriangle, label: 'Interventions', path: `/${basePath}/interventions` },
                 { icon: Sparkles, label: 'Feedback Assistant', path: `/${basePath}/feedback-assist` },
                 { icon: BookOpen, label: 'Create Content', path: `/${basePath}/resources/create` },
+                { icon: CheckSquare, label: 'Content Approval', path: `/${basePath}/content-approval` },
+                { icon: Library, label: 'Content Library', path: `/${basePath}/content-library` },
                 { icon: BarChart3, label: 'Reports', path: `/${basePath}/reports` },
             ]
             // ARP-specific items
@@ -135,6 +140,8 @@ export default function Layout({ children }: LayoutProps) {
             { icon: MessageSquare, label: 'Ask AI', path: '/teacher/ask-question' },
             { icon: History, label: t('nav.history'), path: '/teacher/history' },
             { icon: BookMarked, label: 'Resources', path: '/teacher/resources' },
+            { icon: PenTool, label: 'My Content', path: '/teacher/my-content' },
+            { icon: Library, label: 'Content Library', path: '/teacher/content-library' },
             { icon: Inbox, label: 'Feedback', path: '/teacher/feedback-inbox' },
             { icon: Clipboard, label: 'Reflections', path: '/teacher/reflections' },
             { icon: User, label: t('nav.profile'), path: '/teacher/profile' },

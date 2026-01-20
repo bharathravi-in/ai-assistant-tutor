@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.database import init_db
-from app.routers import auth_router, teacher_router, crp_router, arp_router, admin_router, ai_router, media_router, alerts_router, billing_router, permissions_router, health_router, resources_router, storage_router, config_router
+from app.routers import auth_router, teacher_router, crp_router, arp_router, admin_router, ai_router, media_router, alerts_router, billing_router, permissions_router, health_router, resources_router, storage_router, config_router, content_router
 from app.routers.superadmin import router as superadmin_router
 from app.routers.settings import router as settings_router
 from app.routers.feedback import router as feedback_router
@@ -68,6 +68,8 @@ app.include_router(feedback_router, prefix="/api")
 app.include_router(surveys_router, prefix="/api")
 app.include_router(programs_router, prefix="/api")
 app.include_router(config_router, prefix="/api")
+# Content creation with approval workflow
+app.include_router(content_router, prefix="/api")
 
 
 

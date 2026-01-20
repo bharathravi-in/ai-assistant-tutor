@@ -15,6 +15,7 @@ from app.routers.health import router as health_router
 from app.routers.resources import router as resources_router
 from app.routers.storage import router as storage_router
 from app.routers.config import router as config_router
+from app.routers.content import router as content_router
 
 __all__ = [
     "auth_router",
@@ -31,6 +32,5 @@ __all__ = [
     "resources_router",
     "storage_router",
     "config_router",
+    "content_router",
 ]
-
-
