@@ -13,6 +13,7 @@ from app.ai.prompts.plan import get_plan_prompt
 from app.ai.prompts.quiz_agent import get_quiz_prompt
 from app.ai.prompts.tlm_agent import get_tlm_prompt
 from app.ai.prompts.ncert_agent import get_ncert_prompt
+from app.ai.prompts.math_solver_agent import is_math_problem, get_math_solver_prompt
 from app.ai.llm_client import LLMClient
 from app.utils.json_utils import extract_and_repair_json
 
@@ -22,7 +23,7 @@ settings = get_settings()
 class AIOrchestrator:
     """
     Orchestrates AI interactions for all three teaching modes:
-    - Explain: How to teach a concept
+    - Explain: How to teach a concept (includes math problem solving)
     - Assist: Classroom management help
     - Plan: Lesson planning
     """
@@ -53,18 +54,31 @@ class AIOrchestrator:
         Returns:
             Dict with 'content' (formatted response) and 'structured' (parsed data)
         """
+        # Check if this is a math problem that needs solving
+        is_math = is_math_problem(input_text)
+        
         # Select and build prompt based on mode
         if mode == QueryMode.EXPLAIN:
-            prompt = get_explain_prompt(
-                question=input_text,
-                language=language,
-                grade=grade,
-                subject=subject,
-                topic=topic,
-                is_multigrade=is_multigrade,
-                class_size=class_size,
-                instructional_time_minutes=instructional_time_minutes,
-            )
+            if is_math:
+                # Use specialized math solver for math problems
+                prompt = get_math_solver_prompt(
+                    problem=input_text,
+                    language=language,
+                    grade=grade,
+                    subject=subject or "Mathematics",
+                )
+            else:
+                # Regular explain prompt for concepts
+                prompt = get_explain_prompt(
+                    question=input_text,
+                    language=language,
+                    grade=grade,
+                    subject=subject,
+                    topic=topic,
+                    is_multigrade=is_multigrade,
+                    class_size=class_size,
+                    instructional_time_minutes=instructional_time_minutes,
+                )
         elif mode == QueryMode.ASSIST:
             prompt = get_assist_prompt(
                 situation=input_text,
@@ -175,6 +189,22 @@ class AIOrchestrator:
         structured = self._parse_response(response, None)
 
         return structured
+    
+    async def get_simple_answer(self, prompt: str, language: str = "en") -> str:
+        """
+        Get a simple text answer without parsing or structuring.
+        Used for answering individual questions directly.
+        Returns just the text response from the LLM.
+        """
+        response = await self.llm_client.generate(prompt, language=language)
+        
+        # Clean up any markdown code blocks that might be in the response
+        if response:
+            # Remove code blocks if present
+            response = re.sub(r'```\w*\n?', '', response)
+            response = response.strip()
+        
+        return response or "Unable to generate an answer."
     
     def _parse_response(self, response: str, mode: QueryMode) -> Dict[str, Any]:
         """Parse LLM response into structured format with EXTREME robust JSON extraction."""

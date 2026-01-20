@@ -133,11 +133,10 @@ export default function Layout({ children }: LayoutProps) {
         return [
             { icon: Home, label: t('nav.home'), path: '/teacher' },
             { icon: MessageSquare, label: 'Ask AI', path: '/teacher/ask-question' },
-            { icon: Clipboard, label: 'Reflections', path: '/teacher/reflections' },
+            { icon: History, label: t('nav.history'), path: '/teacher/history' },
             { icon: BookMarked, label: 'Resources', path: '/teacher/resources' },
             { icon: Inbox, label: 'Feedback', path: '/teacher/feedback-inbox' },
-            { icon: ClipboardList, label: 'Surveys', path: '/teacher/surveys' },
-            { icon: History, label: t('nav.history'), path: '/teacher/history' },
+            { icon: Clipboard, label: 'Reflections', path: '/teacher/reflections' },
             { icon: User, label: t('nav.profile'), path: '/teacher/profile' },
             { icon: Settings, label: 'Settings', path: '/teacher/settings' }
         ]

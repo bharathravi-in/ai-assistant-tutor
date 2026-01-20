@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -174,19 +174,23 @@ export default function TeacherDashboard() {
                     </div>
                 </div>
 
-                {/* Stats Cards */}
+                {/* Stats Cards - Clickable to History */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+                    <button
+                        onClick={() => navigate('/teacher/history')}
+                        className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 text-left hover:shadow-lg hover:border-primary-300 transition-all group"
+                    >
                         <div className="flex items-center gap-3 mb-3">
                             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(38, 64, 146, 0.1)' }}>
                                 <BarChart3 className="w-5 h-5" style={{ color: '#264092' }} />
                             </div>
                             <span className="text-sm text-gray-500 dark:text-gray-400">Total Queries</span>
+                            <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all ml-auto" />
                         </div>
                         <p className="text-3xl font-bold text-gray-800 dark:text-white">
                             {loading ? '...' : stats?.total_queries || 0}
                         </p>
-                    </div>
+                    </button>
 
                     <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
                         <div className="flex items-center gap-3 mb-3">
@@ -200,29 +204,37 @@ export default function TeacherDashboard() {
                         </p>
                     </div>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+                    <button
+                        onClick={() => navigate('/teacher/history?mode=EXPLAIN')}
+                        className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 text-left hover:shadow-lg hover:border-primary-300 transition-all group"
+                    >
                         <div className="flex items-center gap-3 mb-3">
                             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(38, 64, 146, 0.1)' }}>
                                 <BookOpen className="w-5 h-5" style={{ color: '#264092' }} />
                             </div>
                             <span className="text-sm text-gray-500 dark:text-gray-400">Explain Mode</span>
+                            <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all ml-auto" />
                         </div>
                         <p className="text-3xl font-bold text-gray-800 dark:text-white">
                             {loading ? '...' : stats?.queries_by_mode?.explain || 0}
                         </p>
-                    </div>
+                    </button>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+                    <button
+                        onClick={() => navigate('/teacher/history?mode=PLAN')}
+                        className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 text-left hover:shadow-lg hover:border-primary-300 transition-all group"
+                    >
                         <div className="flex items-center gap-3 mb-3">
                             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(239, 149, 30, 0.1)' }}>
                                 <ClipboardList className="w-5 h-5" style={{ color: '#EF951E' }} />
                             </div>
                             <span className="text-sm text-gray-500 dark:text-gray-400">Plan Mode</span>
+                            <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all ml-auto" />
                         </div>
                         <p className="text-3xl font-bold text-gray-800 dark:text-white">
                             {loading ? '...' : stats?.queries_by_mode?.plan || 0}
                         </p>
-                    </div>
+                    </button>
                 </div>
 
                 {/* Quick Links */}

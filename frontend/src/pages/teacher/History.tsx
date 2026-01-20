@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import {
     History,
     Search,
@@ -14,17 +14,18 @@ import {
     ArrowLeft,
     FileQuestion,
     Palette,
-    ShieldCheck,
-    Loader2
+    ShieldCheck
 } from 'lucide-react'
-import { teacherApi, aiApi } from '../../services/api'
-import MarkdownRenderer from '../../components/common/MarkdownRenderer'
+import { teacherApi } from '../../services/api'
+import StructuredAIResponse from '../../components/common/StructuredAIResponse'
+import useTranslation from '../../hooks/useTranslation'
 
 interface Query {
     id: number
-    mode: 'EXPLAIN' | 'ASSIST' | 'PLAN'
+    mode: string  // Can be "EXPLAIN" | "explain" etc
     input_text: string
     ai_response: string
+    structured?: any  // Structured response data for card display
     created_at: string
 }
 
@@ -47,11 +48,12 @@ const modeLabels: Record<string, string> = {
 }
 
 export default function TeacherHistory() {
-    const { t } = useTranslation()
+    const { language: selectedLanguage } = useTranslation()
+    const [searchParams] = useSearchParams()
     const [queries, setQueries] = useState<Query[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
-    const [filterMode, setFilterMode] = useState<string | null>(null)
+    const [filterMode, setFilterMode] = useState<string | null>(searchParams.get('mode'))
     const [selectedQuery, setSelectedQuery] = useState<Query | null>(null)
 
     useEffect(() => {
@@ -61,7 +63,15 @@ export default function TeacherHistory() {
     const loadHistory = async () => {
         try {
             const data = await teacherApi.getQueries({ page_size: 50 })
-            setQueries(data.items || [])
+            // Map API response to local Query type
+            setQueries((data.items || []).map((item: any) => ({
+                id: item.id,
+                mode: item.mode?.toUpperCase() || 'EXPLAIN',
+                input_text: item.input_text || '',
+                ai_response: item.ai_response || '',
+                structured: item.structured,
+                created_at: item.created_at
+            })))
         } catch (error) {
             console.error('Failed to load history:', error)
             setQueries([])
@@ -281,8 +291,13 @@ export default function TeacherHistory() {
                                 {/* Response */}
                                 <div className="p-6 border-b border-gray-100 dark:border-gray-700">
                                     <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">AI Response</h3>
-                                    <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                        <MarkdownRenderer content={selectedQuery.ai_response || 'No response available.'} />
+                                    <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                        <StructuredAIResponse
+                                            content={selectedQuery.ai_response || 'No response available.'}
+                                            structured={selectedQuery.structured}
+                                            topic={selectedQuery.input_text}
+                                            language={selectedLanguage}
+                                        />
                                     </div>
                                 </div>
 

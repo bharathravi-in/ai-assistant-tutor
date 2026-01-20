@@ -175,6 +175,22 @@ export const aiApi = {
         const response = await api.post('/ai/audit', data)
         return response.data
     },
+
+    // Get answer for a specific question - returns simple direct answer
+    getQuestionAnswer: async (data: {
+        question: string
+        topic?: string
+        grade?: number
+        language?: string
+    }): Promise<{ answer: string }> => {
+        const response = await api.post('/ai/answer-question', {
+            question: data.question,
+            topic: data.topic,
+            grade: data.grade,
+            language: data.language || 'en'
+        })
+        return { answer: response.data.answer }
+    },
 }
 
 // Media endpoints

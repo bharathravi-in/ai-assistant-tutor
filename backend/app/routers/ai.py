@@ -189,6 +189,71 @@ async def ask_ai(
     }
 
 
+from pydantic import BaseModel
+from typing import Optional as Opt
+
+class AnswerQuestionRequest(BaseModel):
+    question: str
+    topic: Opt[str] = None
+    grade: Opt[int] = None
+    language: str = "en"
+
+@router.post("/answer-question")
+async def answer_question(
+    request: AnswerQuestionRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Simple endpoint to answer a specific question directly.
+    Returns just the answer text, not a full structured teaching response.
+    Used for "Check for Understanding" questions and similar use cases.
+    """
+    system_settings = await db.scalar(select(SystemSettings).limit(1))
+    orchestrator = AIOrchestrator(system_settings=system_settings)
+    
+    # Language instruction for non-English
+    language_instruction = ""
+    if request.language and request.language != "en":
+        language_map = {
+            "hi": "Hindi",
+            "kn": "Kannada", 
+            "ta": "Tamil",
+            "te": "Telugu",
+            "mr": "Marathi",
+            "gu": "Gujarati",
+            "bn": "Bengali",
+            "pa": "Punjabi"
+        }
+        lang_name = language_map.get(request.language, request.language)
+        language_instruction = f"\nIMPORTANT: Respond in {lang_name} language."
+    
+    # Build a focused prompt for just answering the question
+    prompt = f"""You are a helpful teaching assistant. Answer the following question clearly and concisely.
+Keep your answer brief, focused, and easy to understand.
+Do NOT provide additional sections, examples, or teaching materials - just answer the question directly.{language_instruction}
+
+Question: {request.question}
+{"Topic Context: " + request.topic if request.topic else ""}
+{"Grade Level: Class " + str(request.grade) if request.grade else ""}
+
+Provide a direct, clear answer in 2-4 sentences:"""
+
+    try:
+        # Get a simple response - we'll use the orchestrator's direct LLM call
+        answer = await orchestrator.get_simple_answer(prompt, language=request.language)
+        
+        return {
+            "question": request.question,
+            "answer": answer,
+            "topic": request.topic,
+            "grade": request.grade,
+            "language": request.language
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate answer: {str(e)}")
+
+
 
 @router.post("/explain")
 async def explain_concept(
