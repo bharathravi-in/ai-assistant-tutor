@@ -22,6 +22,9 @@ class AIRequest(BaseModel):
     class_size: Optional[int] = None
     instructional_time_minutes: Optional[int] = None
     
+    # Student persona for learning style adaptation
+    persona: Optional[str] = "standard"  # standard, slow_learner, visual_learner, first_gen, exam_focused
+    
     # Share with CRP for review
     share_with_crp: Optional[bool] = False
 
@@ -141,6 +144,7 @@ class AuditRequest(BaseModel):
     content: str
     grade: Optional[int] = None
     subject: Optional[str] = None
+    language: Optional[str] = "en"
 
 
 class AuditResponse(BaseModel):

@@ -171,6 +171,7 @@ export const aiApi = {
         content: string
         grade?: number
         subject?: string
+        language?: string
     }): Promise<AuditResult> => {
         const response = await api.post('/ai/audit', data)
         return response.data

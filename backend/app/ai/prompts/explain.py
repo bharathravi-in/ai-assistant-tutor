@@ -4,6 +4,41 @@ Prompt templates for Explain/Teach mode
 from typing import Optional
 
 
+# Persona adaptation instructions
+PERSONA_INSTRUCTIONS = {
+    "standard": "",
+    "slow_learner": """
+ADAPTATION FOR SLOW LEARNER:
+- Use shorter sentences with simple vocabulary
+- Repeat key concepts in different ways
+- Break down complex ideas into smaller steps
+- Add more concrete, hands-on examples
+- Use encouraging and patient tone
+- Include memory aids and repetition""",
+    "visual_learner": """
+ADAPTATION FOR VISUAL LEARNER:
+- Emphasize diagrams, charts, and visual representations
+- Describe step-by-step drawing instructions
+- Use color-coding suggestions
+- Include "picture this" type descriptions
+- Reference visual patterns and spatial relationships""",
+    "first_gen": """
+ADAPTATION FOR FIRST-GENERATION LEARNER:
+- Provide extra context and background knowledge
+- Never assume prior exposure to concepts
+- Connect to everyday village/home experiences
+- Use mother-tongue friendly explanations
+- Build from the most basic level up""",
+    "exam_focused": """
+ADAPTATION FOR EXAM-FOCUSED STUDENT:
+- Highlight key points likely to appear in exams
+- Include common question patterns
+- Add "Important for exam" markers
+- Provide answer formats and templates
+- Include practice questions with marking schemes"""
+}
+
+
 def get_explain_prompt(
     question: str,
     language: str = "en",
@@ -13,6 +48,7 @@ def get_explain_prompt(
     is_multigrade: bool = False,
     class_size: Optional[int] = None,
     instructional_time_minutes: Optional[int] = None,
+    persona: Optional[str] = "standard",
 ) -> str:
     """
     Generate a prompt for explaining how to teach a concept.
@@ -34,10 +70,21 @@ def get_explain_prompt(
     
     context = "\n".join(context_parts) if context_parts else "General teaching"
     
+    # Get persona-specific instructions
+    persona_adaptation = PERSONA_INSTRUCTIONS.get(persona or "standard", "")
+    
+    # Language instruction
+    lang_map = {"en": "English", "hi": "Hindi", "kn": "Kannada", "te": "Telugu", "mixed": "Mix of English and local language (Hindi/regional)"}
+    target_lang = lang_map.get(language, "English")
+    lang_instruction = f"Respond ONLY in {target_lang}."
+    if language == "mixed":
+        lang_instruction = "Use a natural mix of English for technical terms and Hindi/regional language for explanations."
+    
     prompt = f"""You are an expert teaching coach helping a government school teacher in India. Your goal is to provide a comprehensive, engaging, and highly practical teaching guide.
 
 CONTEXT:
 {context}
+{persona_adaptation}
 
 TEACHER'S QUESTION:
 {question}
@@ -54,11 +101,13 @@ Your response MUST be a JSON object with EXACTLY these keys:
     "specific_examples": "3 concrete examples tailored specifically to a rural or semi-urban Indian context (e.g., using items found in a village, farming, local festivals).",
     "generic_examples": "2 general real-world examples that illustrate the concept's global application.",
     "visual_aid_idea": "Describe one simple drawing or object (TLM) the teacher can make/use with zero or low cost.",
-    "check_for_understanding": "3 levels of questions: 1. Basic recall, 2. Application, 3. Critical thinking."
+    "check_for_understanding": "3 levels of questions: 1. Basic recall, 2. Application, 3. Critical thinking.",
+    "common_misconceptions": "List 2-3 common mistakes students make about this topic and how to correct them.",
+    "oral_questions": "3 discussion questions the teacher can ask the class to spark engagement."
 }}
 
 IMPORTANT GUIDELINES:
-1. **STRICT LANGUAGE**: Respond ONLY in {language}. Do NOT include Hindi translations unless specifically asked for.
+1. **STRICT LANGUAGE**: {lang_instruction}
 2. **Depth over Brevity**: Provide detailed, meaningful content. Don't be too brief.
 3. **Indian Context**: Use culturally relevant names, objects, and scenarios.
 4. **Pedagogical Flow**: Ensure the content flows from simple to complex.

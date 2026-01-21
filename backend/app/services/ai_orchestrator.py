@@ -47,6 +47,7 @@ class AIOrchestrator:
         is_multigrade: bool = False,
         class_size: Optional[int] = None,
         instructional_time_minutes: Optional[int] = None,
+        persona: Optional[str] = "standard",
     ) -> Dict[str, Any]:
         """
         Process a teaching request through the appropriate AI mode.
@@ -78,6 +79,7 @@ class AIOrchestrator:
                     is_multigrade=is_multigrade,
                     class_size=class_size,
                     instructional_time_minutes=instructional_time_minutes,
+                    persona=persona,
                 )
         elif mode == QueryMode.ASSIST:
             prompt = get_assist_prompt(

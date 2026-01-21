@@ -301,7 +301,11 @@ async def get_assigned_surveys(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get surveys assigned to current user"""
+    """Get surveys assigned to current user (by direct assignment OR by role)"""
+    output = []
+    seen_survey_ids = set()
+    
+    # 1. Get directly assigned surveys (not completed)
     result = await db.execute(
         select(SurveyAssignment)
         .where(
@@ -311,10 +315,10 @@ async def get_assigned_surveys(
     )
     assignments = result.scalars().all()
     
-    output = []
     for a in assignments:
         survey = await db.get(Survey, a.survey_id)
         if survey and survey.status == SurveyStatus.ACTIVE:
+            seen_survey_ids.add(survey.id)
             output.append(SurveyOut(
                 id=survey.id,
                 title=survey.title,
@@ -326,6 +330,46 @@ async def get_assigned_surveys(
                 created_at=survey.created_at,
                 response_count=0
             ))
+    
+    # 2. Get surveys by role (for surveys without specific assignments)
+    # Map user role to target role
+    user_target_role = None
+    if current_user.role == UserRole.TEACHER:
+        user_target_role = SurveyTargetRole.TEACHER
+    elif current_user.role == UserRole.CRP:
+        user_target_role = SurveyTargetRole.CRP
+    
+    if user_target_role:
+        # Get active surveys targeting this role that don't have specific user assignments
+        role_surveys = await db.execute(
+            select(Survey)
+            .where(
+                Survey.status == SurveyStatus.ACTIVE,
+                Survey.target_role.in_([user_target_role, SurveyTargetRole.ALL]),
+                Survey.target_user_ids == None  # Surveys without specific targets
+            )
+        )
+        for survey in role_surveys.scalars().all():
+            if survey.id not in seen_survey_ids:
+                # Check if user already responded
+                existing_response = await db.execute(
+                    select(SurveyResponse).where(
+                        SurveyResponse.survey_id == survey.id,
+                        SurveyResponse.user_id == current_user.id
+                    )
+                )
+                if not existing_response.scalar_one_or_none():
+                    output.append(SurveyOut(
+                        id=survey.id,
+                        title=survey.title,
+                        description=survey.description,
+                        questions=survey.questions,
+                        target_role=survey.target_role.value,
+                        status=survey.status.value,
+                        is_ai_generated=survey.is_ai_generated,
+                        created_at=survey.created_at,
+                        response_count=0
+                    ))
     
     return output
 
