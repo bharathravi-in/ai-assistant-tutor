@@ -23,15 +23,21 @@ import {
     ChevronUp,
     Copy,
     FileDown,
-    Printer
+    Printer,
+    Languages,
+    GraduationCap,
+    UserCircle2,
+    Presentation
 } from 'lucide-react'
 import { aiApi, teacherApi } from '../../services/api'
 import useTranslation from '../../hooks/useTranslation'
 import { useVoiceInput } from '../../hooks/useVoiceInput'
 import { useMasterData } from '../../hooks/useMasterData'
-import MarkdownRenderer from '../../components/common/MarkdownRenderer'
+
 import StructuredAIResponse from '../../components/common/StructuredAIResponse'
 import TLMRenderer from '../../components/common/TLMRenderer'
+import ExportToolbar from '../../components/common/ExportToolbar'
+import TeachNowMode from '../../components/teacher/TeachNowMode'
 
 type QueryMode = 'explain' | 'assist' | 'plan'
 
@@ -70,6 +76,24 @@ const defaultQuickPrompts: DisplayPrompt[] = [
     { icon: Star, text: 'Make learning fun for Class 5', mode: 'explain' },
 ]
 
+// Student persona options
+const personaOptions = [
+    { id: 'standard', label: 'Standard', description: 'Normal teaching approach' },
+    { id: 'slow_learner', label: 'Slow Learner', description: 'More repetition, simpler words' },
+    { id: 'visual_learner', label: 'Visual Learner', description: 'Focus on diagrams & examples' },
+    { id: 'first_gen', label: 'First-Gen Learner', description: 'Extra context & patience' },
+    { id: 'exam_focused', label: 'Exam-Focused', description: 'Key points & practice questions' },
+]
+
+// Language options for response
+const languageOptions = [
+    { id: 'en', label: 'English', flag: '🇬🇧' },
+    { id: 'hi', label: 'Hindi', flag: '🇮🇳' },
+    { id: 'kn', label: 'Kannada', flag: '🇮🇳' },
+    { id: 'te', label: 'Telugu', flag: '🇮🇳' },
+    { id: 'mixed', label: 'Mixed', flag: '🌐' },
+]
+
 const getStringContent = (content: any): string => {
     if (!content) return ''
     if (typeof content === 'string') return content
@@ -103,20 +127,29 @@ export default function AskQuestion() {
     const [showAnswers, setShowAnswers] = useState(false)
 
     // Context fields
-    const [grade, setGrade] = useState<number | undefined>()
+    const [grade, setGrade] = useState<number>(6) // Default to Class 6
     const [subject, setSubject] = useState('')
     const [shareWithCRP, setShareWithCRP] = useState(false)
+    const [persona, setPersona] = useState('standard')
+    const [responseLanguage, setResponseLanguage] = useState('en')
     const [showContext, setShowContext] = useState(false)
+
+    // Teach Now Mode state
+    const [showTeachNow, setShowTeachNow] = useState(false)
+
+    // Follow-up responses state (appended below main response)
+    const [followUpResponses, setFollowUpResponses] = useState<Array<{ label: string, content: string, structured?: any }>>([])
+    const [followUpLoading, setFollowUpLoading] = useState(false)
 
     // Refs
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const responseRef = useRef<HTMLDivElement>(null)
 
     // Master data
-    const { grades: masterGrades, subjects: masterSubjects } = useMasterData()
+    const { subjects: masterSubjects } = useMasterData()
 
-    // Language from translation hook
-    const { language: selectedLanguage } = useTranslation()
+    // Translation hook
+    useTranslation() // Ensure translations are available
 
     // Voice input
     const {
@@ -203,7 +236,8 @@ export default function AskQuestion() {
                 mode,
                 grade,
                 subject: subject || undefined,
-                language: selectedLanguage || 'en',
+                language: responseLanguage || 'en',
+                persona: persona || 'standard',
                 share_with_crp: shareWithCRP,
             })
 
@@ -235,7 +269,40 @@ export default function AskQuestion() {
         setReflectionRating(null)
         setPanelOpen(false)
         setGeneratedContent(null)
+        setFollowUpResponses([])
         textareaRef.current?.focus()
+    }
+
+    // Handle follow-up prompt - appends response below main content
+    const handleFollowUp = async (followUpLabel: string, followUpPrompt: string) => {
+        if (followUpLoading) return
+
+        setFollowUpLoading(true)
+        setError('')
+
+        try {
+            // Always use "explain" mode for follow-ups to get better structured responses
+            const response = await aiApi.ask({
+                input_text: followUpPrompt.trim(),
+                mode: 'explain',
+                grade,
+                subject: subject || undefined,
+                language: responseLanguage || 'en',
+                persona: persona || 'standard',
+                share_with_crp: false, // Don't share follow-ups with CRP
+            })
+
+            // Append the follow-up response
+            setFollowUpResponses(prev => [...prev, {
+                label: followUpLabel,
+                content: getStringContent(response.content || response),
+                structured: response.structured
+            }])
+        } catch (err: any) {
+            setError(err.response?.data?.detail || 'Failed to get AI response.')
+        } finally {
+            setFollowUpLoading(false)
+        }
     }
 
     // Submit reflection to backend
@@ -277,20 +344,21 @@ export default function AskQuestion() {
                 result = await aiApi.generateQuiz({
                     topic: originalQuery,
                     content: getStringContent(aiResponse?.content),
-                    language: 'en'
+                    language: responseLanguage || 'en'
                 })
             } else if (type === 'tlm') {
                 result = await aiApi.generateTLM({
                     topic: originalQuery,
                     content: getStringContent(aiResponse?.content),
-                    language: 'en'
+                    language: responseLanguage || 'en'
                 })
             } else {
                 result = await aiApi.auditContent({
                     topic: originalQuery,
                     content: getStringContent(aiResponse?.content),
                     grade,
-                    subject
+                    subject,
+                    language: responseLanguage || 'en'
                 })
             }
             setGeneratedContent(result)
@@ -456,21 +524,88 @@ export default function AskQuestion() {
                                     </button>
 
                                     {showContext && (
-                                        <div className="px-6 pb-4 pt-2 space-y-4 bg-gray-50/50 dark:bg-gray-800/50">
-                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                                <div>
-                                                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Grade</label>
-                                                    <select
-                                                        value={grade || ''}
-                                                        onChange={(e) => setGrade(e.target.value ? parseInt(e.target.value) : undefined)}
-                                                        className="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-sm focus:ring-2 focus:ring-blue-500"
-                                                    >
-                                                        <option value="">Select</option>
-                                                        {masterGrades.map(g => (
-                                                            <option key={g.id} value={g.number}>Class {g.number}</option>
-                                                        ))}
-                                                    </select>
+                                        <div className="px-6 pb-4 pt-2 space-y-5 bg-gray-50/50 dark:bg-gray-800/50">
+                                            {/* Grade Slider */}
+                                            <div>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                        <GraduationCap className="w-4 h-4" />
+                                                        Grade Level
+                                                    </label>
+                                                    <span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm font-semibold">
+                                                        Class {grade}
+                                                    </span>
                                                 </div>
+                                                <div className="relative">
+                                                    <input
+                                                        type="range"
+                                                        min="1"
+                                                        max="12"
+                                                        value={grade}
+                                                        onChange={(e) => setGrade(parseInt(e.target.value))}
+                                                        className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                                    />
+                                                    <div className="flex justify-between text-xs text-gray-400 mt-1">
+                                                        <span>1</span>
+                                                        <span>3</span>
+                                                        <span>5</span>
+                                                        <span>7</span>
+                                                        <span>9</span>
+                                                        <span>12</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Student Persona */}
+                                            <div>
+                                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                    <UserCircle2 className="w-4 h-4" />
+                                                    Student Learning Style
+                                                </label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {personaOptions.map((p) => (
+                                                        <button
+                                                            key={p.id}
+                                                            type="button"
+                                                            onClick={() => setPersona(p.id)}
+                                                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${persona === p.id
+                                                                ? 'bg-purple-500 text-white shadow-md'
+                                                                : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-purple-300'
+                                                                }`}
+                                                            title={p.description}
+                                                        >
+                                                            {p.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Response Language */}
+                                            <div>
+                                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                    <Languages className="w-4 h-4" />
+                                                    Response Language
+                                                </label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {languageOptions.map((lang) => (
+                                                        <button
+                                                            key={lang.id}
+                                                            type="button"
+                                                            onClick={() => setResponseLanguage(lang.id)}
+                                                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${responseLanguage === lang.id
+                                                                ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-md'
+                                                                : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-green-300'
+                                                                }`}
+                                                        >
+                                                            <span>{lang.flag}</span>
+                                                            {lang.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Subject & Share Options Row */}
+                                            <div className="grid grid-cols-2 gap-4">
                                                 <div>
                                                     <label className="block text-xs font-medium text-gray-500 mb-1.5">Subject</label>
                                                     <select
@@ -484,7 +619,7 @@ export default function AskQuestion() {
                                                         ))}
                                                     </select>
                                                 </div>
-                                                <div className="col-span-2 flex items-center">
+                                                <div className="flex items-center">
                                                     <label className="flex items-center gap-3 cursor-pointer">
                                                         <div className="relative">
                                                             <input
@@ -597,13 +732,21 @@ export default function AskQuestion() {
                                             <p className="text-xs text-gray-500 capitalize">Mode: {mode}</p>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={handleNewQuery}
-                                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 transition-colors text-sm font-medium"
-                                    >
-                                        <RefreshCw className="w-4 h-4" />
-                                        New Question
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <ExportToolbar
+                                            topic={originalQuery}
+                                            content={responseContent}
+                                            structured={aiResponse?.structured}
+                                            grade={grade}
+                                        />
+                                        <button
+                                            onClick={handleNewQuery}
+                                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 transition-colors text-sm font-medium"
+                                        >
+                                            <RefreshCw className="w-4 h-4" />
+                                            New Question
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {/* Your Question */}
@@ -612,10 +755,116 @@ export default function AskQuestion() {
                                     <p className="text-gray-800 dark:text-white">{originalQuery}</p>
                                 </div>
 
+                                {/* Language Switch Bar */}
+                                <div className="px-6 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700">
+                                    <div className="flex items-center justify-between">
+                                        <span className="flex items-center gap-2 text-sm text-gray-500">
+                                            <Languages className="w-4 h-4" />
+                                            Response Language:
+                                        </span>
+                                        <div className="flex gap-1">
+                                            {languageOptions.map((lang) => (
+                                                <button
+                                                    key={lang.id}
+                                                    onClick={async () => {
+                                                        if (lang.id !== responseLanguage) {
+                                                            setResponseLanguage(lang.id)
+                                                            // Re-generate with new language
+                                                            setLoading(true)
+                                                            try {
+                                                                const response = await aiApi.ask({
+                                                                    input_text: originalQuery,
+                                                                    mode,
+                                                                    grade,
+                                                                    subject: subject || undefined,
+                                                                    language: lang.id,
+                                                                    persona: persona,
+                                                                    share_with_crp: shareWithCRP,
+                                                                })
+                                                                setAiResponse({
+                                                                    content: getStringContent(response.content || response),
+                                                                    structured: response.structured,
+                                                                    query_type: response.query_type,
+                                                                    query_id: response.query_id,
+                                                                    mode: response.mode
+                                                                })
+                                                            } catch (err) {
+                                                                console.error('Failed to switch language:', err)
+                                                            } finally {
+                                                                setLoading(false)
+                                                            }
+                                                        }
+                                                    }}
+                                                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${responseLanguage === lang.id
+                                                        ? 'bg-green-500 text-white'
+                                                        : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-green-100'
+                                                        }`}
+                                                >
+                                                    {lang.flag} {lang.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Response Content */}
-                                <div className="p-6">
+                                <div className="p-6 relative">
+                                    {loading && (
+                                        <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 flex items-center justify-center z-10">
+                                            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                                        </div>
+                                    )}
                                     <div className="overflow-y-auto custom-scrollbar">
-                                        <StructuredAIResponse content={responseContent} structured={aiResponse?.structured} topic={originalQuery} grade={grade} language={selectedLanguage} />
+                                        <StructuredAIResponse content={responseContent} structured={aiResponse?.structured} topic={originalQuery} grade={grade} language={responseLanguage} />
+                                    </div>
+                                </div>
+
+                                {/* Appended Follow-up Responses */}
+                                {followUpResponses.length > 0 && (
+                                    <div className="px-6 space-y-4">
+                                        {followUpResponses.map((followUp, idx) => (
+                                            <div key={idx} className="border-t-2 border-blue-500 pt-4">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
+                                                        {followUp.label}
+                                                    </span>
+                                                </div>
+                                                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+                                                    <StructuredAIResponse content={followUp.content} structured={followUp.structured} topic={originalQuery} grade={grade} language={responseLanguage} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Follow-up Loading Indicator */}
+                                {followUpLoading && (
+                                    <div className="px-6 py-4 flex items-center gap-3 text-blue-600 dark:text-blue-400">
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        <span className="text-sm font-medium">Generating follow-up content...</span>
+                                    </div>
+                                )}
+
+                                {/* AI Follow-up Prompts */}
+                                <div className="px-6 pb-4">
+                                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Continue with...</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {[
+                                            { label: '✍️ Create 5 MCQs', prompt: `Create 5 multiple choice questions with 4 options each for: ${originalQuery}. Format as a quiz with questions, options A/B/C/D, and correct answers.` },
+                                            { label: '🏠 Real-life activity', prompt: `Give a real-life hands-on activity that students can do at home or in class for: ${originalQuery}` },
+                                            { label: '🎨 Drawing steps', prompt: `Explain ${originalQuery} with step-by-step drawing instructions that a teacher can draw on a blackboard` },
+                                            { label: '📝 Convert to worksheet', prompt: `Create a printable student worksheet with fill-in-the-blanks, matching, and short answer questions for: ${originalQuery}` },
+                                            { label: '🎯 Simplify more', prompt: `Explain ${originalQuery} in even simpler terms using everyday examples and simple words for struggling students` },
+                                        ].map((followUp) => (
+                                            <button
+                                                key={followUp.label}
+                                                onClick={() => handleFollowUp(followUp.label, followUp.prompt)}
+                                                disabled={followUpLoading}
+                                                className="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/30 dark:hover:text-blue-300 transition-colors border border-gray-200 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {followUpLoading ? '...' : followUp.label}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
 
@@ -646,6 +895,14 @@ export default function AskQuestion() {
                                                 NCERT Audit
                                             </button>
                                         </div>
+                                        {/* Teach Now Button */}
+                                        <button
+                                            onClick={() => setShowTeachNow(true)}
+                                            className="w-full mt-3 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-semibold hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                                        >
+                                            <Presentation className="w-5 h-5" />
+                                            🎯 Teach This Now
+                                        </button>
                                     </div>
                                 )}
 
@@ -809,21 +1066,82 @@ export default function AskQuestion() {
 
                             {/* Audit Panel */}
                             {panelContent === 'audit' && (
-                                <div>
-                                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4 ${generatedContent.is_compliant
-                                        ? 'bg-green-100 text-green-700'
-                                        : 'bg-yellow-100 text-yellow-700'
-                                        }`}>
-                                        <div className={`w-2.5 h-2.5 rounded-full ${generatedContent.is_compliant ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                                        {generatedContent.is_compliant ? 'NCERT Compliant' : 'Needs Review'}
+                                <div className="space-y-4">
+                                    {/* Compliance Badge */}
+                                    <div className="flex items-center justify-between">
+                                        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${generatedContent.is_compliant
+                                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                            : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                            }`}>
+                                            <div className={`w-2.5 h-2.5 rounded-full ${generatedContent.is_compliant ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                                            {generatedContent.is_compliant ? 'NCERT Compliant' : 'Needs Review'}
+                                        </div>
+                                        {generatedContent.compliance_score !== undefined && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm text-gray-500">Score:</span>
+                                                <span className={`text-lg font-bold ${generatedContent.compliance_score >= 80 ? 'text-green-600' : generatedContent.compliance_score >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                                    {generatedContent.compliance_score}%
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
-                                    {generatedContent.feedback && (
-                                        <MarkdownRenderer content={getStringContent(generatedContent.feedback)} />
+
+                                    {/* Strengths */}
+                                    {generatedContent.strengths && generatedContent.strengths.length > 0 && (
+                                        <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4">
+                                            <h4 className="font-semibold text-green-700 dark:text-green-400 mb-2 flex items-center gap-2">
+                                                ✅ Strengths
+                                            </h4>
+                                            <ul className="space-y-1.5">
+                                                {generatedContent.strengths.map((s: string, i: number) => (
+                                                    <li key={i} className="text-sm text-green-700 dark:text-green-300 flex items-start gap-2">
+                                                        <span className="mt-1">•</span>
+                                                        <span>{s}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
                                     )}
-                                    {generatedContent.suggestions && (
-                                        <div className="mt-4">
-                                            <h4 className="font-medium text-gray-900 dark:text-white mb-2">Suggestions</h4>
-                                            <MarkdownRenderer content={getStringContent(generatedContent.suggestions)} />
+
+                                    {/* Weaknesses */}
+                                    {generatedContent.weaknesses && generatedContent.weaknesses.length > 0 && (
+                                        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-4">
+                                            <h4 className="font-semibold text-yellow-700 dark:text-yellow-400 mb-2 flex items-center gap-2">
+                                                ⚠️ Areas for Improvement
+                                            </h4>
+                                            <ul className="space-y-1.5">
+                                                {generatedContent.weaknesses.map((w: string, i: number) => (
+                                                    <li key={i} className="text-sm text-yellow-700 dark:text-yellow-300 flex items-start gap-2">
+                                                        <span className="mt-1">•</span>
+                                                        <span>{w}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    {/* Improvement Suggestions */}
+                                    {generatedContent.improvement_suggestions && generatedContent.improvement_suggestions.length > 0 && (
+                                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
+                                            <h4 className="font-semibold text-blue-700 dark:text-blue-400 mb-2 flex items-center gap-2">
+                                                💡 Suggestions
+                                            </h4>
+                                            <ul className="space-y-1.5">
+                                                {generatedContent.improvement_suggestions.map((s: string, i: number) => (
+                                                    <li key={i} className="text-sm text-blue-700 dark:text-blue-300 flex items-start gap-2">
+                                                        <span className="mt-1">{i + 1}.</span>
+                                                        <span>{s}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    {/* NCERT Reference */}
+                                    {generatedContent.ncert_ref && (
+                                        <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+                                            <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2">📚 NCERT Reference</h4>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">{generatedContent.ncert_ref}</p>
                                         </div>
                                     )}
                                 </div>
@@ -904,6 +1222,16 @@ export default function AskQuestion() {
                 <div
                     className="fixed inset-0 bg-black/20 z-40"
                     onClick={() => setPanelOpen(false)}
+                />
+            )}
+
+            {/* Teach Now Full Screen Mode */}
+            {showTeachNow && aiResponse?.structured && (
+                <TeachNowMode
+                    topic={originalQuery}
+                    structured={aiResponse.structured}
+                    grade={grade}
+                    onClose={() => setShowTeachNow(false)}
                 />
             )}
         </div>

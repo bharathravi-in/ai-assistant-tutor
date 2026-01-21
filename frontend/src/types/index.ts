@@ -70,6 +70,7 @@ export interface AIRequest {
     class_size?: number
     instructional_time_minutes?: number
     share_with_crp?: boolean
+    persona?: string  // Student learning style: standard, slow_learner, visual_learner, first_gen, exam_focused
 }
 
 export interface AIResponse {

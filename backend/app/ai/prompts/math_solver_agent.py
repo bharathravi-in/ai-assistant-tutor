@@ -8,37 +8,93 @@ from typing import Optional
 def is_math_problem(input_text: str) -> bool:
     """
     Detect if the input is a mathematical problem that needs to be solved.
-    Returns True if the query appears to be a math problem requiring a solution.
+    Returns True ONLY if the query is clearly a math problem requiring a solution.
+    
+    This function is conservative - when in doubt, returns False to avoid
+    treating general knowledge questions as math problems.
     """
+    import re
     text_lower = input_text.lower()
     
-    # Direct math problem indicators
+    # First, check for exclusion patterns - these indicate general knowledge, not math
+    exclusion_patterns = [
+        r'\bwhat is (\w+\s+){0,2}(a|an|the)\b',  # "what is a/an/the..." - definition questions
+        r'\bwhat is \w+\s+(app|platform|portal|website|program|scheme|initiative|mission)\b',
+        r'\bwho (is|was|are|were)\b',  # Person-related questions
+        r'\bwhen (is|was|did)\b',  # Time-related questions  
+        r'\bwhere (is|was|are)\b',  # Location-related questions
+        r'\bwhy (is|do|does|did|are|was)\b',  # Reason-related questions
+        r'\bhow (to|do|does|can|is|are)\b(?!.*\d)',  # How-to questions without numbers
+        r'\bexplain\s+(the\s+)?(concept|meaning|definition|importance|significance)\b',
+        r'\bwhat (is|are) (the\s+)?(meaning|definition|concept|use|purpose)\b',
+        r'\btell me about\b',
+        r'\bdefine\b',
+        r'\bdescribe\b',
+    ]
+    
+    for pattern in exclusion_patterns:
+        if re.search(pattern, text_lower):
+            # This looks like a general knowledge question, not math
+            # But verify there are no actual math expressions
+            if not re.search(r'\d+\s*[\+\-\*\/\^=]\s*\d+', input_text):
+                return False
+    
+    # Check if text is too short or lacks numbers entirely for math problems
+    # Most real math problems contain at least one number
+    has_numbers = bool(re.search(r'\d+', input_text))
+    
+    # Direct math problem indicators - must be specific to math
     solve_keywords = [
-        'solve', 'find x', 'find the value', 'calculate', 'compute',
-        'what is', 'evaluate', 'simplify', 'factorize', 'factorise',
-        'find the answer', 'work out', 'determine', 'prove that'
+        'solve', 'find x', 'find y', 'find the value', 'calculate', 'compute',
+        'evaluate', 'simplify', 'factorize', 'factorise', 'expand',
+        'find the answer', 'work out', 'determine the value', 'prove that',
+        'find the root', 'find the solution', 'what is the value of',
+        'integrate', 'differentiate', 'derive', 'sum of', 'difference of',
+        'product of', 'divide', 'multiply', 'add', 'subtract'
     ]
     
-    # Mathematical operators and patterns
-    math_patterns = [
-        '=', '+', '-', '*', '/', '^', '²', '³', '√',
-        'x =', 'y =', 'solve for', '+ x', '- x', 
-    ]
+    # Mathematical operators and patterns (require actual math content)
+    equation_pattern = r'[xyz]\s*[\+\-\*\/\^=]\s*\d+|\d+\s*[\+\-\*\/\^=]\s*[xyz]'  # Variable equations
+    pure_math_pattern = r'\d+\s*[\+\-\*\/\^]\s*\d+\s*[=\+\-\*\/]'  # Math expressions
+    square_root_pattern = r'(√|sqrt)\s*\d+'  # Square roots
+    power_pattern = r'\d+\s*[\^²³]|\d+\s*\*\*\s*\d+'  # Powers
+    fraction_pattern = r'\d+/\d+'  # Fractions
     
-    # Check for equations (has = with variables)
-    has_equation = '=' in input_text and any(var in text_lower for var in ['x', 'y', 'z', 'n', 'm'])
+    # Check for equations with variables (strong indicator)
+    has_variable_equation = bool(re.search(equation_pattern, input_text, re.IGNORECASE))
     
     # Check for solve keywords
     has_solve_keyword = any(keyword in text_lower for keyword in solve_keywords)
     
-    # Check for mathematical expressions
-    has_math_pattern = any(pattern in input_text for pattern in math_patterns)
+    # Check for pure mathematical expressions
+    has_math_expression = (
+        bool(re.search(pure_math_pattern, input_text)) or
+        bool(re.search(square_root_pattern, input_text)) or
+        bool(re.search(power_pattern, input_text)) or
+        bool(re.search(fraction_pattern, input_text))
+    )
     
-    # Number-heavy text with operators
-    import re
-    has_math_expression = bool(re.search(r'\d+\s*[\+\-\*\/\^]\s*\d+', input_text))
+    # Decision logic:
+    # 1. Variable equations are definitely math
+    if has_variable_equation:
+        return True
     
-    return has_equation or has_solve_keyword or (has_math_pattern and has_math_expression)
+    # 2. Solve keywords + numbers = likely math
+    if has_solve_keyword and has_numbers:
+        return True
+    
+    # 3. Clear mathematical expressions
+    if has_math_expression:
+        return True
+    
+    # 4. "What is" only counts if followed by a number or math expression
+    if 'what is' in text_lower:
+        # "What is 5+3?" or "What is 25% of 100?"
+        what_is_math = re.search(r'what is\s+[\d\.\,\+\-\*\/\^√%]', text_lower)
+        if what_is_math:
+            return True
+    
+    return False
 
 
 def get_math_solver_prompt(

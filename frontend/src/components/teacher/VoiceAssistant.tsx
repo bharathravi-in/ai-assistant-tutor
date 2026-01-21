@@ -317,15 +317,27 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
 
     const currentLang = SUPPORTED_LANGUAGES.find(l => l.code === i18n.language) || SUPPORTED_LANGUAGES[0]
 
-    // Helper to check if we have actual structured pedagogical data
+    // Helper to check if we have actual structured pedagogical data (any mode)
     const hasStructuredContent = structuredData && (
+        // Explain mode fields
         structuredData.conceptual_briefing ||
         structuredData.simple_explanation ||
+        structuredData.what_to_say ||
+        structuredData.mnemonics_hooks ||
+        // Assist mode fields
         structuredData.immediate_action ||
         structuredData.understanding ||
-        structuredData.what_to_say ||
         structuredData.quick_activity ||
-        structuredData.mnemonics_hooks
+        structuredData.bridge_the_gap ||
+        structuredData.check_progress ||
+        // Math solution fields
+        structuredData.problem_statement ||
+        structuredData.solution_steps ||
+        structuredData.final_answer ||
+        // Plan mode fields
+        structuredData.learning_objectives ||
+        structuredData.activities ||
+        structuredData.exit_questions
     );
 
     return (
@@ -501,6 +513,106 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
                                                 <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2 block">Teacher Talk</span>
                                                 <div className="text-white/90 italic">
                                                     <RenderValue value={structuredData.what_to_say} />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Assist mode - Additional fields */}
+                                        {structuredData.quick_activity && (
+                                            <div className="p-4 bg-green-500/20 rounded-2xl border border-green-500/30">
+                                                <div className="flex items-center gap-2 text-green-300 mb-2">
+                                                    <Zap className="w-4 h-4" />
+                                                    <span className="text-xs font-bold uppercase tracking-widest">Quick Activity</span>
+                                                </div>
+                                                <div className="text-white">
+                                                    <RenderValue value={structuredData.quick_activity} />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {structuredData.bridge_the_gap && (
+                                            <div className="p-4 bg-indigo-500/20 rounded-2xl border border-indigo-500/30">
+                                                <div className="flex items-center gap-2 text-indigo-300 mb-2">
+                                                    <Target className="w-4 h-4" />
+                                                    <span className="text-xs font-bold uppercase tracking-widest">Bridge to Lesson</span>
+                                                </div>
+                                                <div className="text-white/90">
+                                                    <RenderValue value={structuredData.bridge_the_gap} />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {structuredData.check_progress && (
+                                            <div className="p-3 bg-cyan-500/10 rounded-xl border border-cyan-500/20">
+                                                <span className="text-[10px] font-bold text-cyan-300 uppercase tracking-widest mb-1 block">Check Progress</span>
+                                                <div className="text-white/80 text-sm">
+                                                    <RenderValue value={structuredData.check_progress} />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Math Solution fields */}
+                                        {structuredData.problem_statement && (
+                                            <div className="p-4 bg-blue-500/20 rounded-2xl border border-blue-500/30">
+                                                <div className="flex items-center gap-2 text-blue-300 mb-2">
+                                                    <BookOpen className="w-4 h-4" />
+                                                    <span className="text-xs font-bold uppercase tracking-widest">Problem</span>
+                                                </div>
+                                                <div className="text-white">
+                                                    <RenderValue value={structuredData.problem_statement} />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {structuredData.solution_steps && (
+                                            <div className="space-y-2">
+                                                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Solution Steps</span>
+                                                <div className="text-white/90">
+                                                    <RenderValue value={structuredData.solution_steps} />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {structuredData.final_answer && (
+                                            <div className="p-4 bg-green-500/20 rounded-2xl border border-green-500/30">
+                                                <span className="text-xs font-bold text-green-300 uppercase tracking-widest mb-2 block">Final Answer</span>
+                                                <div className="text-white text-lg font-medium">
+                                                    <RenderValue value={structuredData.final_answer} />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Plan Mode fields */}
+                                        {structuredData.learning_objectives && (
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2 text-blue-300">
+                                                    <Target className="w-4 h-4" />
+                                                    <span className="text-xs font-bold uppercase tracking-widest">Learning Objectives</span>
+                                                </div>
+                                                <div className="text-white/90">
+                                                    <RenderValue value={structuredData.learning_objectives} />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {structuredData.activities && Array.isArray(structuredData.activities) && (
+                                            <div className="space-y-3">
+                                                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Activities</span>
+                                                {structuredData.activities.map((activity: any, idx: number) => (
+                                                    <div key={idx} className="p-3 bg-white/5 rounded-xl border border-white/10">
+                                                        <div className="font-medium text-white mb-1">
+                                                            {idx + 1}. {activity.activity_name || activity.name}
+                                                            {activity.duration_minutes && (
+                                                                <span className="text-white/50 text-sm ml-2">({activity.duration_minutes} min)</span>
+                                                            )}
+                                                        </div>
+                                                        {activity.description && (
+                                                            <div className="text-white/70 text-sm">{activity.description}</div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {structuredData.exit_questions && (
+                                            <div className="space-y-2">
+                                                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Exit Questions</span>
+                                                <div className="text-white/80">
+                                                    <RenderValue value={structuredData.exit_questions} />
                                                 </div>
                                             </div>
                                         )}

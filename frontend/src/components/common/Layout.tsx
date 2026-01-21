@@ -142,7 +142,7 @@ export default function Layout({ children }: LayoutProps) {
             { icon: BookMarked, label: 'Resources', path: '/teacher/resources' },
             { icon: PenTool, label: 'My Content', path: '/teacher/my-content' },
             { icon: Library, label: 'Content Library', path: '/teacher/content-library' },
-            { icon: Inbox, label: 'Feedback', path: '/teacher/feedback-inbox' },
+            { icon: ClipboardList, label: 'Surveys', path: '/teacher/feedback-inbox' },
             { icon: Clipboard, label: 'Reflections', path: '/teacher/reflections' },
             { icon: User, label: t('nav.profile'), path: '/teacher/profile' },
             { icon: Settings, label: 'Settings', path: '/teacher/settings' }

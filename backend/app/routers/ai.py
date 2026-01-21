@@ -113,6 +113,7 @@ async def ask_ai(
             is_multigrade=request.is_multigrade,
             class_size=request.class_size,
             instructional_time_minutes=request.instructional_time_minutes,
+            persona=request.persona,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI processing error: {str(e)}")
