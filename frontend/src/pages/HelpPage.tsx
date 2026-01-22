@@ -149,8 +149,8 @@ export default function HelpPage() {
                                         key={cat}
                                         onClick={() => setSelectedCategory(cat)}
                                         className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${selectedCategory === cat
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
                                             }`}
                                     >
                                         {cat}
@@ -225,9 +225,9 @@ export default function HelpPage() {
                                 Contact our support team for personalized assistance.
                             </p>
                             <div className="space-y-3">
-                                <a href="mailto:support@educationai.gov.in" className="flex items-center gap-2 text-sm hover:underline">
+                                <a href="mailto:support@Pathshala.gov.in" className="flex items-center gap-2 text-sm hover:underline">
                                     <Mail className="w-4 h-4" />
-                                    support@educationai.gov.in
+                                    support@Pathshala.gov.in
                                 </a>
                                 <a href="tel:1800-XXX-XXXX" className="flex items-center gap-2 text-sm hover:underline">
                                     <Phone className="w-4 h-4" />
