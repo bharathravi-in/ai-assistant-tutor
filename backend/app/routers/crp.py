@@ -892,3 +892,58 @@ async def delete_visit(
     global _visits_store
     _visits_store = [v for v in _visits_store if not (v["id"] == visit_id and v["crp_id"] == current_user.id)]
     return {"message": "Visit deleted"}
+
+
+# ==================== TEACHER ACCESS TO VISITS ====================
+
+@router.get("/teacher-visits")
+async def get_teacher_visits(
+    status: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get visits/interventions scheduled for the current teacher.
+    
+    Allows teachers to see upcoming support visits from CRPs.
+    """
+    from datetime import date
+    
+    # Debug logging
+    teacher_name = current_user.name.lower().strip() if current_user.name else ""
+    print(f"DEBUG teacher-visits: Looking for teacher_name='{teacher_name}'")
+    print(f"DEBUG teacher-visits: Total visits in store: {len(_visits_store)}")
+    for v in _visits_store:
+        print(f"DEBUG: Visit {v.get('id')} - teacher='{v.get('teacher', '')}' status='{v.get('status')}'")
+    
+    # Filter visits by teacher name (case-insensitive, stripped match)
+    visits = [
+        v for v in _visits_store 
+        if v.get("teacher", "").lower().strip() == teacher_name
+    ]
+    
+    print(f"DEBUG teacher-visits: Found {len(visits)} matching visits")
+    
+    # Apply status filter if provided
+    if status:
+        visits = [v for v in visits if v.get("status") == status]
+    
+    # Sort by date (most recent first)
+    visits.sort(key=lambda x: x.get("date", ""), reverse=True)
+    
+    # Separate into upcoming and past
+    today = date.today().isoformat()
+    upcoming = [v for v in visits if v.get("date", "") >= today and v.get("status") == "scheduled"]
+    past = [v for v in visits if v.get("date", "") < today or v.get("status") != "scheduled"]
+    
+    return {
+        "visits": visits,
+        "upcoming": upcoming,
+        "past": past,
+        "total": len(visits),
+        "stats": {
+            "upcoming_count": len(upcoming),
+            "completed": len([v for v in visits if v.get("status") == "completed"]),
+            "cancelled": len([v for v in visits if v.get("status") == "cancelled"]),
+        }
+    }

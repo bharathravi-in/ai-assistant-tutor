@@ -19,8 +19,8 @@ export default function NotificationBell() {
     const [showDropdown, setShowDropdown] = useState(false)
     const [loading, setLoading] = useState(false)
 
-    // Only show for CRP, ARP, Admin, Superadmin
-    const showBell = user?.role && ['crp', 'arp', 'admin', 'superadmin'].includes(user.role.toLowerCase())
+    // Show for all authenticated users including teachers
+    const showBell = user?.role && ['crp', 'arp', 'admin', 'superadmin', 'teacher'].includes(user.role.toLowerCase())
 
     useEffect(() => {
         if (showBell && token) {
@@ -59,8 +59,8 @@ export default function NotificationBell() {
             <button
                 onClick={() => setShowDropdown(!showDropdown)}
                 className={`p-2 rounded-lg transition-colors relative ${hasHighPriority
-                        ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                    ? 'bg-red-100 dark:bg-red-900/30 text-red-600'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
                     }`}
             >
                 <Bell className="w-5 h-5" />

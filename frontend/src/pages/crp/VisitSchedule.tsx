@@ -11,7 +11,7 @@ import {
     X,
     Loader2
 } from 'lucide-react'
-import { crpApi } from '../../services/api'
+import { crpApi, configApi } from '../../services/api'
 
 interface Visit {
     id: number
@@ -38,6 +38,11 @@ export default function VisitSchedule() {
     const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null)
     const [submitting, setSubmitting] = useState(false)
 
+    // Dropdown data
+    const [schools, setSchools] = useState<{ id: number; name: string }[]>([])
+    const [teachers, setTeachers] = useState<{ id: number; name: string; school_name?: string }[]>([])
+    const [loadingDropdowns, setLoadingDropdowns] = useState(false)
+
     const [newVisit, setNewVisit] = useState({
         school: '',
         teacher: '',
@@ -49,6 +54,29 @@ export default function VisitSchedule() {
     useEffect(() => {
         loadVisits()
     }, [])
+
+    // Fetch dropdown data when modal opens
+    useEffect(() => {
+        if (showNewVisit) {
+            loadDropdownData()
+        }
+    }, [showNewVisit])
+
+    const loadDropdownData = async () => {
+        setLoadingDropdowns(true)
+        try {
+            const [schoolsData, teachersData] = await Promise.all([
+                configApi.getSchools(),
+                crpApi.getTeachers()
+            ])
+            setSchools(Array.isArray(schoolsData) ? schoolsData : schoolsData.schools || [])
+            setTeachers(Array.isArray(teachersData) ? teachersData : teachersData.teachers || [])
+        } catch (err) {
+            console.error('Failed to load dropdown data:', err)
+        } finally {
+            setLoadingDropdowns(false)
+        }
+    }
 
     const loadVisits = async () => {
         try {
@@ -290,23 +318,33 @@ export default function VisitSchedule() {
                         <div className="p-6 space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">School</label>
-                                <input
-                                    type="text"
+                                <select
                                     value={newVisit.school}
                                     onChange={e => setNewVisit({ ...newVisit, school: e.target.value })}
-                                    placeholder="e.g., GPS Rampur"
+                                    disabled={loadingDropdowns}
                                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-                                />
+                                >
+                                    <option value="">{loadingDropdowns ? 'Loading...' : 'Select a school'}</option>
+                                    {schools.map(school => (
+                                        <option key={school.id} value={school.name}>{school.name}</option>
+                                    ))}
+                                </select>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Teacher</label>
-                                <input
-                                    type="text"
+                                <select
                                     value={newVisit.teacher}
                                     onChange={e => setNewVisit({ ...newVisit, teacher: e.target.value })}
-                                    placeholder="e.g., Priya Sharma"
+                                    disabled={loadingDropdowns}
                                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-                                />
+                                >
+                                    <option value="">{loadingDropdowns ? 'Loading...' : 'Select a teacher'}</option>
+                                    {teachers.map(teacher => (
+                                        <option key={teacher.id} value={teacher.name}>
+                                            {teacher.name}{teacher.school_name ? ` (${teacher.school_name})` : ''}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
 import {
     Sparkles,
     MessageSquare,
@@ -32,17 +31,23 @@ const modeIcons: Record<string, typeof BookOpen> = {
     PLAN: ClipboardList,
 }
 
-const modeColors: Record<string, string> = {
-    explain: '#264092',
-    EXPLAIN: '#264092',
-    assist: '#EF951E',
-    ASSIST: '#EF951E',
-    plan: '#22c55e',
-    PLAN: '#22c55e',
-}
+const getModeColor = (mode: string) => {
+    const m = mode.toLowerCase();
+    if (m === 'explain') return 'text-[#007AFF]';
+    if (m === 'assist') return 'text-[#FF9500]';
+    if (m === 'plan') return 'text-[#34C759]';
+    return 'text-[#8E8E93]';
+};
+
+const getModeBg = (mode: string) => {
+    const m = mode.toLowerCase();
+    if (m === 'explain') return 'bg-[#007AFF]/10';
+    if (m === 'assist') return 'bg-[#FF9500]/10';
+    if (m === 'plan') return 'bg-[#34C759]/10';
+    return 'bg-[#F2F2F7]';
+};
 
 export default function TeacherDashboard() {
-    const { t } = useTranslation()
     const navigate = useNavigate()
     const { user } = useAuthStore()
 
@@ -89,34 +94,34 @@ export default function TeacherDashboard() {
             title: 'Ask AI',
             description: 'Get instant help with teaching',
             icon: MessageSquare,
-            color: '#264092',
+            color: '#007AFF',
             path: '/teacher/ask-question'
         },
         {
             title: 'History',
             description: 'View past queries',
             icon: History,
-            color: '#EF951E',
+            color: '#FF9500',
             path: '/teacher/history'
         },
         {
             title: 'Resources',
             description: 'Learning materials',
             icon: BookOpen,
-            color: '#22c55e',
+            color: '#34C759',
             path: '/teacher/resources'
         },
         {
-            title: 'Reflections',
-            description: 'Your teaching feedback',
+            title: 'Surveys',
+            description: 'Surveys List',
             icon: FileText,
-            color: '#8b5cf6',
-            path: '/teacher/reflections'
+            color: '#AF52DE',
+            path: '/teacher/feedback-inbox'
         }
     ]
 
     const tips = [
-        "Try using 'Explain Mode' to simplify complex topics for your students.",
+        "Try using 'Explain Mode' to simplify complex topics for your   students.",
         "Use 'Plan Lesson' to create engaging, time-bound lesson plans.",
         "Add reflections after trying AI suggestions to improve future responses.",
         "Voice input is available for hands-free queries while teaching."
@@ -127,111 +132,92 @@ export default function TeacherDashboard() {
         <div className="min-h-[calc(100vh-64px)] bg-gray-50 dark:bg-gray-950 p-4 lg:p-8">
             <div className="max-w-6xl mx-auto space-y-6">
                 {/* Welcome Header */}
-                <div
-                    className="relative rounded-3xl p-6 lg:p-8 text-white overflow-hidden shadow-2xl"
-                    style={{ background: 'linear-gradient(135deg, #264092 0%, #1c3070 100%)' }}
-                >
-                    {/* Decorative elements */}
-                    <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20" style={{ background: '#EF951E', transform: 'translate(30%, -40%)' }} />
-                    <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-10" style={{ background: '#F69953', transform: 'translate(-30%, 30%)' }} />
+                <div className="card-highlight p-6 lg:p-10 relative overflow-hidden bg-gradient-to-br from-[#007AFF] to-[#0051FF] border-none">
+                    <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 blur-[100px] rounded-full -mr-40 -mt-40" />
+                    <div className="absolute bottom-0 left-0 w-60 h-60 bg-[#FF9500]/20 blur-[80px] rounded-full -ml-30 -mb-30" />
 
-                    <div className="relative flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-                        <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(239, 149, 30, 0.9)' }}>
-                                    <Sparkles className="w-7 h-7 text-white" />
-                                </div>
-                                <div>
-                                    <h1 className="text-2xl lg:text-3xl font-bold">
-                                        Welcome back, {user?.name?.split(' ')[0] || 'Teacher'}!
-                                    </h1>
-                                    <p className="text-white/70 text-sm lg:text-base">Here's your teaching assistant dashboard</p>
-                                </div>
+                    <div className="relative flex flex-col lg:flex-row items-center justify-between gap-8">
+                        <div className="flex items-center gap-6">
+                            <div className="w-16 h-16 rounded-[22px] bg-white/20 backdrop-blur-md flex items-center justify-center shadow-lg border border-white/20">
+                                <Sparkles className="w-8 h-8 text-white" />
                             </div>
-                            <div className="flex items-center gap-2 mt-4">
-                                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-green-500/20 text-green-300 border border-green-500/30">
-                                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                                    AI Ready
-                                </span>
+                            <div>
+                                <h1 className="text-2xl lg:text-4xl font-black text-white leading-tight">
+                                    Welcome, {user?.name?.split(' ')[0] || 'Teacher'}!
+                                </h1>
+                                <p className="text-white/80 font-bold uppercase tracking-widest text-[10px] mt-2">
+                                    Your personal AI teaching ensemble is active
+                                </p>
                             </div>
                         </div>
 
                         <button
                             onClick={() => setShowVoiceAssistant(true)}
-                            className="group flex items-center gap-3 px-6 py-4 rounded-2xl text-white transition-all duration-300 hover:scale-105 shadow-lg"
-                            style={{ background: 'linear-gradient(135deg, #EF951E 0%, #F69953 100%)' }}
+                            className="group flex items-center gap-4 px-8 py-4 rounded-[22px] bg-white text-[#007AFF] font-black text-sm transition-all hover:scale-105 shadow-xl hover:shadow-white/10 active:scale-[0.98]"
                         >
-                            <div className="relative">
-                                <Mic className="w-6 h-6" />
-                                <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse" />
-                            </div>
-                            <div className="text-left">
-                                <span className="block font-semibold">Voice Assistant</span>
-                                <span className="block text-xs text-white/80">Tap to speak</span>
-                            </div>
-                            <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                            <Mic className="w-5 h-5 group-hover:animate-pulse" />
+                            Voice Assistant
+                            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                         </button>
                     </div>
                 </div>
 
-                {/* Stats Cards - Clickable to History */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Stats Cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                     <button
                         onClick={() => navigate('/teacher/history')}
-                        className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 text-left hover:shadow-lg hover:border-primary-300 transition-all group"
+                        className="card-highlight p-6 text-left group"
                     >
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(38, 64, 146, 0.1)' }}>
-                                <BarChart3 className="w-5 h-5" style={{ color: '#264092' }} />
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-10 h-10 rounded-xl bg-[#007AFF]/10 flex items-center justify-center">
+                                <BarChart3 className="w-5 h-5 text-[#007AFF]" />
                             </div>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Total Queries</span>
-                            <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all ml-auto" />
+                            <ArrowRight className="w-4 h-4 text-[#AEAEB2] group-hover:text-[#007AFF] group-hover:translate-x-1 transition-all" />
                         </div>
-                        <p className="text-3xl font-bold text-gray-800 dark:text-white">
+                        <p className="text-sm font-bold text-[#8E8E93] uppercase tracking-widest mb-1">Total Queries</p>
+                        <p className="text-3xl font-black text-[#1C1C1E] dark:text-white">
                             {loading ? '...' : stats?.total_queries || 0}
                         </p>
                     </button>
 
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(34, 197, 94, 0.1)' }}>
-                                <TrendingUp className="w-5 h-5" style={{ color: '#22c55e' }} />
-                            </div>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Success Rate</span>
+                    <div className="card-highlight p-6">
+                        <div className="w-10 h-10 rounded-xl bg-[#34C759]/10 flex items-center justify-center mb-4">
+                            <TrendingUp className="w-5 h-5 text-[#34C759]" />
                         </div>
-                        <p className="text-3xl font-bold text-gray-800 dark:text-white">
+                        <p className="text-sm font-bold text-[#8E8E93] uppercase tracking-widest mb-1">Success Rate</p>
+                        <p className="text-3xl font-black text-[#34C759]">
                             {loading ? '...' : `${Math.round(stats?.success_rate || 0)}%`}
                         </p>
                     </div>
 
                     <button
                         onClick={() => navigate('/teacher/history?mode=EXPLAIN')}
-                        className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 text-left hover:shadow-lg hover:border-primary-300 transition-all group"
+                        className="card-highlight p-6 text-left group"
                     >
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(38, 64, 146, 0.1)' }}>
-                                <BookOpen className="w-5 h-5" style={{ color: '#264092' }} />
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-10 h-10 rounded-xl bg-[#007AFF]/10 flex items-center justify-center">
+                                <BookOpen className="w-5 h-5 text-[#007AFF]" />
                             </div>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Explain Mode</span>
-                            <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all ml-auto" />
+                            <ArrowRight className="w-4 h-4 text-[#AEAEB2] group-hover:text-[#007AFF] group-hover:translate-x-1 transition-all" />
                         </div>
-                        <p className="text-3xl font-bold text-gray-800 dark:text-white">
+                        <p className="text-sm font-bold text-[#8E8E93] uppercase tracking-widest mb-1">Explain Mode</p>
+                        <p className="text-3xl font-black text-[#1C1C1E] dark:text-white">
                             {loading ? '...' : stats?.queries_by_mode?.explain || 0}
                         </p>
                     </button>
 
                     <button
                         onClick={() => navigate('/teacher/history?mode=PLAN')}
-                        className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 text-left hover:shadow-lg hover:border-primary-300 transition-all group"
+                        className="card-highlight p-6 text-left group"
                     >
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(239, 149, 30, 0.1)' }}>
-                                <ClipboardList className="w-5 h-5" style={{ color: '#EF951E' }} />
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="w-10 h-10 rounded-xl bg-[#34C759]/10 flex items-center justify-center">
+                                <ClipboardList className="w-5 h-5 text-[#34C759]" />
                             </div>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">Plan Mode</span>
-                            <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all ml-auto" />
+                            <ArrowRight className="w-4 h-4 text-[#AEAEB2] group-hover:text-[#34C759] group-hover:translate-x-1 transition-all" />
                         </div>
-                        <p className="text-3xl font-bold text-gray-800 dark:text-white">
+                        <p className="text-sm font-bold text-[#8E8E93] uppercase tracking-widest mb-1">Plan Mode</p>
+                        <p className="text-3xl font-black text-[#1C1C1E] dark:text-white">
                             {loading ? '...' : stats?.queries_by_mode?.plan || 0}
                         </p>
                     </button>
@@ -239,27 +225,27 @@ export default function TeacherDashboard() {
 
                 {/* Quick Links */}
                 <div>
-                    <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-                        <Zap className="w-5 h-5 text-yellow-500" />
-                        Quick Actions
+                    <h2 className="text-sm font-black text-[#8E8E93] uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
+                        <Zap className="w-4 h-4 text-[#FF9500]" />
+                        Priority Actions
                     </h2>
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                         {quickLinks.map((link) => (
                             <button
                                 key={link.path}
                                 onClick={() => navigate(link.path)}
-                                className="group bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 hover:shadow-lg transition-all duration-300 text-left hover:scale-[1.02]"
+                                className="group card p-6 text-left active:scale-[0.98] transition-all"
                             >
                                 <div
-                                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110"
+                                    className="w-12 h-12 rounded-[18px] flex items-center justify-center mb-6 transition-transform group-hover:scale-110 shadow-sm"
                                     style={{ background: `${link.color}15`, color: link.color }}
                                 >
                                     <link.icon className="w-6 h-6" />
                                 </div>
-                                <h3 className="font-semibold text-gray-800 dark:text-white mb-1">{link.title}</h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">{link.description}</p>
-                                <div className="mt-3 flex items-center gap-1 text-sm font-medium" style={{ color: link.color }}>
-                                    Go <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                <h3 className="font-bold text-[#1C1C1E] dark:text-white mb-2">{link.title}</h3>
+                                <p className="text-[11px] font-medium text-[#8E8E93] leading-relaxed mb-4">{link.description}</p>
+                                <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest" style={{ color: link.color }}>
+                                    Launch <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                                 </div>
                             </button>
                         ))}
@@ -267,67 +253,58 @@ export default function TeacherDashboard() {
                 </div>
 
                 {/* Bottom Row: Recent Activity + Tips */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Recent Activity */}
-                    <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-                        <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                            <h3 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-                                <Clock className="w-5 h-5 text-gray-400" />
+                    <div className="lg:col-span-2 card overflow-hidden">
+                        <div className="p-6 border-b border-[#E5E5EA] dark:border-white/5 flex items-center justify-between bg-[#F2F2F7]/30 dark:bg-white/5">
+                            <h3 className="text-sm font-bold text-[#1C1C1E] dark:text-white uppercase tracking-widest flex items-center gap-3">
+                                <Clock className="w-4 h-4 text-[#8E8E93]" />
                                 Recent Activity
                             </h3>
                             <button
                                 onClick={() => navigate('/teacher/history')}
-                                className="text-sm font-medium flex items-center gap-1 hover:underline"
-                                style={{ color: '#264092' }}
+                                className="text-[10px] font-black text-[#007AFF] uppercase tracking-widest hover:underline"
                             >
-                                View All <ChevronRight className="w-4 h-4" />
+                                View Global Log
                             </button>
                         </div>
-                        <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                        <div className="divide-y divide-[#E5E5EA] dark:divide-white/5">
                             {loading ? (
-                                <div className="p-8 text-center">
-                                    <div className="w-8 h-8 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin mx-auto" />
-                                </div>
+                                <div className="p-20 text-center animate-pulse text-[#AEAEB2]">Optimizing history...</div>
                             ) : recentQueries.length === 0 ? (
-                                <div className="p-8 text-center">
-                                    <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
-                                        <MessageSquare className="w-8 h-8 text-gray-400" />
+                                <div className="p-20 text-center">
+                                    <div className="w-16 h-16 rounded-full bg-[#F2F2F7] dark:bg-white/5 flex items-center justify-center mx-auto mb-6">
+                                        <MessageSquare className="w-8 h-8 text-[#AEAEB2]" />
                                     </div>
-                                    <p className="text-gray-500 dark:text-gray-400 font-medium">No queries yet</p>
-                                    <p className="text-sm text-gray-400 mt-1">Start by asking the AI assistant</p>
-                                    <button
-                                        onClick={() => navigate('/teacher/ask')}
-                                        className="mt-4 px-4 py-2 rounded-lg text-white text-sm font-medium"
-                                        style={{ background: '#264092' }}
-                                    >
-                                        Ask AI
-                                    </button>
+                                    <p className="text-[#1C1C1E] dark:text-white font-bold mb-1">Silence is Golden</p>
+                                    <p className="text-xs text-[#8E8E93]">No academic inquiries recorded yet</p>
                                 </div>
                             ) : (
                                 recentQueries.map((query) => {
                                     const ModeIcon = modeIcons[query.mode] || MessageSquare
-                                    const modeColor = modeColors[query.mode] || '#6b7280'
                                     return (
                                         <button
                                             key={query.id}
                                             onClick={() => navigate('/teacher/history')}
-                                            className="w-full p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
+                                            className="w-full p-6 flex items-center gap-5 hover:bg-[#F2F2F7] dark:hover:bg-white/5 transition-all group text-left"
                                         >
-                                            <div
-                                                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                                                style={{ background: `${modeColor}15`, color: modeColor }}
-                                            >
-                                                <ModeIcon className="w-5 h-5" />
+                                            <div className={`w-12 h-12 rounded-[16px] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform ${getModeBg(query.mode)} ${getModeColor(query.mode)}`}>
+                                                <ModeIcon className="w-6 h-6" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-gray-800 dark:text-white font-medium line-clamp-1">
+                                                <p className="text-[#1C1C1E] dark:text-white font-bold text-sm mb-1 line-clamp-1">
                                                     {query.input_text}
                                                 </p>
-                                                <p className="text-xs text-gray-400 mt-1">
-                                                    {formatTimeAgo(query.created_at)}
-                                                </p>
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`text-[10px] font-black uppercase tracking-widest ${getModeColor(query.mode)}`}>
+                                                        {query.mode}
+                                                    </span>
+                                                    <span className="text-[10px] text-[#AEAEB2] font-bold uppercase tracking-widest">
+                                                        {formatTimeAgo(query.created_at)}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                                            <ChevronRight className="w-5 h-5 text-[#AEAEB2] group-hover:translate-x-1 transition-transform" />
                                         </button>
                                     )
                                 })
@@ -336,22 +313,23 @@ export default function TeacherDashboard() {
                     </div>
 
                     {/* Tip of the Day */}
-                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl border border-amber-100 dark:border-amber-800/30 p-6">
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                                <Lightbulb className="w-5 h-5 text-amber-600" />
+                    <div className="bg-[#FF9500]/5 dark:bg-[#FF9500]/10 rounded-[32px] border border-[#FF9500]/10 p-8 flex flex-col justify-between h-full group hover:border-[#FF9500]/30 transition-all">
+                        <div>
+                            <div className="flex items-center gap-3 mb-8">
+                                <div className="w-10 h-10 rounded-xl bg-[#FF9500]/10 flex items-center justify-center">
+                                    <Lightbulb className="w-5 h-5 text-[#FF9500]" />
+                                </div>
+                                <h3 className="text-sm font-bold text-[#FF9500] uppercase tracking-widest">Ensemble Tip</h3>
                             </div>
-                            <h3 className="font-semibold text-amber-800 dark:text-amber-300">Tip of the Day</h3>
+                            <p className="text-[#1C1C1E] dark:text-white text-base font-medium leading-relaxed italic">
+                                "{randomTip}"
+                            </p>
                         </div>
-                        <p className="text-amber-900/80 dark:text-amber-200/80 text-sm leading-relaxed">
-                            {randomTip}
-                        </p>
                         <button
                             onClick={() => navigate('/teacher/ask')}
-                            className="mt-5 w-full py-3 rounded-xl text-white font-medium transition-all hover:shadow-lg"
-                            style={{ background: 'linear-gradient(135deg, #EF951E 0%, #F69953 100%)' }}
+                            className="mt-10 w-full py-4 rounded-[18px] bg-[#FF9500] text-white font-black text-sm transition-all hover:scale-105 shadow-lg shadow-[#FF9500]/20 active:scale-[0.98]"
                         >
-                            Try it now →
+                            Try Now
                         </button>
                     </div>
                 </div>

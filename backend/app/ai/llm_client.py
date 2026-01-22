@@ -7,8 +7,6 @@ from typing import Optional
 from app.config import get_settings
 from app.utils.encryption import decrypt_value
 
-settings = get_settings()
-
 
 class LLMClient:
     """
@@ -25,6 +23,9 @@ class LLMClient:
             organization_settings: Optional OrganizationSettings object
             system_settings: Optional SystemSettings object
         """
+        # Get fresh settings each time
+        self._settings = get_settings()
+        
         self.org_settings = organization_settings
         self.system_settings = system_settings
         self._client = None
@@ -39,9 +40,12 @@ class LLMClient:
             self._api_key = self._get_system_api_key()
             self._model = self._get_system_model()
         else:
-            self.provider = settings.llm_provider.lower()
+            # Use environment settings - check direct env vars as fallback
+            self.provider = self._settings.llm_provider.lower() or os.getenv("LLM_PROVIDER", "openai").lower()
             self._api_key = self._get_env_api_key()
             self._model = self._get_env_model()
+        
+        print(f"[LLMClient] Initializing - provider: {self.provider}, model: {self._model}, has_key: {bool(self._api_key)}")
         
         self._init_client()
     
@@ -120,13 +124,15 @@ class LLMClient:
     def _get_env_api_key(self) -> Optional[str]:
         """Get API key from environment variables."""
         if self.provider == "openai":
-            return settings.openai_api_key
+            return self._settings.openai_api_key or os.getenv("OPENAI_API_KEY", "")
         elif self.provider == "gemini":
-            return settings.google_api_key
+            return self._settings.google_api_key or os.getenv("GOOGLE_API_KEY", "")
         elif self.provider == "anthropic":
-            return settings.anthropic_api_key
+            return self._settings.anthropic_api_key or os.getenv("ANTHROPIC_API_KEY", "")
         elif self.provider == "litellm":
-            return settings.litellm_api_key
+            # Try multiple sources for LiteLLM API key
+            key = self._settings.litellm_api_key or os.getenv("LITELLM_API_KEY", "")
+            return key if key else None
         return None
     
     def _get_env_model(self) -> str:
@@ -136,7 +142,7 @@ class LLMClient:
         elif self.provider == "gemini":
             return os.getenv("GEMINI_MODEL", "gemini-pro")
         elif self.provider == "litellm":
-            return settings.litellm_model or "gpt-4o-mini"
+            return self._settings.litellm_model or os.getenv("LITELLM_MODEL", "gpt-4o-mini")
         return self._get_default_model()
     
     def _get_default_model(self) -> str:
@@ -149,11 +155,23 @@ class LLMClient:
     
     def _init_client(self):
         """Initialize the appropriate LLM client."""
-        # Check if we have a valid API key
-        if not self._api_key or self._api_key.startswith("your-"):
-            # No valid API key, will use demo mode
-            self._client = None
-            return
+        # For LiteLLM with base URL, we can proceed even with minimal key
+        # as the proxy may handle authentication
+        is_litellm_proxy = self.provider == "litellm" and (
+            self._settings.litellm_base_url or os.getenv("LITELLM_BASE_URL", "")
+        )
+        
+        # Check if we have a valid API key (unless using LiteLLM proxy)
+        if not is_litellm_proxy:
+            if not self._api_key or self._api_key.startswith("your-"):
+                # No valid API key, will use demo mode
+                print(f"[LLM] No valid API key for provider '{self.provider}', using demo mode")
+                self._client = None
+                return
+        
+        # For LiteLLM, proceed to initialize even if key validation is partial
+        if self.provider == "litellm" and not self._api_key:
+            self._api_key = os.getenv("LITELLM_API_KEY", "") or "default"
         
         if self.provider == "openai":
             try:
@@ -197,19 +215,29 @@ class LLMClient:
         elif self.provider == "litellm":
             try:
                 import litellm
-                # Configure LiteLLM base URL if provided
+                # Configure LiteLLM base URL if provided - check all sources
+                base_url = None
                 if self.org_settings and self.org_settings.litellm_base_url:
-                    litellm.api_base = self.org_settings.litellm_base_url
+                    base_url = self.org_settings.litellm_base_url
                 elif self.system_settings and self.system_settings.litellm_base_url:
-                    litellm.api_base = self.system_settings.litellm_base_url
-                elif settings.litellm_base_url:
-                    litellm.api_base = settings.litellm_base_url
+                    base_url = self.system_settings.litellm_base_url
+                elif self._settings.litellm_base_url:
+                    base_url = self._settings.litellm_base_url
+                else:
+                    base_url = os.getenv("LITELLM_BASE_URL", "")
+                
+                if base_url:
+                    litellm.api_base = base_url
+                    print(f"[LLM] LiteLLM configured with base URL: {base_url}")
                 
                 if self._api_key:
                     litellm.api_key = self._api_key
+                
                 self._client = litellm
+                print(f"[LLM] LiteLLM client initialized successfully, model: {self._model}")
             except ImportError:
-                raise ImportError("LiteLLM package not installed. Run: pip install litellm")
+                print("[LLM] LiteLLM package not installed")
+                self._client = None
     
     async def generate(
         self,
@@ -352,18 +380,19 @@ class LLMClient:
     async def _generate_litellm(self, prompt: str, max_tokens: int, temperature: float) -> str:
         """Generate using LiteLLM (provider-agnostic)."""
         try:
-            # Determine base URL
+            # Determine base URL - check all sources including os.getenv
             api_base = None
             if self.org_settings and self.org_settings.litellm_base_url:
                 api_base = self.org_settings.litellm_base_url
             elif self.system_settings and self.system_settings.litellm_base_url:
                 api_base = self.system_settings.litellm_base_url
-            elif settings.litellm_base_url:
-                api_base = settings.litellm_base_url
+            elif self._settings.litellm_base_url:
+                api_base = self._settings.litellm_base_url
+            else:
+                api_base = os.getenv("LITELLM_BASE_URL", "")
                 
             # IMPORTANT: If a custom base URL is provided, we force litellm to treat it
             # as an OpenAI-style proxy to avoid automatic routing to Vertex/Google.
-            extra_args = {}
             model_to_use = self._model
             
             if api_base:
@@ -371,7 +400,9 @@ class LLMClient:
                 # Prefixing with 'openai/' tells LiteLLM to use OpenAI-style calling
                 if "gemini" in model_to_use.lower() and "/" not in model_to_use:
                     model_to_use = f"openai/{model_to_use}"
-                
+            
+            print(f"[LLM] Generating with LiteLLM - model: {model_to_use}, base: {api_base}")
+            
             response = await self._client.acompletion(
                 model=model_to_use,
                 messages=[
@@ -381,11 +412,11 @@ class LLMClient:
                 max_tokens=max_tokens,
                 temperature=temperature,
                 api_key=self._api_key,
-                api_base=api_base,
-                **extra_args
+                api_base=api_base if api_base else None,
             )
             return response.choices[0].message.content
         except Exception as e:
+            print(f"[LLM] Error in LiteLLM generation: {str(e)}")
             return f"Error generating response: {str(e)}"
     
     def _get_language_instruction(self, language: str) -> str:

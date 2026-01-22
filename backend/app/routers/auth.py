@@ -140,3 +140,49 @@ async def get_languages():
         {"code": lang, "name": get_language_name(lang)}
         for lang in settings.supported_languages_list
     ]
+
+
+@router.get("/theme")
+async def get_theme_settings(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get organization theme settings (accessible by all authenticated users)."""
+    try:
+        from app.models.organization_settings import OrganizationSettings
+        
+        if current_user.organization_id:
+            result = await db.execute(
+                select(OrganizationSettings).where(
+                    OrganizationSettings.organization_id == current_user.organization_id
+                )
+            )
+            settings = result.scalar_one_or_none()
+            if settings:
+                return {
+                    "id": settings.id,
+                    "name": "Gov-Tech AI Teaching",
+                    "logo_url": None,
+                    "primary_color": "#264092",  # Default brand color
+                    "ai_provider": "litellm",
+                    "ai_model": "gemini-pro",
+                    "storage_provider": "local",
+                    "email_enabled": False,
+                    "sms_enabled": False
+                }
+    except Exception as e:
+        print(f"Error loading theme settings: {e}")
+    
+    # Return defaults
+    return {
+        "id": 1,
+        "name": "Gov-Tech AI Teaching",
+        "logo_url": None,
+        "primary_color": "#264092",
+        "ai_provider": "litellm",
+        "ai_model": "gemini-pro",
+        "storage_provider": "local",
+        "email_enabled": False,
+        "sms_enabled": False
+    }
+

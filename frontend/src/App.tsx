@@ -20,6 +20,7 @@ import FeedbackInbox from './pages/teacher/FeedbackInbox'
 import TeacherSurveys from './pages/teacher/Surveys'
 import ContentCreator from './pages/teacher/ContentCreator'
 import MyContent from './pages/teacher/MyContent'
+import MyVisits from './pages/teacher/MyVisits'
 import ContentLibrary from './pages/common/ContentLibrary'
 import CRPDashboard from './pages/crp/Dashboard'
 import FeedbackAssist from './pages/crp/FeedbackAssist'
@@ -217,6 +218,13 @@ function App() {
                 <ProtectedRoute roles={['teacher']}>
                     <Layout>
                         <ContentLibrary />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/my-visits" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <MyVisits />
                     </Layout>
                 </ProtectedRoute>
             } />

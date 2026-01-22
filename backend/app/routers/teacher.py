@@ -389,3 +389,50 @@ async def get_quick_prompts():
     """Get quick prompt suggestions for common classroom scenarios."""
     return {"prompts": QUICK_PROMPTS}
 
+
+# ==================== MY VISITS (Interventions scheduled by CRP) ====================
+
+from app.routers.crp import _visits_store
+
+@router.get("/my-visits")
+async def get_my_visits(
+    status: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get visits/interventions scheduled for this teacher by CRPs.
+    
+    Teachers can see upcoming and past visits to track CRP support.
+    """
+    # Filter visits by teacher name (case-insensitive match)
+    teacher_name = current_user.name.lower() if current_user.name else ""
+    visits = [
+        v for v in _visits_store 
+        if v.get("teacher", "").lower() == teacher_name
+    ]
+    
+    # Apply status filter if provided
+    if status:
+        visits = [v for v in visits if v.get("status") == status]
+    
+    # Sort by date (most recent first)
+    visits.sort(key=lambda x: x.get("date", ""), reverse=True)
+    
+    # Separate into upcoming and past
+    from datetime import date
+    today = date.today().isoformat()
+    upcoming = [v for v in visits if v.get("date", "") >= today and v.get("status") == "scheduled"]
+    past = [v for v in visits if v.get("date", "") < today or v.get("status") != "scheduled"]
+    
+    return {
+        "visits": visits,
+        "upcoming": upcoming,
+        "past": past,
+        "total": len(visits),
+        "stats": {
+            "upcoming_count": len(upcoming),
+            "completed": len([v for v in visits if v.get("status") == "completed"]),
+            "cancelled": len([v for v in visits if v.get("status") == "cancelled"]),
+        }
+    }
