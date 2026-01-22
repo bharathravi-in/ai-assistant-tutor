@@ -66,9 +66,9 @@ const generateIcsContent = (visit: Visit): string => {
 
     return `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//EducationAI//CRP Visit//EN
+PRODID:-//Pathshala//CRP Visit//EN
 BEGIN:VEVENT
-UID:visit-${visit.id}@educationai.com
+UID:visit-${visit.id}@Pathshala.com
 DTSTART:${formatIcsDate(startDate)}
 DTEND:${formatIcsDate(endDate)}
 SUMMARY:CRP Visit: ${purposeLabels[visit.purpose]?.label || visit.purpose}

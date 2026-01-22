@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
     Users, Search, Filter, Loader2, MoreVertical,
     UserCheck, UserX, Plus, X, Edit2, Shield,
-    MapPin, School, Check
+    MapPin, School, Check, Trash2
 } from 'lucide-react'
 import api from '../../services/api'
 
@@ -173,12 +173,26 @@ export default function AdminUsers() {
             const res = await (api as any)[method](url, form)
             if (res.status === 200 || res.status === 201) {
                 setShowModal(false)
+                setSearch('') // Clear search after successful action
                 fetchUsers()
             }
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Failed to save user')
         } finally {
             setSubmitting(false)
+        }
+    }
+
+    const handleDeleteUser = async (user: UserItem) => {
+        if (!window.confirm(`Are you sure you want to permanently delete user ${user.name || user.phone}?`)) {
+            return
+        }
+
+        try {
+            await api.delete(`/admin/users/${user.id}`)
+            fetchUsers()
+        } catch (err: any) {
+            alert(err.response?.data?.detail || 'Failed to delete user')
         }
     }
 
@@ -206,7 +220,13 @@ export default function AdminUsers() {
             assigned_arp_id: user.assigned_arp_id,
         })
 
-        // Populate dropdowns for editing
+        // Clear and populate dropdowns for editing
+        setDistricts([])
+        setBlocks([])
+        setClusters([])
+        setSchools([])
+        setError('')
+
         if (user.state_id) fetchDistricts(user.state_id)
         if (user.district_id) fetchBlocks(user.district_id)
         if (user.block_id) fetchClusters(user.block_id)
@@ -222,7 +242,30 @@ export default function AdminUsers() {
             state_id: undefined, district_id: undefined, block_id: undefined,
             cluster_id: undefined, school_id: undefined, assigned_arp_id: undefined
         })
+        // Clear locations
+        setDistricts([])
+        setBlocks([])
+        setClusters([])
+        setSchools([])
+        setError('')
         setShowModal(true)
+    }
+
+    const handleRoleChange = (role: string) => {
+        setForm({
+            ...form,
+            role,
+            state_id: undefined,
+            district_id: undefined,
+            block_id: undefined,
+            cluster_id: undefined,
+            school_id: undefined,
+            assigned_arp_id: undefined
+        })
+        setDistricts([])
+        setBlocks([])
+        setClusters([])
+        setSchools([])
     }
 
     const formatLastActive = (lastLogin: string | null) => {
@@ -384,6 +427,13 @@ export default function AdminUsers() {
                                                 >
                                                     <Edit2 className="w-4 h-4" />
                                                 </button>
+                                                <button
+                                                    onClick={() => handleDeleteUser(user)}
+                                                    className="p-2 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+                                                    title="Delete User"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
                                                 <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 rounded-lg transition-colors">
                                                     <MoreVertical className="w-4 h-4" />
                                                 </button>
@@ -446,7 +496,7 @@ export default function AdminUsers() {
                                         <label className="text-xs font-bold text-gray-500 uppercase tracking-wide px-1">Role Type</label>
                                         <select
                                             value={form.role}
-                                            onChange={e => setForm({ ...form, role: e.target.value })}
+                                            onChange={e => handleRoleChange(e.target.value)}
                                             className="w-full px-4 py-3 bg-gray-50 border-0 rounded-2xl focus:ring-4 focus:ring-primary-500/10 transition-all font-bold text-primary-700"
                                         >
                                             <option value="TEACHER">Teacher</option>

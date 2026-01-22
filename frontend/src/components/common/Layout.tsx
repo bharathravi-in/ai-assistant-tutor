@@ -126,7 +126,7 @@ export default function Layout({ children }: LayoutProps) {
             if (role === 'arp') {
                 navItems.push(
                     { icon: Users, label: 'User Management', path: '/arp/users' },
-                    { icon: BookOpen, label: 'Programs', path: '/arp/programs' },
+                    // { icon: BookOpen, label: 'Programs', path: '/arp/programs' },
                     { icon: BarChart3, label: 'Gap Analysis', path: '/arp/gap-analysis' }
                 )
             }
@@ -184,7 +184,7 @@ export default function Layout({ children }: LayoutProps) {
                         {!sidebarCollapsed && (
                             <div>
                                 <span className="text-xl font-medium tracking-tight text-[#1C1C1E] dark:text-white">
-                                    EducationAI
+                                    Pathshala
                                 </span>
                                 <p className="text-[10px] uppercase tracking-wider text-[#8E8E93] font-semibold">AI Teaching</p>
                             </div>
@@ -325,7 +325,7 @@ export default function Layout({ children }: LayoutProps) {
 
                         <div className="flex-1 lg:flex-none">
                             <h1 className="text-lg font-medium text-[#1C1C1E] dark:text-white text-center lg:text-left lg:hidden">
-                                EducationAI
+                                Pathshala
                             </h1>
                         </div>
 

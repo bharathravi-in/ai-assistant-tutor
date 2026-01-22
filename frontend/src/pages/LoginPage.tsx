@@ -53,7 +53,7 @@ export default function LoginPage() {
                             <GraduationCap className="w-8 h-8 text-white" />
                         </div>
                         <div>
-                            <span className="text-2xl font-bold text-white">EducationAI</span>
+                            <span className="text-2xl font-bold text-white">Pathshala</span>
                             <p className="text-white/70 text-sm">DIET Teacher Support</p>
                         </div>
                     </div>
