@@ -406,3 +406,95 @@ async def get_survey_responses(
         ))
     
     return output
+
+
+@router.put("/{survey_id}", response_model=SurveyOut)
+async def update_survey(
+    survey_id: int,
+    data: SurveyCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update an existing survey (only if no responses exist)"""
+    survey = await db.get(Survey, survey_id)
+    if not survey:
+        raise HTTPException(status_code=404, detail="Survey not found")
+    
+    if survey.created_by_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Check if there are any responses
+    result = await db.execute(
+        select(SurveyResponse).where(SurveyResponse.survey_id == survey_id)
+    )
+    if result.scalars().first():
+        raise HTTPException(status_code=400, detail="Cannot edit survey with responses")
+    
+    # Update fields
+    survey.title = data.title
+    survey.description = data.description
+    survey.questions = [q.dict() for q in data.questions]
+    
+    if data.target_role == "crp":
+        survey.target_role = SurveyTargetRole.CRP
+    elif data.target_role == "all":
+        survey.target_role = SurveyTargetRole.ALL
+    else:
+        survey.target_role = SurveyTargetRole.TEACHER
+        
+    survey.target_user_ids = data.target_user_ids
+    survey.start_date = data.start_date
+    survey.end_date = data.end_date
+    
+    # If it was active, we might need to refresh assignments if targets changed
+    # For now, let's just commit the changes
+    
+    await db.commit()
+    await db.refresh(survey)
+    
+    return SurveyOut(
+        id=survey.id,
+        title=survey.title,
+        description=survey.description,
+        questions=survey.questions,
+        target_role=survey.target_role.value,
+        status=survey.status.value,
+        is_ai_generated=survey.is_ai_generated,
+        created_at=survey.created_at,
+        response_count=0
+    )
+
+
+@router.delete("/{survey_id}")
+async def delete_survey(
+    survey_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a survey (only if no responses exist)"""
+    survey = await db.get(Survey, survey_id)
+    if not survey:
+        raise HTTPException(status_code=404, detail="Survey not found")
+    
+    if survey.created_by_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Check if there are any responses
+    result = await db.execute(
+        select(SurveyResponse).where(SurveyResponse.survey_id == survey_id)
+    )
+    if result.scalars().first():
+        raise HTTPException(status_code=400, detail="Cannot delete survey with responses")
+    
+    # Delete assignments first
+    await db.execute(
+        SurveyAssignment.__table__.delete().where(
+            SurveyAssignment.survey_id == survey_id
+        )
+    )
+    
+    # Delete survey
+    await db.delete(survey)
+    await db.commit()
+    
+    return {"message": "Survey deleted successfully"}

@@ -68,11 +68,21 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
 
     const recognitionRef = useRef<SpeechRecognition | null>(null)
 
+    // Use refs for callbacks to avoid recreating recognition on callback changes
+    const onResultRef = useRef(onResult)
+    const onErrorRef = useRef(onError)
+
+    // Keep refs updated
+    useEffect(() => {
+        onResultRef.current = onResult
+        onErrorRef.current = onError
+    }, [onResult, onError])
+
     // Check browser support
     const isSupported = typeof window !== 'undefined' &&
         ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
 
-    // Initialize recognition instance
+    // Initialize recognition instance - only recreate when language/continuous/interimResults change
     useEffect(() => {
         if (!isSupported) return
 
@@ -104,18 +114,24 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
             const fullTranscript = finalTranscript || interimTranscript
             setTranscript(prev => continuous ? prev + fullTranscript : fullTranscript)
 
-            if (finalTranscript && onResult) {
-                onResult(finalTranscript)
+            if (finalTranscript && onResultRef.current) {
+                onResultRef.current(finalTranscript)
             }
         }
 
         recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+            // Ignore 'aborted' error as it happens during cleanup
+            if (event.error === 'aborted') {
+                setIsListening(false)
+                return
+            }
+
             const errorMessage = getErrorMessage(event.error)
             setError(errorMessage)
             setIsListening(false)
 
-            if (onError) {
-                onError(errorMessage)
+            if (onErrorRef.current) {
+                onErrorRef.current(errorMessage)
             }
         }
 
@@ -127,10 +143,14 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
 
         return () => {
             if (recognitionRef.current) {
-                recognitionRef.current.abort()
+                try {
+                    recognitionRef.current.abort()
+                } catch (e) {
+                    // Ignore cleanup errors
+                }
             }
         }
-    }, [language, continuous, interimResults, onResult, onError, isSupported])
+    }, [language, continuous, interimResults, isSupported])
 
     const startListening = useCallback(() => {
         if (!isSupported) {
@@ -138,13 +158,19 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
             return
         }
 
+        setError(null) // Clear any previous errors
+
         if (recognitionRef.current && !isListening) {
             setTranscript('')
-            setError(null)
             try {
                 recognitionRef.current.start()
-            } catch (e) {
-                // Already started, ignore
+            } catch (e: any) {
+                // Handle "already started" error
+                if (e.message?.includes('already started')) {
+                    setIsListening(true)
+                } else {
+                    setError('Failed to start voice recognition. Please try again.')
+                }
             }
         }
     }, [isSupported, isListening])

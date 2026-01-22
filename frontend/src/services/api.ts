@@ -250,6 +250,11 @@ export const teacherApi = {
         const response = await api.put('/teacher/profile', data)
         return response.data
     },
+
+    getMyVisits: async (status?: string) => {
+        const response = await api.get('/crp/teacher-visits', { params: { status } })
+        return response.data
+    },
 }
 
 // CRP endpoints
@@ -782,6 +787,18 @@ export const surveyApi = {
     // Get responses for a survey (creator only)
     getResponses: async (surveyId: number) => {
         const response = await api.get(`/surveys/${surveyId}/responses`)
+        return response.data
+    },
+
+    // Update a survey
+    update: async (surveyId: number, data: any) => {
+        const response = await api.put(`/surveys/${surveyId}`, data)
+        return response.data
+    },
+
+    // Delete a survey (only if no responses)
+    delete: async (surveyId: number) => {
+        const response = await api.delete(`/surveys/${surveyId}`)
         return response.data
     },
 }

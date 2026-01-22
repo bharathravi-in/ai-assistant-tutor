@@ -84,7 +84,8 @@ export function useOrgSettings() {
             }
 
             try {
-                const response = await api.get('/admin/organization/settings')
+                // Use auth/theme endpoint which is accessible by all authenticated users
+                const response = await api.get('/auth/theme')
                 const orgSettings = response.data
                 cachedOrgSettings = orgSettings
                 setSettings(orgSettings)
@@ -117,7 +118,8 @@ export async function initializeTheme() {
     themeInitialized = true
 
     try {
-        const response = await api.get('/admin/organization/settings')
+        // Use auth/theme endpoint which is accessible by all authenticated users
+        const response = await api.get('/auth/theme')
         const orgSettings = response.data
         cachedOrgSettings = orgSettings
 

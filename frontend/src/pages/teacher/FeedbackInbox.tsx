@@ -98,99 +98,100 @@ export default function SurveyInbox() {
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-50 dark:bg-gray-900 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+                <Loader2 className="w-8 h-8 animate-spin text-[#007AFF]" />
             </div>
         )
     }
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-gray-900">
-            <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto px-4 py-2 sm:px-6 lg:px-8">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                            <div className="p-2 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 text-white">
-                                <ClipboardList className="w-6 h-6" />
+                        <h1 className="text-xl font-black text-[#1C1C1E] dark:text-white flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-[#007AFF] to-[#0051FF] text-white flex items-center justify-center shadow-lg shadow-[#007AFF]/10">
+                                <ClipboardList className="w-5 h-5" />
                             </div>
-                            Surveys
+                            Academic Surveys
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400 mt-1">
-                            Respond to surveys assigned by your CRP/ARP
-                        </p>
                     </div>
                     {surveys.length > 0 && (
-                        <span className="px-3 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 font-medium text-sm">
-                            {surveys.length} pending
+                        <span className="px-4 py-1.5 rounded-full bg-[#007AFF]/10 text-[#007AFF] font-black text-[10px] uppercase tracking-widest border border-[#007AFF]/20">
+                            {surveys.length} Priority
                         </span>
                     )}
                 </div>
 
                 {/* Success Message */}
                 {successMessage && (
-                    <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl flex items-center gap-2 text-green-600 dark:text-green-400">
-                        <CheckCircle className="w-5 h-5" />
-                        {successMessage}
+                    <div className="mb-4 p-4 bg-[#34C759]/10 border border-[#34C759]/20 rounded-[20px] flex items-center gap-3 text-[#34C759] animate-fade-in shadow-sm">
+                        <CheckCircle className="w-5 h-5 font-bold" />
+                        <span className="font-bold text-sm tracking-tight">{successMessage}</span>
                     </div>
                 )}
 
                 {/* Error Message */}
                 {error && (
-                    <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
-                        <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
-                            <AlertCircle className="w-4 h-4" />
-                            <p className="text-sm">{error}</p>
+                    <div className="mb-4 p-4 bg-[#FF3B30]/10 border border-[#FF3B30]/20 rounded-[20px] animate-fade-in shadow-sm">
+                        <div className="flex items-center gap-3 text-[#FF3B30]">
+                            <AlertCircle className="w-5 h-5 font-bold" />
+                            <p className="text-sm font-bold tracking-tight">{error}</p>
                         </div>
                     </div>
                 )}
 
                 {/* Surveys List */}
                 {surveys.length === 0 ? (
-                    <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
-                        <ClipboardList className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                            No pending surveys
+                    <div className="text-center py-24 card-highlight">
+                        <div className="w-20 h-20 rounded-full bg-[#F2F2F7] dark:bg-white/5 flex items-center justify-center mx-auto mb-6">
+                            <ClipboardList className="w-10 h-10 text-[#AEAEB2]" />
+                        </div>
+                        <h3 className="text-xl font-black text-[#1C1C1E] dark:text-white mb-2">
+                            Inbox Clear
                         </h3>
-                        <p className="text-gray-500">Surveys assigned by your CRP/ARP will appear here.</p>
+                        <p className="text-sm text-[#8E8E93] font-medium">No pending academic surveys from your CRP/ARP.</p>
                     </div>
                 ) : (
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-                        <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                    <div className="card-highlight overflow-hidden animate-fade-in shadow-ios">
+                        <div className="divide-y divide-[#E5E5EA] dark:divide-white/5">
                             {surveys.map((survey) => (
                                 <div
                                     key={survey.id}
                                     onClick={() => setSelectedSurvey(survey)}
-                                    className="p-5 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors"
+                                    className="p-4 lg:p-5 hover:bg-[#F2F2F7] dark:hover:bg-white/5 cursor-pointer transition-all group"
                                 >
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4 min-w-0 flex-1">
-                                            <div className="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
-                                                <ClipboardList className="w-6 h-6 text-orange-600" />
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <div className="w-10 h-10 rounded-[12px] bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
+                                                <ClipboardList className="w-5 h-5 text-[#007AFF]" />
                                             </div>
                                             <div className="min-w-0 flex-1">
-                                                <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                                                <h3 className="font-bold text-[#1C1C1E] dark:text-white text-lg truncate mb-1">
                                                     {survey.title}
                                                 </h3>
                                                 {survey.description && (
-                                                    <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
+                                                    <p className="text-sm text-[#8E8E93] font-medium line-clamp-1">
                                                         {survey.description}
                                                     </p>
                                                 )}
-                                                <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
-                                                    <span className="flex items-center gap-1">
+                                                <div className="flex items-center gap-4 mt-3">
+                                                    <span className="flex items-center gap-1.5 text-[10px] font-bold text-[#AEAEB2] uppercase tracking-widest">
                                                         <Clock className="w-3.5 h-3.5" />
                                                         {formatDate(survey.created_at)}
                                                     </span>
-                                                    <span className="text-gray-300">•</span>
-                                                    <span>{survey.questions?.length || 0} questions</span>
+                                                    <span className="w-1 h-1 rounded-full bg-[#D1D1D6]" />
+                                                    <span className="text-[10px] font-bold text-[#007AFF] uppercase tracking-widest">
+                                                        {survey.questions?.length || 0} Inquiries
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3 flex-shrink-0">
-                                            <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200">
-                                                Pending
+                                        <div className="flex items-center gap-4 flex-shrink-0">
+                                            <span className="px-3 py-1.5 rounded-full text-[10px] font-bold bg-[#FF9500]/10 text-[#FF9500] uppercase tracking-widest border border-transparent">
+                                                Awaiting
                                             </span>
-                                            <ChevronRight className="w-5 h-5 text-gray-400" />
+                                            <ChevronRight className="w-5 h-5 text-[#AEAEB2] group-hover:translate-x-1 transition-transform" />
                                         </div>
                                     </div>
                                 </div>
@@ -202,127 +203,141 @@ export default function SurveyInbox() {
 
             {/* Survey Response Modal */}
             {selectedSurvey && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
-                        <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6">
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-2 lg:p-4 animate-fade-in">
+                    <div className="bg-white dark:bg-[#1C1C1E] rounded-[20px] w-full max-w-xl max-h-[96vh] shadow-ios flex flex-col overflow-hidden">
+                        <div className="relative px-5 py-4 lg:px-6 lg:py-5 bg-gradient-to-br from-[#007AFF] to-[#0051FF]">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 blur-[80px] rounded-full -mr-32 -mt-32" />
+                            <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#FF9500]/20 blur-[60px] rounded-full -ml-24 -mb-24" />
+
                             <button
                                 onClick={() => {
                                     setSelectedSurvey(null)
                                     setSurveyAnswers({})
                                     setError('')
                                 }}
-                                className="text-white/70 hover:text-white text-sm mb-2 flex items-center gap-1"
+                                className="relative text-white/80 hover:text-white text-[10px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2 group transition-all"
                             >
-                                ← Back to surveys
+                                <ChevronRight className="w-3.5 h-3.5 rotate-180 group-hover:-translate-x-1 transition-transform" />
+                                Back to Inbox
                             </button>
-                            <h1 className="text-2xl font-bold text-white">{selectedSurvey.title}</h1>
+                            <h1 className="relative text-xl lg:text-2xl font-black text-white leading-tight pr-8">{selectedSurvey.title}</h1>
                             {selectedSurvey.description && (
-                                <p className="text-white/70 mt-1">{selectedSurvey.description}</p>
+                                <p className="relative text-white/80 mt-1 font-medium text-xs leading-relaxed max-w-xl">{selectedSurvey.description}</p>
                             )}
                         </div>
 
-                        <div className="p-6 space-y-6 overflow-y-auto max-h-[50vh]">
+                        <div className="p-4 lg:p-5 space-y-5 overflow-y-auto custom-scrollbar flex-1 bg-[#F2F2F7]/50 dark:bg-black/20">
                             {selectedSurvey.questions.map((q, idx) => (
-                                <div key={idx} className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4">
-                                    <div className="flex items-start gap-3 mb-3">
-                                        <span className="w-6 h-6 rounded-full bg-orange-500 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <div key={idx} className="space-y-3">
+                                    <div className="flex items-start gap-2.5">
+                                        <div className="w-6 h-6 rounded-full bg-[#007AFF] text-white text-[9px] font-black flex items-center justify-center flex-shrink-0 animate-scale-in">
                                             {idx + 1}
-                                        </span>
-                                        <p className="font-medium text-gray-800 dark:text-white">
+                                        </div>
+                                        <p className="text-sm font-bold text-[#1C1C1E] dark:text-white leading-tight pt-1">
                                             {q.question}
-                                            {q.required && <span className="text-red-500 ml-1">*</span>}
+                                            {q.required && <span className="text-[#FF3B30] ml-1">*</span>}
                                         </p>
                                     </div>
 
-                                    {q.type === 'text' && (
-                                        <textarea
-                                            value={surveyAnswers[idx] || ''}
-                                            onChange={(e) => setSurveyAnswers(prev => ({ ...prev, [idx]: e.target.value }))}
-                                            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 resize-none text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                                            placeholder="Type your answer..."
-                                            rows={3}
-                                        />
-                                    )}
+                                    <div className="ml-8.5">
+                                        {q.type === 'text' && (
+                                            <textarea
+                                                value={surveyAnswers[idx] || ''}
+                                                onChange={(e) => setSurveyAnswers(prev => ({ ...prev, [idx]: e.target.value }))}
+                                                className="w-full px-4 py-2.5 rounded-[12px] border border-[#E5E5EA] dark:border-white/10 bg-white dark:bg-white/5 resize-none text-[#1C1C1E] dark:text-white font-medium text-xs focus:ring-1 focus:ring-[#007AFF] outline-none transition-all placeholder-[#AEAEB2]"
+                                                placeholder="Express your pedagogical perspective..."
+                                                rows={2}
+                                            />
+                                        )}
 
-                                    {q.type === 'rating' && (
-                                        <div className="flex gap-2">
-                                            {[1, 2, 3, 4, 5].map(n => (
-                                                <button
-                                                    key={n}
-                                                    type="button"
-                                                    onClick={() => setSurveyAnswers(prev => ({ ...prev, [idx]: n }))}
-                                                    className={`w-12 h-12 rounded-xl font-bold transition-all ${surveyAnswers[idx] === n
-                                                        ? 'bg-orange-500 text-white shadow-lg'
-                                                        : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-orange-300'
-                                                        }`}
-                                                >
-                                                    {n}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
+                                        {q.type === 'rating' && (
+                                            <div className="flex flex-wrap gap-2">
+                                                {[1, 2, 3, 4, 5].map(n => (
+                                                    <button
+                                                        key={n}
+                                                        type="button"
+                                                        onClick={() => setSurveyAnswers(prev => ({ ...prev, [idx]: n }))}
+                                                        className={`w-10 h-10 rounded-[10px] font-black text-sm transition-all active:scale-[0.9] ${surveyAnswers[idx] === n
+                                                            ? 'bg-[#007AFF] text-white shadow-md shadow-[#007AFF]/20 animate-scale-in'
+                                                            : 'bg-white dark:bg-white/5 border border-[#E5E5EA] dark:border-white/10 text-[#8E8E93] hover:border-[#007AFF]/20'
+                                                            }`}
+                                                    >
+                                                        {n}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
 
-                                    {q.type === 'single_choice' && q.options && (
-                                        <div className="space-y-2">
-                                            {q.options.map((opt, optIdx) => (
-                                                <label key={optIdx} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${surveyAnswers[idx] === opt
-                                                    ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-600'
-                                                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 hover:border-orange-300'
-                                                    }`}>
-                                                    <input
-                                                        type="radio"
-                                                        name={`survey-question-${idx}`}
-                                                        checked={surveyAnswers[idx] === opt}
-                                                        onChange={() => setSurveyAnswers(prev => ({ ...prev, [idx]: opt }))}
-                                                        className="w-4 h-4 text-orange-500 focus:ring-orange-500"
-                                                    />
-                                                    <span className="text-gray-700 dark:text-gray-300">{opt}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    )}
+                                        {q.type === 'single_choice' && q.options && (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                {q.options.map((opt, optIdx) => (
+                                                    <label key={optIdx} className={`flex items-center gap-2 px-3 py-1.5 rounded-[12px] border cursor-pointer transition-all active:scale-[0.98] ${surveyAnswers[idx] === opt
+                                                        ? 'bg-[#007AFF]/10 border-[#007AFF] shadow-sm'
+                                                        : 'bg-white dark:bg-white/5 border border-[#E5E5EA] dark:border-white/10 hover:border-[#007AFF]/20'
+                                                        }`}>
+                                                        <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center transition-all ${surveyAnswers[idx] === opt ? 'border-[#007AFF] bg-[#007AFF]' : 'border-[#AEAEB2] bg-transparent'}`}>
+                                                            {surveyAnswers[idx] === opt && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                                        </div>
+                                                        <input
+                                                            type="radio"
+                                                            className="hidden"
+                                                            checked={surveyAnswers[idx] === opt}
+                                                            onChange={() => setSurveyAnswers(prev => ({ ...prev, [idx]: opt }))}
+                                                        />
+                                                        <span className={`text-[11px] font-bold ${surveyAnswers[idx] === opt ? 'text-[#007AFF]' : 'text-[#8E8E93]'}`}>{opt}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        )}
 
-                                    {q.type === 'multi_choice' && q.options && (
-                                        <div className="space-y-2">
-                                            {q.options.map((opt, optIdx) => (
-                                                <label key={optIdx} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${(surveyAnswers[idx] || []).includes(opt)
-                                                    ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-600'
-                                                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 hover:border-orange-300'
-                                                    }`}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={(surveyAnswers[idx] || []).includes(opt)}
-                                                        onChange={(e) => {
-                                                            const current = surveyAnswers[idx] || []
-                                                            if (e.target.checked) {
-                                                                setSurveyAnswers(prev => ({ ...prev, [idx]: [...current, opt] }))
-                                                            } else {
-                                                                setSurveyAnswers(prev => ({ ...prev, [idx]: current.filter((v: string) => v !== opt) }))
-                                                            }
-                                                        }}
-                                                        className="w-4 h-4 rounded text-orange-500 focus:ring-orange-500"
-                                                    />
-                                                    <span className="text-gray-700 dark:text-gray-300">{opt}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    )}
+                                        {q.type === 'multi_choice' && q.options && (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                {q.options.map((opt, optIdx) => {
+                                                    const isChecked = (surveyAnswers[idx] || []).includes(opt);
+                                                    return (
+                                                        <label key={optIdx} className={`flex items-center gap-2 px-3 py-1.5 rounded-[12px] border cursor-pointer transition-all active:scale-[0.98] ${isChecked
+                                                            ? 'bg-[#007AFF]/10 border-[#007AFF] shadow-sm'
+                                                            : 'bg-white dark:bg-white/5 border-[#E5E5EA] dark:border-white/10 hover:border-[#007AFF]/20'
+                                                            }`}>
+                                                            <div className={`w-3.5 h-3.5 rounded-md border-2 flex items-center justify-center transition-all ${isChecked ? 'border-[#007AFF] bg-[#007AFF]' : 'border-[#AEAEB2] bg-transparent'}`}>
+                                                                {isChecked && <CheckCircle className="w-2.5 h-2.5 text-white" />}
+                                                            </div>
+                                                            <input
+                                                                type="checkbox"
+                                                                className="hidden"
+                                                                checked={isChecked}
+                                                                onChange={(e) => {
+                                                                    const current = surveyAnswers[idx] || []
+                                                                    if (e.target.checked) {
+                                                                        setSurveyAnswers(prev => ({ ...prev, [idx]: [...current, opt] }))
+                                                                    } else {
+                                                                        setSurveyAnswers(prev => ({ ...prev, [idx]: current.filter((v: string) => v !== opt) }))
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <span className={`text-[11px] font-bold ${isChecked ? 'text-[#007AFF]' : 'text-[#8E8E93]'}`}>{opt}</span>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="p-6 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700">
+                        <div className="p-4 border-t border-[#E5E5EA] dark:border-white/10 bg-white dark:bg-[#1C1C1E]">
                             <button
                                 onClick={handleSubmitSurvey}
                                 disabled={submitting}
-                                className="w-full py-4 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-lg hover:shadow-xl disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
+                                className="w-full py-3 rounded-[14px] bg-gradient-to-r from-[#007AFF] to-[#0051FF] text-white font-black text-[10px] tracking-wider uppercase shadow-md hover:bg-[#0051FF] disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
                             >
                                 {submitting ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
                                     <>
-                                        <Send className="w-5 h-5" />
-                                        Submit Survey
+                                        <Send className="w-4 h-4" />
+                                        SUBMIT FEEDBACK
                                     </>
                                 )}
                             </button>

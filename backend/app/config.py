@@ -1,9 +1,10 @@
 """
 Application Configuration
 """
+import os
 from functools import lru_cache
 from typing import List
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -25,14 +26,34 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440  # 24 hours
     
-    # LLM Configuration
-    llm_provider: str = "openai"  # openai, gemini, litellm, anthropic, azure_openai
-    openai_api_key: str = ""
-    google_api_key: str = ""
-    anthropic_api_key: str = ""
-    litellm_api_key: str = ""
-    litellm_base_url: str = ""
-    litellm_model: str = "gpt-4o-mini"
+    # LLM Configuration - Use os.getenv directly to ensure Docker env vars are read
+    @property
+    def llm_provider(self) -> str:
+        return os.getenv("LLM_PROVIDER", "litellm").lower()
+    
+    @property
+    def openai_api_key(self) -> str:
+        return os.getenv("OPENAI_API_KEY", "")
+    
+    @property
+    def google_api_key(self) -> str:
+        return os.getenv("GOOGLE_API_KEY", "")
+    
+    @property
+    def anthropic_api_key(self) -> str:
+        return os.getenv("ANTHROPIC_API_KEY", "")
+    
+    @property
+    def litellm_api_key(self) -> str:
+        return os.getenv("LITELLM_API_KEY", "")
+    
+    @property
+    def litellm_base_url(self) -> str:
+        return os.getenv("LITELLM_BASE_URL", "")
+    
+    @property
+    def litellm_model(self) -> str:
+        return os.getenv("LITELLM_MODEL", "gpt-4o-mini")
     
     # CORS
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
@@ -61,13 +82,31 @@ class Settings(BaseSettings):
     def supported_languages_list(self) -> List[str]:
         return [lang.strip() for lang in self.supported_languages.split(",")]
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    # Use pydantic v2 style model_config
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
 
-@lru_cache()
+# Single cached instance
+_settings_instance = None
+
+
 def get_settings() -> Settings:
-    """Get cached settings instance."""
-    return Settings()
+    """Get settings instance."""
+    global _settings_instance
+    
+    if _settings_instance is None:
+        _settings_instance = Settings()
+        # Log on first load
+        print(f"[Config] Loaded settings:")
+        print(f"  LLM Provider: {_settings_instance.llm_provider}")
+        print(f"  LiteLLM API Key: {'***' + _settings_instance.litellm_api_key[-4:] if _settings_instance.litellm_api_key else 'NOT SET'}")
+        print(f"  LiteLLM Base URL: {_settings_instance.litellm_base_url or 'NOT SET'}")
+        print(f"  LiteLLM Model: {_settings_instance.litellm_model}")
+    
+    return _settings_instance
+

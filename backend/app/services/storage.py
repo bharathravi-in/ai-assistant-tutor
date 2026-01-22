@@ -37,8 +37,13 @@ class LocalStorageProvider(StorageProvider):
 
         # Check if it's a file-like object (has read method) rather than bytes
         if hasattr(file_data, 'read'):
+            # For FastAPI UploadFile, seek might be async
             if hasattr(file_data, 'seek'):
-                await file_data.seek(0)
+                try:
+                    await file_data.seek(0)
+                except TypeError:
+                    # sync seek
+                    file_data.seek(0)
             content = await file_data.read()
             with open(full_path, "wb") as buffer:
                 buffer.write(content)
@@ -79,7 +84,10 @@ class GCPStorageProvider(StorageProvider):
             if hasattr(file_data, 'read'):
                 # It's a file-like object (UploadFile or similar)
                 if hasattr(file_data, 'seek'):
-                    await file_data.seek(0)
+                    try:
+                        await file_data.seek(0)
+                    except TypeError:
+                        file_data.seek(0)
                 content = await file_data.read()
                 if not content_type and hasattr(file_data, 'content_type'):
                     content_type = file_data.content_type or "application/octet-stream"
