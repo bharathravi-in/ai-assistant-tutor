@@ -66,6 +66,7 @@ import LearningPage from './pages/LearningPage'
 import ModuleDetailPage from './pages/ModuleDetailPage'
 import ScenariosPage from './pages/ScenariosPage'
 import ScenarioDetailPage from './pages/ScenarioDetailPage'
+import MessagesPage from './pages/MessagesPage'
 
 // Layout
 import Layout from './components/common/Layout'
@@ -252,6 +253,14 @@ function App() {
                 <ProtectedRoute roles={['teacher']}>
                     <Layout>
                         <ChatInterface />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+
+            <Route path="/messages" element={
+                <ProtectedRoute roles={['teacher', 'crp', 'arp', 'admin']}>
+                    <Layout>
+                        <MessagesPage />
                     </Layout>
                 </ProtectedRoute>
             } />

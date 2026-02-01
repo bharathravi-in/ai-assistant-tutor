@@ -7,12 +7,18 @@ import { Send, Mic, ArrowLeft, MoreVertical, Loader2 } from 'lucide-react';
 import { ChatMessage, Conversation } from '../types/chat';
 import { getConversation, sendMessage } from '../services/chatService';
 import { useTranslation } from 'react-i18next';
+import MarkdownRenderer from './common/MarkdownRenderer';
+import StructuredAIResponse from './common/StructuredAIResponse';
 
 const formatTimeAgo = (dateString: string) => {
   const now = new Date();
-  const date = new Date(dateString);
+  // Ensure the date string is treated as UTC if it doesn't have a timezone indicator
+  const utcDateString = dateString.includes('Z') || dateString.includes('+')
+    ? dateString
+    : `${dateString}Z`;
+  const date = new Date(utcDateString);
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
+
   if (seconds < 0) return 'just now'; // Handle future dates
   if (seconds < 60) return 'just now';
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
@@ -24,13 +30,13 @@ const ChatInterface: React.FC = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  
+
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load conversation
@@ -59,6 +65,18 @@ const ChatInterface: React.FC = () => {
     if (!input.trim() || !conversationId) return;
 
     const userMessage = input;
+    const tempId = Date.now(); // Temporary ID for optimistic UI
+
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      conversation_id: Number(conversationId),
+      role: 'user',
+      content: userMessage,
+      created_at: new Date().toISOString(),
+      was_voice_input: false,
+    };
+
+    setMessages(prev => [...prev, optimisticMessage]);
     setInput('');
     setLoading(true);
     setError('');
@@ -69,12 +87,17 @@ const ChatInterface: React.FC = () => {
         language: localStorage.getItem('i18nextLng') || 'en',
       });
 
-      // Add both user and AI messages
-      setMessages([...messages, response.user_message, response.ai_response]);
+      // Avoid duplicates: replace the optimistic message with the real one, and add the AI response
+      setMessages(prev => {
+        const filtered = prev.filter(m => m.id !== tempId);
+        return [...filtered, response.user_message, response.ai_response];
+      });
       setConversation(response.conversation);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to send message');
       setInput(userMessage); // Restore input on error
+      // Remove the optimistic message if it failed
+      setMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
       setLoading(false);
     }
@@ -137,20 +160,30 @@ const ChatInterface: React.FC = () => {
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-        {messages.map((msg, index) => (
+      <div className="flex-1 overflow-y-auto p-4 bg-gray-100/30">
+        {[...messages].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).map((msg) => (
           <div key={msg.id} className="mb-4">
             {/* Message Bubble */}
             <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
-                className={`max-w-[70%] p-3 rounded-lg ${
-                  msg.role === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-900 shadow'
-                }`}
+                className={`max-w-[85%] p-4 rounded-2xl ${msg.role === 'user'
+                  ? 'bg-blue-600 text-white shadow-lg dark:bg-blue-700'
+                  : 'bg-white text-gray-900 shadow-md border border-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700'
+                  }`}
               >
-                <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                
+                <div className="prose prose-sm dark:prose-invert max-w-none break-words text-gray-800 dark:text-gray-200">
+                  {msg.role === 'assistant' && msg.structured_data && Object.keys(msg.structured_data).filter(k => !['mode', 'raw_response'].includes(k)).length > 0 ? (
+                    <StructuredAIResponse
+                      content={msg.content}
+                      structured={msg.structured_data}
+                      topic={conversation.topic}
+                      grade={conversation.grade}
+                    />
+                  ) : (
+                    <MarkdownRenderer content={msg.content} />
+                  )}
+                </div>
+
                 {/* Metadata */}
                 <p className={`text-xs mt-2 ${msg.role === 'user' ? 'text-blue-100' : 'text-gray-500'}`}>
                   {formatTimeAgo(msg.created_at)}
@@ -161,19 +194,21 @@ const ChatInterface: React.FC = () => {
             </div>
 
             {/* Follow-up Suggestions */}
-            {msg.role === 'assistant' && msg.suggested_followups && msg.suggested_followups.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2 ml-2">
-                {msg.suggested_followups.map((suggestion, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleFollowUpClick(suggestion)}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded-full hover:bg-gray-100 transition"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            )}
+            {
+              msg.role === 'assistant' && msg.suggested_followups && msg.suggested_followups.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2 ml-2">
+                  {msg.suggested_followups.map((suggestion, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleFollowUpClick(suggestion)}
+                      className="px-3 py-1 text-sm border border-gray-300 rounded-full hover:bg-gray-100 transition"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )
+            }
           </div>
         ))}
 
@@ -191,16 +226,18 @@ const ChatInterface: React.FC = () => {
       </div>
 
       {/* Error Alert */}
-      {error && (
-        <div className="mx-4 my-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <div className="flex justify-between items-center">
-            <p className="text-red-800 text-sm">{error}</p>
-            <button onClick={() => setError('')} className="text-red-800 hover:text-red-900">
-              ×
-            </button>
+      {
+        error && (
+          <div className="mx-4 my-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex justify-between items-center">
+              <p className="text-red-800 text-sm">{error}</p>
+              <button onClick={() => setError('')} className="text-red-800 hover:text-red-900">
+                ×
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Input Area */}
       <div className="bg-white border-t p-4">
@@ -230,7 +267,7 @@ const ChatInterface: React.FC = () => {
           </button>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

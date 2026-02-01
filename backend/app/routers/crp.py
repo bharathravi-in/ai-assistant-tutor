@@ -793,24 +793,34 @@ async def get_teacher_network(
 
 # ==================== VISIT SCHEDULING ====================
 
+from app.models.visit import Visit, VisitPurpose, VisitStatus, TeacherVisitResponse
+from datetime import date as date_type
+
 class VisitCreate(BaseModel):
     """Create a new school visit."""
     school: str
     teacher_name: str
+    teacher_id: Optional[int] = None  # Optional: if not provided, look up by name
     date: str  # YYYY-MM-DD
     time: str  # HH:MM
-    purpose: str  # routine, follow_up, training, observation
+    purpose: str  # routine, follow_up, training, observation, support, assessment
     notes: Optional[str] = None
 
 
 class VisitUpdate(BaseModel):
     """Update visit status."""
-    status: str  # scheduled, completed, cancelled
+    status: str  # scheduled, confirmed, in_progress, completed, cancelled, rescheduled
     notes: Optional[str] = None
+    completed_notes: Optional[str] = None
+    observation_summary: Optional[str] = None
 
 
-# In-memory storage for visits (in production, use a database model)
-_visits_store: List[dict] = []
+class VisitAcknowledge(BaseModel):
+    """Teacher acknowledges a visit."""
+    response: str  # accepted, reschedule_requested
+    notes: Optional[str] = None
+    proposed_date: Optional[str] = None  # YYYY-MM-DD (for reschedule)
+    proposed_time: Optional[str] = None  # HH:MM (for reschedule)
 
 
 @router.get("/visits")
@@ -819,22 +829,34 @@ async def get_visits(
     current_user: User = Depends(require_role(UserRole.CRP, UserRole.ARP)),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get all scheduled and past visits."""
-    visits = [v for v in _visits_store if v["crp_id"] == current_user.id]
+    """Get all scheduled and past visits for the current CRP/ARP."""
+    query = select(Visit).where(Visit.crp_id == current_user.id)
     
     if status:
-        visits = [v for v in visits if v["status"] == status]
+        try:
+            status_enum = VisitStatus(status)
+            query = query.where(Visit.status == status_enum)
+        except ValueError:
+            pass  # Invalid status, ignore filter
     
-    # Sort by date
-    visits.sort(key=lambda x: x["date"], reverse=True)
+    query = query.order_by(Visit.visit_date.desc())
+    
+    result = await db.execute(query)
+    visits = result.scalars().all()
+    
+    # Calculate stats
+    all_visits = [v.to_dict() for v in visits]
     
     return {
-        "visits": visits,
-        "total": len(visits),
+        "visits": all_visits,
+        "total": len(all_visits),
         "stats": {
-            "scheduled": len([v for v in visits if v["status"] == "scheduled"]),
-            "completed": len([v for v in visits if v["status"] == "completed"]),
-            "cancelled": len([v for v in visits if v["status"] == "cancelled"]),
+            "scheduled": len([v for v in visits if v.status == VisitStatus.SCHEDULED]),
+            "confirmed": len([v for v in visits if v.status == VisitStatus.CONFIRMED]),
+            "completed": len([v for v in visits if v.status == VisitStatus.COMPLETED]),
+            "cancelled": len([v for v in visits if v.status == VisitStatus.CANCELLED]),
+            "pending_response": len([v for v in visits if v.teacher_response == TeacherVisitResponse.PENDING]),
+            "reschedule_requested": len([v for v in visits if v.teacher_response == TeacherVisitResponse.RESCHEDULE_REQUESTED]),
         }
     }
 
@@ -846,34 +868,89 @@ async def create_visit(
     db: AsyncSession = Depends(get_db)
 ):
     """Schedule a new school visit."""
-    new_visit = {
-        "id": len(_visits_store) + 1,
-        "crp_id": current_user.id,
-        "school": visit.school,
-        "teacher": visit.teacher_name,
-        "date": visit.date,
-        "time": visit.time,
-        "purpose": visit.purpose,
-        "status": "scheduled",
-        "notes": visit.notes,
-        "created_at": datetime.now().isoformat()
-    }
-    _visits_store.append(new_visit)
+    from app.models.notification import Notification, NotificationType
     
-    # Send notification to teacher about scheduled visit
-    # Note: In production, you'd look up the teacher by name and get their user_id
-    # For now, this is a placeholder showing the pattern
-    # await create_notification(
-    #     db=db,
-    #     user_id=teacher_user_id,  # Would need to look this up
-    #     notification_type=NotificationType.CRP_VISIT,
-    #     title="CRP Visit Scheduled 📅",
-    #     message=f"Your CRP has scheduled a visit on {visit.date} at {visit.time}. Purpose: {visit.purpose}",
-    #     action_url="/teacher/my-visits",
-    #     action_label="View Visit Details"
-    # )
+    # Parse date
+    try:
+        visit_date = date_type.fromisoformat(visit.date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
     
-    return new_visit
+    # Parse purpose
+    try:
+        purpose_enum = VisitPurpose(visit.purpose)
+    except ValueError:
+        purpose_enum = VisitPurpose.ROUTINE
+    
+    # Try to find teacher by ID or name
+    teacher_id = visit.teacher_id
+    if not teacher_id and visit.teacher_name:
+        # Look up teacher by name (case-insensitive)
+        teacher_result = await db.execute(
+            select(User).where(
+                User.role == UserRole.TEACHER,
+                func.lower(User.name) == visit.teacher_name.lower().strip()
+            )
+        )
+        teacher = teacher_result.scalar_one_or_none()
+        if teacher:
+            teacher_id = teacher.id
+    
+    # Create visit in database
+    new_visit = Visit(
+        organization_id=current_user.organization_id,
+        crp_id=current_user.id,
+        teacher_id=teacher_id,
+        teacher_name=visit.teacher_name,
+        school_name=visit.school,
+        visit_date=visit_date,
+        visit_time_str=visit.time,
+        purpose=purpose_enum,
+        status=VisitStatus.SCHEDULED,
+        notes=visit.notes,
+        teacher_response=TeacherVisitResponse.PENDING,
+    )
+    
+    db.add(new_visit)
+    await db.commit()
+    await db.refresh(new_visit)
+    
+    # Send notification to teacher if we found their ID
+    if teacher_id:
+        try:
+            notification = Notification(
+                user_id=teacher_id,
+                type=NotificationType.CRP_VISIT,
+                title="CRP Visit Scheduled 📅",
+                message=f"Your CRP has scheduled a visit on {visit.date} at {visit.time}. Purpose: {visit.purpose}",
+                action_url="/teacher/my-visits",
+                action_label="View Visit Details"
+            )
+            db.add(notification)
+            await db.commit()
+        except Exception as e:
+            # Don't fail the visit creation if notification fails
+            print(f"Failed to create notification: {e}")
+    
+    return new_visit.to_dict()
+
+
+@router.get("/visits/{visit_id}")
+async def get_visit_detail(
+    visit_id: int,
+    current_user: User = Depends(require_role(UserRole.CRP, UserRole.ARP)),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get detailed information about a specific visit."""
+    visit = await db.get(Visit, visit_id)
+    
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    
+    if visit.crp_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this visit")
+    
+    return visit.to_dict()
 
 
 @router.patch("/visits/{visit_id}")
@@ -884,15 +961,36 @@ async def update_visit(
     db: AsyncSession = Depends(get_db)
 ):
     """Update visit status (complete/cancel)."""
-    for visit in _visits_store:
-        if visit["id"] == visit_id and visit["crp_id"] == current_user.id:
-            visit["status"] = update.status
-            if update.notes:
-                visit["notes"] = update.notes
-            visit["updated_at"] = datetime.now().isoformat()
-            return visit
+    visit = await db.get(Visit, visit_id)
     
-    raise HTTPException(status_code=404, detail="Visit not found")
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    
+    if visit.crp_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this visit")
+    
+    # Update status
+    try:
+        visit.status = VisitStatus(update.status)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid status: {update.status}")
+    
+    # Update notes
+    if update.notes:
+        visit.notes = update.notes
+    
+    # If completing, add completion details
+    if visit.status == VisitStatus.COMPLETED:
+        visit.completed_at = datetime.now()
+        if update.completed_notes:
+            visit.completed_notes = update.completed_notes
+        if update.observation_summary:
+            visit.observation_summary = update.observation_summary
+    
+    await db.commit()
+    await db.refresh(visit)
+    
+    return visit.to_dict()
 
 
 @router.delete("/visits/{visit_id}")
@@ -902,9 +1000,91 @@ async def delete_visit(
     db: AsyncSession = Depends(get_db)
 ):
     """Delete a scheduled visit."""
-    global _visits_store
-    _visits_store = [v for v in _visits_store if not (v["id"] == visit_id and v["crp_id"] == current_user.id)]
-    return {"message": "Visit deleted"}
+    visit = await db.get(Visit, visit_id)
+    
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    
+    if visit.crp_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this visit")
+    
+    await db.delete(visit)
+    await db.commit()
+    
+    return {"message": "Visit deleted", "id": visit_id}
+
+
+# ==================== TEACHER VISIT ACKNOWLEDGMENT ====================
+
+@router.post("/visits/{visit_id}/acknowledge")
+async def acknowledge_visit(
+    visit_id: int,
+    ack: VisitAcknowledge,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Teacher acknowledges a visit and optionally requests rescheduling.
+    
+    Allows teachers to:
+    - Accept the visit as scheduled
+    - Request a reschedule with proposed new date/time
+    """
+    visit = await db.get(Visit, visit_id)
+    
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    
+    # Only the assigned teacher can acknowledge
+    if visit.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized for this visit")
+    
+    # Mark as acknowledged
+    visit.teacher_acknowledged = True
+    visit.teacher_acknowledged_at = datetime.now()
+    
+    # Set response
+    try:
+        visit.teacher_response = TeacherVisitResponse(ack.response)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid response: {ack.response}")
+    
+    visit.teacher_response_notes = ack.notes
+    
+    # Handle reschedule request
+    if ack.response == "reschedule_requested":
+        if ack.proposed_date:
+            try:
+                visit.proposed_reschedule_date = date_type.fromisoformat(ack.proposed_date)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid proposed date format")
+        visit.proposed_reschedule_time = ack.proposed_time
+    
+    # If accepted, update status to confirmed
+    if ack.response == "accepted":
+        visit.status = VisitStatus.CONFIRMED
+    
+    await db.commit()
+    await db.refresh(visit)
+    
+    # Notify CRP about teacher response
+    from app.models.notification import Notification, NotificationType
+    try:
+        response_text = "accepted" if ack.response == "accepted" else "requested rescheduling for"
+        notification = Notification(
+            user_id=visit.crp_id,
+            type=NotificationType.INFO,
+            title="Teacher Response to Visit 📝",
+            message=f"{current_user.name or 'Teacher'} has {response_text} your scheduled visit on {visit.visit_date}",
+            action_url="/crp/visits",
+            action_label="View Visits"
+        )
+        db.add(notification)
+        await db.commit()
+    except Exception as e:
+        print(f"Failed to create notification: {e}")
+    
+    return visit.to_dict()
 
 
 # ==================== TEACHER ACCESS TO VISITS ====================
@@ -920,43 +1100,49 @@ async def get_teacher_visits(
     
     Allows teachers to see upcoming support visits from CRPs.
     """
-    from datetime import date
+    # Query visits for this teacher
+    query = select(Visit).where(Visit.teacher_id == current_user.id)
     
-    # Debug logging
+    # Also match by name for backwards compatibility
     teacher_name = current_user.name.lower().strip() if current_user.name else ""
-    print(f"DEBUG teacher-visits: Looking for teacher_name='{teacher_name}'")
-    print(f"DEBUG teacher-visits: Total visits in store: {len(_visits_store)}")
-    for v in _visits_store:
-        print(f"DEBUG: Visit {v.get('id')} - teacher='{v.get('teacher', '')}' status='{v.get('status')}'")
+    if teacher_name:
+        query = select(Visit).where(
+            or_(
+                Visit.teacher_id == current_user.id,
+                func.lower(Visit.teacher_name) == teacher_name
+            )
+        )
     
-    # Filter visits by teacher name (case-insensitive, stripped match)
-    visits = [
-        v for v in _visits_store 
-        if v.get("teacher", "").lower().strip() == teacher_name
-    ]
-    
-    print(f"DEBUG teacher-visits: Found {len(visits)} matching visits")
-    
-    # Apply status filter if provided
     if status:
-        visits = [v for v in visits if v.get("status") == status]
+        try:
+            status_enum = VisitStatus(status)
+            query = query.where(Visit.status == status_enum)
+        except ValueError:
+            pass
     
-    # Sort by date (most recent first)
-    visits.sort(key=lambda x: x.get("date", ""), reverse=True)
+    query = query.order_by(Visit.visit_date.desc())
+    
+    result = await db.execute(query)
+    visits = result.scalars().all()
+    
+    # Convert to dicts
+    all_visits = [v.to_dict() for v in visits]
     
     # Separate into upcoming and past
-    today = date.today().isoformat()
-    upcoming = [v for v in visits if v.get("date", "") >= today and v.get("status") == "scheduled"]
-    past = [v for v in visits if v.get("date", "") < today or v.get("status") != "scheduled"]
+    today = date_type.today().isoformat()
+    upcoming = [v for v in all_visits if v.get("date", "") >= today and v.get("status") == "scheduled"]
+    past = [v for v in all_visits if v.get("date", "") < today or v.get("status") != "scheduled"]
     
     return {
-        "visits": visits,
+        "visits": all_visits,
         "upcoming": upcoming,
         "past": past,
-        "total": len(visits),
+        "total": len(all_visits),
         "stats": {
             "upcoming_count": len(upcoming),
-            "completed": len([v for v in visits if v.get("status") == "completed"]),
-            "cancelled": len([v for v in visits if v.get("status") == "cancelled"]),
+            "completed": len([v for v in all_visits if v.get("status") == "completed"]),
+            "cancelled": len([v for v in all_visits if v.get("status") == "cancelled"]),
+            "pending_response": len([v for v in all_visits if v.get("teacher_response") == "pending"]),
         }
     }
+

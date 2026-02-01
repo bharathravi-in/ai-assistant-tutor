@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, BookOpen, MessageSquare, Calendar } from 'lucide-react';
+import { BarChart3, TrendingUp, BookOpen, MessageSquare } from 'lucide-react';
 import { getTeacherUsageStats, getContentEngagement, UsageStats, ContentEngagement } from '../services/analyticsService';
 
 const AnalyticsPage: React.FC = () => {
   const [stats, setStats] = useState<UsageStats | null>(null);
   const [engagement, setEngagement] = useState<ContentEngagement | null>(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState(30);
+  const [period, setPeriod] = useState(365);
 
   useEffect(() => {
     loadData();
@@ -30,7 +30,7 @@ const AnalyticsPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading analytics...</p>
@@ -52,6 +52,7 @@ const AnalyticsPage: React.FC = () => {
           <option value={7}>Last 7 days</option>
           <option value={30}>Last 30 days</option>
           <option value={90}>Last 90 days</option>
+          <option value={365}>All time</option>
         </select>
       </div>
 
@@ -179,11 +180,10 @@ const AnalyticsPage: React.FC = () => {
                     <td className="px-4 py-3 text-sm text-gray-900">{content.title}</td>
                     <td className="px-4 py-3 text-sm text-gray-600 capitalize">{content.type}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        content.status === 'approved' ? 'bg-green-100 text-green-800' :
+                      <span className={`px-2 py-1 text-xs rounded-full ${content.status === 'approved' ? 'bg-green-100 text-green-800' :
                         content.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                          'bg-gray-100 text-gray-800'
+                        }`}>
                         {content.status}
                       </span>
                     </td>

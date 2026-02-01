@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import {
     History,
     Search,
@@ -51,7 +51,6 @@ const modeLabels: Record<string, string> = {
 
 export default function TeacherHistory() {
     const { language: selectedLanguage } = useTranslation()
-    const navigate = useNavigate()
     const [searchParams] = useSearchParams()
     const [queries, setQueries] = useState<Query[]>([])
     const [loading, setLoading] = useState(true)
@@ -59,10 +58,6 @@ export default function TeacherHistory() {
     const [filterMode, setFilterMode] = useState<string | null>(searchParams.get('mode'))
     const [selectedQuery, setSelectedQuery] = useState<Query | null>(null)
 
-    // Redirect to Ask AI page with history ID
-    const handleViewQuery = (query: Query) => {
-        navigate(`/teacher/ask-question?historyId=${query.id}`)
-    }
 
 
     // Reflection state
@@ -236,28 +231,32 @@ export default function TeacherHistory() {
                                         return (
                                             <button
                                                 key={query.id}
-                                                onClick={() => handleViewQuery(query)}
-                                                className={`w-full text-left bg-white dark:bg-gray-800 p-4 rounded-2xl border transition-all hover:shadow-md ${isSelected ? 'shadow-lg' : 'border-gray-100 dark:border-gray-700'
+                                                onClick={() => setSelectedQuery(query)}
+                                                className={`w-full text-left bg-white dark:bg-gray-800 p-5 rounded-2xl border transition-all hover:border-blue-400 ${isSelected ? 'border-blue-600 ring-2 ring-blue-100 shadow-lg' : 'border-gray-100 dark:border-gray-700'
                                                     }`}
-                                                style={isSelected ? { borderColor: modeColors[query.mode] } : {}}
                                             >
-                                                <div className="flex items-start gap-3">
+                                                <div className="flex items-center gap-4">
                                                     <div
-                                                        className="p-2 rounded-xl flex-shrink-0"
-                                                        style={{ background: `${modeColors[query.mode]}15`, color: modeColors[query.mode] }}
+                                                        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                                                        style={{ background: `${modeColors[query.mode]}10`, color: modeColors[query.mode] }}
                                                     >
-                                                        <ModeIcon className="w-5 h-5" />
+                                                        <ModeIcon className="w-6 h-6" />
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-gray-800 dark:text-white font-medium line-clamp-2 text-sm">
+                                                        <p className="text-gray-900 dark:text-white font-semibold line-clamp-1 text-base">
                                                             {query.input_text}
                                                         </p>
-                                                        <div className="flex items-center gap-2 mt-2">
-                                                            <Clock className="w-3.5 h-3.5 text-gray-400" />
-                                                            <span className="text-xs text-gray-400">{formatTime(query.created_at)}</span>
+                                                        <div className="flex items-center gap-3 mt-1.5">
+                                                            <span className="text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wider" style={{ background: `${modeColors[query.mode]}15`, color: modeColors[query.mode] }}>
+                                                                {modeLabels[query.mode]}
+                                                            </span>
+                                                            <div className="flex items-center gap-1 text-gray-400">
+                                                                <Clock className="w-3.5 h-3.5" />
+                                                                <span className="text-xs">{formatTime(query.created_at)}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 mt-1" />
+                                                    <ChevronRight className={`w-5 h-5 transition-colors ${isSelected ? 'text-blue-600' : 'text-gray-300'}`} />
                                                 </div>
                                             </button>
                                         )

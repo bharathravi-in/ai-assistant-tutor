@@ -35,29 +35,38 @@ import { aiApi } from '../../services/api'
 
 // Helper function to safely convert any data type to string for MarkdownRenderer
 function toSafeString(data: any): string {
-    if (!data) return ''
+    if (data === null || data === undefined) return ''
     if (typeof data === 'string') return data
+    if (typeof data === 'number' || typeof data === 'boolean') return String(data)
+
     if (Array.isArray(data)) {
-        // Join array items as numbered list or bullet points
         return data.map((item, idx) => {
-            if (typeof item === 'string') return `${idx + 1}. ${item}`
-            if (typeof item === 'object') return `${idx + 1}. ${item.content || item.text || JSON.stringify(item)}`
-            return `${idx + 1}. ${String(item)}`
+            const val = typeof item === 'object' ? toSafeString(item) : String(item)
+            return `${idx + 1}. ${val}`
         }).join('\n\n')
     }
+
     if (typeof data === 'object') {
+        // Handle common structured objects
+        if (data.content) return toSafeString(data.content)
+        if (data.text) return toSafeString(data.text)
+        if (data.description) return toSafeString(data.description)
+
         return Object.entries(data)
-            .map(([key, val]) => `**${key}**: ${val}`)
+            .map(([key, val]) => `**${key.replace(/_/g, ' ')}**: ${typeof val === 'object' ? JSON.stringify(val) : val}`)
             .join('\n\n')
     }
+
     return String(data)
 }
 
 interface Example {
-    title: string
+    title?: string
     description?: string
     problem?: string
     explanation?: string
+    law?: string       // From API: "law" field
+    example?: string   // From API: "example" field
 }
 
 interface VisualAidIdea {
@@ -92,6 +101,7 @@ interface Activity {
 }
 
 interface StructuredContent {
+    [key: string]: any
     // Regular explain response fields
     conceptual_briefing?: string
     simple_explanation?: string
@@ -374,6 +384,14 @@ const sectionConfig = {
         bgGradient: 'from-teal-50 to-teal-100/80 dark:from-teal-900/40 dark:to-teal-800/30',
         iconBg: 'bg-teal-600',
         borderColor: 'border-teal-200 dark:border-teal-700'
+    },
+    miscellaneous: {
+        icon: Package,
+        title: 'Additional Information',
+        emoji: '📦',
+        bgGradient: 'from-gray-50 to-gray-100/80 dark:from-gray-900/40 dark:to-gray-800/30',
+        iconBg: 'bg-gray-500',
+        borderColor: 'border-gray-200 dark:border-gray-700'
     }
 }
 
@@ -438,9 +456,9 @@ function MnemonicsHooksContent({ items }: { items: (string | { type: string; con
                             key={idx}
                             className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border-l-4 border-purple-500"
                         >
-                            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                                {item}
-                            </p>
+                            <div className="text-gray-700 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none">
+                                <MarkdownRenderer content={item} />
+                            </div>
                         </div>
                     )
                 }
@@ -459,9 +477,9 @@ function MnemonicsHooksContent({ items }: { items: (string | { type: string; con
                             }`}>
                             {item.type}
                         </span>
-                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                            {item.content}
-                        </p>
+                        <div className="text-gray-700 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none">
+                            <MarkdownRenderer content={item.content} />
+                        </div>
                     </div>
                 )
             })}
@@ -479,7 +497,7 @@ function parseStringExample(str: string): { title: string; description: string }
             description: boldTitleMatch[2].trim()
         }
     }
-    
+
     // Try to match "Title: Description" pattern
     const colonMatch = str.match(/^([^:]+):\s*(.+)$/s)
     if (colonMatch && colonMatch[1].length < 100) {
@@ -488,7 +506,7 @@ function parseStringExample(str: string): { title: string; description: string }
             description: colonMatch[2].trim()
         }
     }
-    
+
     // Fallback - use first sentence as title or generic title
     const firstSentence = str.split(/[.!?]/)[0]
     if (firstSentence && firstSentence.length < 80) {
@@ -497,7 +515,7 @@ function parseStringExample(str: string): { title: string; description: string }
             description: str.substring(firstSentence.length + 1).trim() || str
         }
     }
-    
+
     return {
         title: `Example`,
         description: str
@@ -540,12 +558,12 @@ function ExamplesContent({ items, color = 'emerald' }: { items: (string | Exampl
                             <span className={`w-6 h-6 rounded-full ${colorClasses[color as keyof typeof colorClasses] || colorClasses.emerald} text-white flex items-center justify-center text-xs font-bold`}>
                                 {idx + 1}
                             </span>
-                            {example.title || `Example ${idx + 1}`}
+                            <MarkdownRenderer content={example.law || example.title || `Example ${idx + 1}`} />
                         </h4>
                         {/* Handle description format */}
-                        {example.description && (
+                        {(example.description || example.example) && (
                             <div className="text-gray-700 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none">
-                                <MarkdownRenderer content={example.description} />
+                                <MarkdownRenderer content={example.example || example.description || ''} />
                             </div>
                         )}
                         {/* Handle problem/explanation format */}
@@ -553,12 +571,16 @@ function ExamplesContent({ items, color = 'emerald' }: { items: (string | Exampl
                             <div className="space-y-2">
                                 <div>
                                     <span className="text-xs font-semibold uppercase text-gray-500">Problem</span>
-                                    <p className="text-gray-700 dark:text-gray-300">{example.problem}</p>
+                                    <div className="text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">
+                                        <MarkdownRenderer content={example.problem} />
+                                    </div>
                                 </div>
                                 {example.explanation && (
                                     <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
                                         <span className="text-xs font-semibold uppercase text-green-600">Solution</span>
-                                        <p className="text-gray-700 dark:text-gray-300">{example.explanation}</p>
+                                        <div className="text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none">
+                                            <MarkdownRenderer content={example.explanation} />
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -613,7 +635,9 @@ function VisualAidContent({ item }: { item: VisualAidIdea }) {
                     <h5 className="font-medium text-pink-700 dark:text-pink-300 mb-2 flex items-center gap-1 text-sm">
                         <ListChecks className="w-4 h-4" /> Materials Needed
                     </h5>
-                    <p className="text-gray-700 dark:text-gray-300 text-sm">{item.materials}</p>
+                    <div className="text-gray-700 dark:text-gray-300 text-sm">
+                        <MarkdownRenderer content={item.materials} />
+                    </div>
                 </div>
             )}
 
@@ -638,7 +662,9 @@ function VisualAidContent({ item }: { item: VisualAidIdea }) {
             {usage && (
                 <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700">
                     <h5 className="font-medium text-green-700 dark:text-green-300 mb-1 text-sm">🎯 How to Use</h5>
-                    <p className="text-gray-700 dark:text-gray-300 text-sm">{usage}</p>
+                    <div className="text-gray-700 dark:text-gray-300 text-sm">
+                        <MarkdownRenderer content={usage} />
+                    </div>
                 </div>
             )}
         </div>
@@ -707,7 +733,9 @@ function QuestionCard({
                     <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase">
                         {getLevelLabel(item.level, item.type)}
                     </span>
-                    <p className="text-gray-700 dark:text-gray-300 mt-1">{item.question}</p>
+                    <div className="text-gray-700 dark:text-gray-300 mt-1 prose prose-sm dark:prose-invert max-w-none">
+                        <MarkdownRenderer content={item.question} />
+                    </div>
 
                     {/* Get Answer Button */}
                     <button
@@ -760,7 +788,7 @@ function parseStringQuestion(str: string, index: number): CheckQuestion {
         /^(Basic|Application|Critical Thinking|Level \d+)[:\s]+(.*)$/i,
         /^\*\*([^*]+)\*\*[:\s]*(.*)$/s
     ]
-    
+
     for (const pattern of levelPatterns) {
         const match = str.match(pattern)
         if (match) {
@@ -770,7 +798,7 @@ function parseStringQuestion(str: string, index: number): CheckQuestion {
             }
         }
     }
-    
+
     // Default - assign levels based on index (1=Basic, 2=Application, 3=Critical Thinking)
     const defaultLevels = ['Basic Recall', 'Application', 'Critical Thinking']
     return {
@@ -779,8 +807,42 @@ function parseStringQuestion(str: string, index: number): CheckQuestion {
     }
 }
 
-// Render check for understanding questions - handles string[], CheckQuestion[], and mixed formats
-function CheckUnderstandingContent({ items, topic, grade, language }: { items: (string | CheckQuestion)[], topic?: string, grade?: number, language?: string }) {
+// Render check for understanding questions - handles flat list and nested level groups
+function CheckUnderstandingContent({ items, topic, grade, language }: { items: any, topic?: string, grade?: number, language?: string }) {
+    // If items is an object with levels (e.g., { "Basic": [...], "Application": [...] })
+    if (items && typeof items === 'object' && !Array.isArray(items)) {
+        return (
+            <div className="space-y-6">
+                {Object.entries(items).map(([level, questions], groupIdx) => {
+                    const questionList = Array.isArray(questions) ? questions : [questions]
+                    return (
+                        <div key={groupIdx} className="space-y-3">
+                            <h4 className="text-xs font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-1 h-1 rounded-full bg-indigo-500" />
+                                {level}
+                            </h4>
+                            <div className="space-y-3">
+                                {questionList.map((q: any, idx: number) => {
+                                    const normalizedQ = typeof q === 'string' ? { question: q, level } : { ...q, level: q.level || level }
+                                    return (
+                                        <QuestionCard
+                                            key={`${groupIdx}-${idx}`}
+                                            item={normalizedQ}
+                                            index={idx}
+                                            topic={topic}
+                                            grade={grade}
+                                            language={language}
+                                        />
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )
+                })}
+            </div>
+        )
+    }
+
     // Safety check - ensure items is an array
     const safeItems = Array.isArray(items) ? items : []
 
@@ -929,6 +991,13 @@ export default function StructuredAIResponse({ content, structured, topic, grade
 
     return (
         <div className="space-y-3">
+            {/* Show main content if provided and structured data is sparse */}
+            {content && (!structured || Object.keys(structured).filter(k => !['mode', 'raw_response'].includes(k)).length === 0) && (
+                <div className="mb-4 prose prose-sm dark:prose-invert max-w-none text-gray-800 dark:text-gray-200">
+                    <MarkdownRenderer content={content} />
+                </div>
+            )}
+
             {/* Show problem type badge for math solutions */}
             {isMathSolution && structured.problem_type && (
                 <div className="flex items-center gap-2 mb-4">
@@ -1066,10 +1135,14 @@ export default function StructuredAIResponse({ content, structured, topic, grade
                                             <div key={idx} className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500">
                                                 <div className="flex items-start gap-2">
                                                     <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                                                    <div>
-                                                        <p className="text-gray-700 dark:text-gray-300 font-medium">{misconception}</p>
+                                                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                                                        <div className="text-gray-700 dark:text-gray-300 font-medium">
+                                                            <MarkdownRenderer content={misconception} />
+                                                        </div>
                                                         {correction && (
-                                                            <p className="text-green-600 dark:text-green-400 text-sm mt-1">✓ {correction}</p>
+                                                            <div className="text-green-600 dark:text-green-400 text-sm mt-1">
+                                                                <MarkdownRenderer content={`✓ ${correction}`} />
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -1102,7 +1175,9 @@ export default function StructuredAIResponse({ content, structured, topic, grade
                                                     <span className="w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
                                                         {idx + 1}
                                                     </span>
-                                                    <p className="text-gray-700 dark:text-gray-300 pt-1">"{question}"</p>
+                                                    <div className="text-gray-700 dark:text-gray-300 pt-1 prose prose-sm dark:prose-invert max-w-none">
+                                                        <MarkdownRenderer content={question} />
+                                                    </div>
                                                 </div>
                                             </div>
                                         )
@@ -1230,6 +1305,25 @@ export default function StructuredAIResponse({ content, structured, topic, grade
                         return null
                 }
             })}
+
+            {/* Miscellaneous Section for unexpected keys */}
+            {Object.keys(structured)
+                .filter(key => !sectionOrder.includes(key) && !['raw_response', 'problem_type', 'mode'].includes(key))
+                .map(key => {
+                    const data = structured[key]
+                    if (!data) return null
+                    return (
+                        <SectionCard key={key} sectionKey="miscellaneous" defaultExpanded={false}>
+                            <div className="space-y-2">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                    {key.replace(/_/g, ' ')}
+                                </p>
+                                <MarkdownRenderer content={toSafeString(data)} />
+                            </div>
+                        </SectionCard>
+                    )
+                })
+            }
         </div>
     )
 }

@@ -1,4 +1,3 @@
-import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
     Lightbulb,
@@ -9,7 +8,6 @@ import {
     RotateCw,
     ArrowRight,
     Target,
-    Clock,
     CheckCircle,
     BookOpen,
     Eye,
@@ -18,12 +16,10 @@ import {
     BrainCircuit,
     Palette,
     FileText,
-    MessageCircle,
-    Copy,
-    Share2,
     ShieldCheck,
     Paperclip
 } from 'lucide-react'
+import MarkdownRenderer from '../common/MarkdownRenderer'
 import type { AIResponse as AIResponseType, QueryMode, AuditResult } from '../../types'
 import NCERTBadge from './NCERTBadge'
 
@@ -50,13 +46,13 @@ export default function AIResponse({
     isAuditLoading,
     auditResult,
 }: AIResponseProps) {
-    const { t } = useTranslation()
+    useTranslation()
 
     const RenderValue = ({ value }: { value: any }) => {
         if (value === null || value === undefined) return null
 
         if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-            return <>{value.toString()}</>
+            return <MarkdownRenderer content={value.toString()} />
         }
 
         if (Array.isArray(value)) {
@@ -303,8 +299,8 @@ export default function AIResponse({
         const structured = response.structured
         if (!structured || Object.keys(structured).length === 0 || structured.raw_response) {
             return (
-                <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md">
-                    <p className="whitespace-pre-wrap text-gray-700 dark:text-gray-300 leading-relaxed">{response.content}</p>
+                <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md prose prose-sm dark:prose-invert max-w-none">
+                    <MarkdownRenderer content={response.content} />
                 </div>
             )
         }
@@ -313,7 +309,7 @@ export default function AIResponse({
             case 'explain': return renderExplainResponse(structured)
             case 'assist': return renderAssistResponse(structured)
             case 'plan': return renderPlanResponse(structured)
-            default: return <p className="whitespace-pre-wrap">{response.content}</p>
+            default: return <MarkdownRenderer content={response.content} />
         }
     }
 

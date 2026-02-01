@@ -13,6 +13,7 @@ export interface User {
     school_state: string | null
     grades_taught: number[] | null
     subjects_taught: string[] | null
+    profile_image?: string | null
     is_active: boolean
     created_at: string
 }

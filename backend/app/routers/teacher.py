@@ -392,7 +392,9 @@ async def get_quick_prompts():
 
 # ==================== MY VISITS (Interventions scheduled by CRP) ====================
 
-from app.routers.crp import _visits_store
+from app.models.visit import Visit, VisitStatus, TeacherVisitResponse
+from sqlalchemy import or_
+from datetime import date as date_type
 
 @router.get("/my-visits")
 async def get_my_visits(
@@ -405,34 +407,118 @@ async def get_my_visits(
     
     Teachers can see upcoming and past visits to track CRP support.
     """
-    # Filter visits by teacher name (case-insensitive match)
-    teacher_name = current_user.name.lower() if current_user.name else ""
-    visits = [
-        v for v in _visits_store 
-        if v.get("teacher", "").lower() == teacher_name
-    ]
+    # Query visits for this teacher
+    query = select(Visit).where(Visit.teacher_id == current_user.id)
+    
+    # Also match by name for backwards compatibility
+    teacher_name = current_user.name.lower().strip() if current_user.name else ""
+    if teacher_name:
+        query = select(Visit).where(
+            or_(
+                Visit.teacher_id == current_user.id,
+                func.lower(Visit.teacher_name) == teacher_name
+            )
+        )
     
     # Apply status filter if provided
     if status:
-        visits = [v for v in visits if v.get("status") == status]
+        try:
+            status_enum = VisitStatus(status)
+            query = query.where(Visit.status == status_enum)
+        except ValueError:
+            pass
     
-    # Sort by date (most recent first)
-    visits.sort(key=lambda x: x.get("date", ""), reverse=True)
+    query = query.order_by(Visit.visit_date.desc())
+    
+    result = await db.execute(query)
+    visits = result.scalars().all()
+    
+    # Convert to dicts
+    all_visits = [v.to_dict() for v in visits]
     
     # Separate into upcoming and past
-    from datetime import date
-    today = date.today().isoformat()
-    upcoming = [v for v in visits if v.get("date", "") >= today and v.get("status") == "scheduled"]
-    past = [v for v in visits if v.get("date", "") < today or v.get("status") != "scheduled"]
+    today = date_type.today().isoformat()
+    upcoming = [v for v in all_visits if v.get("date", "") >= today and v.get("status") == "scheduled"]
+    past = [v for v in all_visits if v.get("date", "") < today or v.get("status") != "scheduled"]
     
     return {
-        "visits": visits,
+        "visits": all_visits,
         "upcoming": upcoming,
         "past": past,
-        "total": len(visits),
+        "total": len(all_visits),
         "stats": {
             "upcoming_count": len(upcoming),
-            "completed": len([v for v in visits if v.get("status") == "completed"]),
-            "cancelled": len([v for v in visits if v.get("status") == "cancelled"]),
+            "completed": len([v for v in all_visits if v.get("status") == "completed"]),
+            "cancelled": len([v for v in all_visits if v.get("status") == "cancelled"]),
+            "pending_response": len([v for v in all_visits if v.get("teacher_response") == "pending"]),
         }
     }
+
+
+class VisitAcknowledgeRequest(BaseModel):
+    """Request body for visit acknowledgment."""
+    response: str  # "accepted" or "reschedule_requested"
+    notes: Optional[str] = None
+    proposed_date: Optional[str] = None  # YYYY-MM-DD (for reschedule)
+    proposed_time: Optional[str] = None  # HH:MM (for reschedule)
+
+
+@router.post("/visits/{visit_id}/acknowledge")
+async def acknowledge_visit(
+    visit_id: int,
+    ack: VisitAcknowledgeRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Teacher acknowledges a scheduled visit.
+    
+    Use to accept the visit or request rescheduling.
+    """
+    visit = await db.get(Visit, visit_id)
+    
+    if not visit:
+        raise HTTPException(status_code=404, detail="Visit not found")
+    
+    # Check if this is the teacher's visit
+    is_teacher_visit = (
+        visit.teacher_id == current_user.id or 
+        (current_user.name and visit.teacher_name and 
+         current_user.name.lower().strip() == visit.teacher_name.lower().strip())
+    )
+    
+    if not is_teacher_visit:
+        raise HTTPException(status_code=403, detail="Not authorized for this visit")
+    
+    # Mark as acknowledged
+    from datetime import datetime
+    visit.teacher_acknowledged = True
+    visit.teacher_acknowledged_at = datetime.now()
+    
+    # Set response
+    try:
+        visit.teacher_response = TeacherVisitResponse(ack.response)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid response: {ack.response}")
+    
+    visit.teacher_response_notes = ack.notes
+    
+    # Handle reschedule request
+    if ack.response == "reschedule_requested":
+        if ack.proposed_date:
+            try:
+                visit.proposed_reschedule_date = date_type.fromisoformat(ack.proposed_date)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid proposed date format")
+        visit.proposed_reschedule_time = ack.proposed_time
+    
+    # If accepted, update status to confirmed
+    if ack.response == "accepted":
+        visit.status = VisitStatus.CONFIRMED
+    
+    await db.commit()
+    await db.refresh(visit)
+    
+    return visit.to_dict()
+
+
