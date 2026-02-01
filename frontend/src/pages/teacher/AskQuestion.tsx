@@ -27,7 +27,10 @@ import {
     Languages,
     GraduationCap,
     UserCircle2,
-    Presentation
+    Presentation,
+    BookPlus,
+    Volume2,
+    VolumeX
 } from 'lucide-react'
 import { aiApi, teacherApi } from '../../services/api'
 import useTranslation from '../../hooks/useTranslation'
@@ -38,6 +41,8 @@ import StructuredAIResponse from '../../components/common/StructuredAIResponse'
 import TLMRenderer from '../../components/common/TLMRenderer'
 import ExportToolbar from '../../components/common/ExportToolbar'
 import TeachNowMode from '../../components/teacher/TeachNowMode'
+import SaveAsContentModal from '../../components/common/SaveAsContentModal'
+import { FloatingVoiceAssistant } from '../../components/common/VoiceAssistant'
 
 type QueryMode = 'explain' | 'assist' | 'plan'
 
@@ -140,6 +145,14 @@ export default function AskQuestion() {
     // Follow-up responses state (appended below main response)
     const [followUpResponses, setFollowUpResponses] = useState<Array<{ label: string, content: string, structured?: any }>>([])
     const [followUpLoading, setFollowUpLoading] = useState(false)
+
+    // Save as Content Modal state
+    const [showSaveAsContent, setShowSaveAsContent] = useState(false)
+
+    // Voice Assistant state
+    const [showVoiceAssistant, setShowVoiceAssistant] = useState(false)
+    const [isSpeaking, setIsSpeaking] = useState(false)
+    const [autoSpeak, setAutoSpeak] = useState(false)
 
     // Refs
     const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -271,6 +284,67 @@ export default function AskQuestion() {
         setGeneratedContent(null)
         setFollowUpResponses([])
         textareaRef.current?.focus()
+    }
+
+    // Text-to-Speech function
+    const speakResponse = (text: string) => {
+        window.speechSynthesis.cancel()
+        
+        // Clean up the text - remove markdown and extra formatting
+        const cleanText = text
+            .replace(/\*\*/g, '')
+            .replace(/\*/g, '')
+            .replace(/#{1,6}\s/g, '')
+            .replace(/```[\s\S]*?```/g, '')
+            .replace(/`/g, '')
+            .substring(0, 3000) // Limit length
+
+        const utterance = new SpeechSynthesisUtterance(cleanText)
+        utterance.rate = 0.9
+        utterance.pitch = 1
+        utterance.lang = responseLanguage === 'hi' ? 'hi-IN' : 'en-IN'
+
+        const voices = window.speechSynthesis.getVoices()
+        const targetVoice = voices.find(v => 
+            v.lang.startsWith(responseLanguage === 'hi' ? 'hi' : 'en')
+        )
+        if (targetVoice) utterance.voice = targetVoice
+
+        utterance.onstart = () => setIsSpeaking(true)
+        utterance.onend = () => setIsSpeaking(false)
+        utterance.onerror = () => setIsSpeaking(false)
+
+        window.speechSynthesis.speak(utterance)
+    }
+
+    const stopSpeaking = () => {
+        window.speechSynthesis.cancel()
+        setIsSpeaking(false)
+    }
+
+    // Voice Assistant handler
+    const handleVoiceAsk = async (question: string): Promise<string> => {
+        try {
+            const response = await aiApi.ask({
+                input_text: question,
+                mode: mode,
+                grade,
+                subject: subject || undefined,
+                language: responseLanguage || 'en',
+                persona: persona || 'standard',
+            })
+
+            const content = getStringContent(response.content || response)
+            
+            // Clean for speaking
+            return content
+                .replace(/\*\*/g, '')
+                .replace(/\*/g, '')
+                .replace(/#{1,6}\s/g, '')
+                .substring(0, 1000)
+        } catch (err) {
+            return "Sorry, I couldn't process that question. Please try again."
+        }
     }
 
     // Handle follow-up prompt - appends response below main content
@@ -733,6 +807,27 @@ export default function AskQuestion() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        {/* Voice Controls */}
+                                        <button
+                                            onClick={() => isSpeaking ? stopSpeaking() : speakResponse(responseContent)}
+                                            className={`p-2 rounded-xl transition-all ${
+                                                isSpeaking 
+                                                    ? 'bg-red-100 text-red-600 animate-pulse' 
+                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-blue-100 hover:text-blue-600'
+                                            }`}
+                                            title={isSpeaking ? 'Stop Speaking' : 'Listen to Response'}
+                                        >
+                                            {isSpeaking ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                                        </button>
+                                        {/* Save as Content Button */}
+                                        <button
+                                            onClick={() => setShowSaveAsContent(true)}
+                                            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-500 text-white text-sm font-medium hover:shadow-lg hover:shadow-green-500/25 transition-all"
+                                            title="Save as Content for CRP Approval"
+                                        >
+                                            <BookPlus className="w-4 h-4" />
+                                            Save as Content
+                                        </button>
                                         <ExportToolbar
                                             topic={originalQuery}
                                             content={responseContent}
@@ -1234,6 +1329,45 @@ export default function AskQuestion() {
                     onClose={() => setShowTeachNow(false)}
                 />
             )}
+
+            {/* Save as Content Modal */}
+            {showSaveAsContent && aiResponse && (
+                <SaveAsContentModal
+                    isOpen={showSaveAsContent}
+                    onClose={() => setShowSaveAsContent(false)}
+                    aiResponse={{
+                        content: responseContent,
+                        structured: aiResponse.structured,
+                        mode: mode
+                    }}
+                    originalQuery={originalQuery}
+                    grade={grade}
+                    subject={subject}
+                    topic={originalQuery}
+                />
+            )}
+
+            {/* Floating Voice Assistant Button */}
+            {!showVoiceAssistant && !panelOpen && (
+                <button
+                    onClick={() => setShowVoiceAssistant(true)}
+                    className="fixed bottom-6 right-6 w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 shadow-2xl shadow-purple-500/30 flex items-center justify-center hover:scale-110 transition-all z-40 group"
+                    title="Voice Assistant"
+                >
+                    <Sparkles className="w-7 h-7 text-white group-hover:animate-pulse" />
+                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                        <Mic className="w-3 h-3 text-white" />
+                    </span>
+                </button>
+            )}
+
+            {/* Voice Assistant Modal */}
+            <FloatingVoiceAssistant
+                isOpen={showVoiceAssistant}
+                onClose={() => setShowVoiceAssistant(false)}
+                onAsk={handleVoiceAsk}
+                title="AI Teaching Assistant"
+            />
         </div>
     )
 }

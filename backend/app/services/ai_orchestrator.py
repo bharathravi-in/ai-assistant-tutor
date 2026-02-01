@@ -104,8 +104,10 @@ class AIOrchestrator:
         else:
             raise ValueError(f"Unknown mode: {mode}")
         
+        print(f"[Orchestrator] Starting processing - mode: {mode}, text: {input_text[:50]}...")
         # Get response from LLM
         response = await self.llm_client.generate(prompt, language=language, media_path=media_path)
+        print(f"[Orchestrator] LLM response received, length: {len(response) if response else 0}")
         
         # Parse structured response
         structured = self._parse_response(response, mode)
@@ -116,6 +118,7 @@ class AIOrchestrator:
         # Generate follow-up suggestions
         suggestions = self._generate_suggestions(mode, input_text)
         
+        print(f"[Orchestrator] Processing complete")
         return {
             "content": formatted,
             "structured": structured,

@@ -469,49 +469,103 @@ function MnemonicsHooksContent({ items }: { items: (string | { type: string; con
     )
 }
 
-// Render examples - handles both description and problem/explanation formats
-function ExamplesContent({ items, color = 'emerald' }: { items: Example[], color?: string }) {
+// Parse string example format like "**Title:** Description" into title and description
+function parseStringExample(str: string): { title: string; description: string } {
+    // Try to match **Title:** pattern
+    const boldTitleMatch = str.match(/^\*\*([^*]+)\*\*[:\s]*(.*)$/s)
+    if (boldTitleMatch) {
+        return {
+            title: boldTitleMatch[1].trim(),
+            description: boldTitleMatch[2].trim()
+        }
+    }
+    
+    // Try to match "Title: Description" pattern
+    const colonMatch = str.match(/^([^:]+):\s*(.+)$/s)
+    if (colonMatch && colonMatch[1].length < 100) {
+        return {
+            title: colonMatch[1].trim(),
+            description: colonMatch[2].trim()
+        }
+    }
+    
+    // Fallback - use first sentence as title or generic title
+    const firstSentence = str.split(/[.!?]/)[0]
+    if (firstSentence && firstSentence.length < 80) {
+        return {
+            title: firstSentence.trim(),
+            description: str.substring(firstSentence.length + 1).trim() || str
+        }
+    }
+    
+    return {
+        title: `Example`,
+        description: str
+    }
+}
+
+// Render examples - handles string[], Example[], and mixed formats
+function ExamplesContent({ items, color = 'emerald' }: { items: (string | Example)[], color?: string }) {
     const colorClasses = {
         emerald: 'bg-emerald-500',
         cyan: 'bg-cyan-500'
     }
 
+    // Safety check - ensure items is an array
+    const safeItems = Array.isArray(items) ? items : []
+
+    if (safeItems.length === 0) {
+        return <p className="text-gray-500 dark:text-gray-400 text-sm">No examples available.</p>
+    }
+
     return (
         <div className="space-y-3">
-            {items.map((example, idx) => (
-                <div
-                    key={idx}
-                    className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600"
-                >
-                    <h4 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-                        <span className={`w-6 h-6 rounded-full ${colorClasses[color as keyof typeof colorClasses] || colorClasses.emerald} text-white flex items-center justify-center text-xs font-bold`}>
-                            {idx + 1}
-                        </span>
-                        {example.title}
-                    </h4>
-                    {/* Handle description format */}
-                    {example.description && (
-                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                            {example.description}
-                        </p>
-                    )}
-                    {/* Handle problem/explanation format */}
-                    {example.problem && (
-                        <div className="space-y-2">
-                            <div>
-                                <span className="text-xs font-semibold uppercase text-gray-500">Problem</span>
-                                <p className="text-gray-700 dark:text-gray-300">{example.problem}</p>
+            {safeItems.map((item, idx) => {
+                // Normalize item to Example format
+                let example: Example
+                if (typeof item === 'string') {
+                    example = parseStringExample(item)
+                } else if (item && typeof item === 'object') {
+                    example = item as Example
+                } else {
+                    example = { title: `Example ${idx + 1}`, description: String(item) }
+                }
+
+                return (
+                    <div
+                        key={idx}
+                        className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600"
+                    >
+                        <h4 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                            <span className={`w-6 h-6 rounded-full ${colorClasses[color as keyof typeof colorClasses] || colorClasses.emerald} text-white flex items-center justify-center text-xs font-bold`}>
+                                {idx + 1}
+                            </span>
+                            {example.title || `Example ${idx + 1}`}
+                        </h4>
+                        {/* Handle description format */}
+                        {example.description && (
+                            <div className="text-gray-700 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none">
+                                <MarkdownRenderer content={example.description} />
                             </div>
-                            {example.explanation && (
-                                <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
-                                    <span className="text-xs font-semibold uppercase text-green-600">Solution</span>
-                                    <p className="text-gray-700 dark:text-gray-300">{example.explanation}</p>
+                        )}
+                        {/* Handle problem/explanation format */}
+                        {example.problem && (
+                            <div className="space-y-2">
+                                <div>
+                                    <span className="text-xs font-semibold uppercase text-gray-500">Problem</span>
+                                    <p className="text-gray-700 dark:text-gray-300">{example.problem}</p>
                                 </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            ))}
+                                {example.explanation && (
+                                    <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
+                                        <span className="text-xs font-semibold uppercase text-green-600">Solution</span>
+                                        <p className="text-gray-700 dark:text-gray-300">{example.explanation}</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )
+            })}
         </div>
     )
 }
@@ -697,11 +751,65 @@ function QuestionCard({
     )
 }
 
-// Render check for understanding questions - handles level as number or string
-function CheckUnderstandingContent({ items, topic, grade, language }: { items: CheckQuestion[], topic?: string, grade?: number, language?: string }) {
+// Parse string question format and extract level/type if present
+function parseStringQuestion(str: string, index: number): CheckQuestion {
+    // Try to match patterns like "[Basic]", "(Application)", "Level 1:", etc.
+    const levelPatterns = [
+        /^\[([^\]]+)\]\s*(.*)$/s,
+        /^\(([^)]+)\)\s*(.*)$/s,
+        /^(Basic|Application|Critical Thinking|Level \d+)[:\s]+(.*)$/i,
+        /^\*\*([^*]+)\*\*[:\s]*(.*)$/s
+    ]
+    
+    for (const pattern of levelPatterns) {
+        const match = str.match(pattern)
+        if (match) {
+            return {
+                level: match[1].trim(),
+                question: match[2].trim() || str
+            }
+        }
+    }
+    
+    // Default - assign levels based on index (1=Basic, 2=Application, 3=Critical Thinking)
+    const defaultLevels = ['Basic Recall', 'Application', 'Critical Thinking']
+    return {
+        level: defaultLevels[index % 3] || 'Question',
+        question: str
+    }
+}
+
+// Render check for understanding questions - handles string[], CheckQuestion[], and mixed formats
+function CheckUnderstandingContent({ items, topic, grade, language }: { items: (string | CheckQuestion)[], topic?: string, grade?: number, language?: string }) {
+    // Safety check - ensure items is an array
+    const safeItems = Array.isArray(items) ? items : []
+
+    if (safeItems.length === 0) {
+        return <p className="text-gray-500 dark:text-gray-400 text-sm">No questions available.</p>
+    }
+
+    // Normalize items to CheckQuestion format
+    const normalizedItems: CheckQuestion[] = safeItems.map((item, idx) => {
+        if (typeof item === 'string') {
+            return parseStringQuestion(item, idx)
+        } else if (item && typeof item === 'object') {
+            // Ensure question property exists
+            return {
+                level: item.level || 'Question',
+                question: item.question || String(item),
+                type: item.type
+            }
+        } else {
+            return {
+                level: 'Question',
+                question: String(item)
+            }
+        }
+    })
+
     return (
         <div className="space-y-3">
-            {items.map((item, idx) => (
+            {normalizedItems.map((item, idx) => (
                 <QuestionCard
                     key={idx}
                     item={item}

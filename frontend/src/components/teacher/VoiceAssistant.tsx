@@ -21,15 +21,7 @@ import { useVoiceRecognition } from '../../hooks/useVoiceRecognition'
 import { useTextToSpeech } from '../../hooks/useTextToSpeech'
 import { useChatStore } from '../../stores/chatStore'
 import { aiApi } from '../../services/api'
-
-const SUPPORTED_LANGUAGES = [
-    { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
-    { code: 'hi', name: 'Hindi', nativeName: 'हिंदी', flag: '🇮🇳' },
-    { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', flag: '🇮🇳' },
-    { code: 'te', name: 'Telugu', nativeName: 'తెలుగు', flag: '🇮🇳' },
-    { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ', flag: '🇮🇳' },
-    { code: 'mr', name: 'Marathi', nativeName: 'मराठी', flag: '🇮🇳' },
-]
+import { useAppLanguages } from '../../hooks/useAppLanguages'
 
 interface VoiceAssistantProps {
     isOpen: boolean
@@ -39,6 +31,7 @@ interface VoiceAssistantProps {
 export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps) {
     const { i18n } = useTranslation()
     const { mode, setLoading, setResponse, setError } = useChatStore()
+    const { languages, changeLanguage } = useAppLanguages()
 
     const [textInput, setTextInput] = useState('')
     const [showLanguages, setShowLanguages] = useState(false)
@@ -141,7 +134,7 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
         if (!text.trim()) return
         const languageCommand = detectLanguageCommand(text.toLowerCase())
         if (languageCommand) {
-            changeLanguage(languageCommand)
+            handleLanguageChange(languageCommand)
             return
         }
         await processQuery(text)
@@ -164,9 +157,10 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
         return null
     }
 
-    const changeLanguage = (lang: string) => {
-        i18n.changeLanguage(lang)
-        const langName = SUPPORTED_LANGUAGES.find(l => l.code === lang)?.nativeName || lang
+    const handleLanguageChange = (lang: string) => {
+        changeLanguage(lang)
+        const langInfo = languages.find(l => l.code === lang)
+        const langName = langInfo?.native_name || lang
         const message = lang === 'en'
             ? `Language changed to English`
             : `भाषा ${langName} में बदल गई`
@@ -315,7 +309,7 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
 
     if (!isOpen) return null
 
-    const currentLang = SUPPORTED_LANGUAGES.find(l => l.code === i18n.language) || SUPPORTED_LANGUAGES[0]
+    const currentLang = languages.find(l => l.code === i18n.language) || languages[0]
 
     // Helper to check if we have actual structured pedagogical data (any mode)
     const hasStructuredContent = structuredData && (
@@ -361,14 +355,14 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
                     <div className="relative">
                         <button onClick={() => setShowLanguages(!showLanguages)} className="flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
                             <Globe className="w-4 h-4" />
-                            <span className="text-sm">{currentLang.nativeName}</span>
+                            <span className="text-sm">{currentLang?.native_name || 'English'}</span>
                         </button>
                         {showLanguages && (
                             <div className="absolute right-0 top-full mt-2 bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl py-2 min-w-[160px] border border-white/20">
-                                {SUPPORTED_LANGUAGES.map((lang) => (
-                                    <button key={lang.code} onClick={() => { changeLanguage(lang.code); setShowLanguages(false); }} className={`w-full px-4 py-2.5 text-left hover:bg-white/10 transition-colors flex items-center gap-2 ${i18n.language === lang.code ? 'text-purple-300 font-medium' : 'text-white/80'}`}>
-                                        <span>{lang.flag}</span>
-                                        <span>{lang.nativeName}</span>
+                                {languages.map((lang) => (
+                                    <button key={lang.code} onClick={() => { handleLanguageChange(lang.code); setShowLanguages(false); }} className={`w-full px-4 py-2.5 text-left hover:bg-white/10 transition-colors flex items-center gap-2 ${i18n.language === lang.code ? 'text-purple-300 font-medium' : 'text-white/80'}`}>
+                                        <span>🇮🇳</span>
+                                        <span>{lang.native_name}</span>
                                     </button>
                                 ))}
                             </div>

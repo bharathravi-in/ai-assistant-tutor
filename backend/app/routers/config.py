@@ -6,7 +6,7 @@ from sqlalchemy import select
 from pydantic import BaseModel
 
 from app.database import get_db
-from app.models.config import State, District, Block, Cluster, Subject, Grade, Board, Medium, AcademicYear, School
+from app.models.config import State, District, Block, Cluster, Subject, Grade, Board, Medium, AcademicYear, School, AppLanguage
 from app.models.user import User, UserRole
 from app.routers.auth import require_role
 
@@ -15,6 +15,36 @@ router = APIRouter(prefix="/admin/config", tags=["Configuration"])
 
 
 # ==================== SCHEMAS ====================
+
+# App Language schemas
+class AppLanguageCreate(BaseModel):
+    code: str
+    name: str
+    native_name: str
+    script: Optional[str] = None
+    direction: str = "ltr"
+    is_active: bool = True
+    sort_order: int = 0
+
+class AppLanguageUpdate(BaseModel):
+    name: Optional[str] = None
+    native_name: Optional[str] = None
+    script: Optional[str] = None
+    direction: Optional[str] = None
+    is_active: Optional[bool] = None
+    sort_order: Optional[int] = None
+
+class AppLanguageResponse(BaseModel):
+    id: int
+    code: str
+    name: str
+    native_name: str
+    script: Optional[str]
+    direction: str
+    is_active: bool
+    sort_order: int
+    class Config:
+        from_attributes = True
 
 class StateCreate(BaseModel):
     name: str
@@ -1128,4 +1158,159 @@ async def download_template(entity_type: str):
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={entity_type}_template.csv"}
     )
+
+
+# ==================== APP LANGUAGES ====================
+
+@router.get("/languages", response_model=List[AppLanguageResponse])
+async def list_languages(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """List all application languages (Admin only)."""
+    result = await db.execute(select(AppLanguage).order_by(AppLanguage.sort_order, AppLanguage.name))
+    return result.scalars().all()
+
+
+@router.get("/public/languages", response_model=List[AppLanguageResponse])
+async def list_public_languages(db: AsyncSession = Depends(get_db)):
+    """List active application languages (Public - for language selector)."""
+    result = await db.execute(
+        select(AppLanguage)
+        .where(AppLanguage.is_active == True)
+        .order_by(AppLanguage.sort_order, AppLanguage.name)
+    )
+    return result.scalars().all()
+
+
+@router.post("/languages", response_model=AppLanguageResponse)
+async def create_language(
+    data: AppLanguageCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Create a new application language."""
+    # Check if code already exists
+    existing = await db.execute(select(AppLanguage).where(AppLanguage.code == data.code.lower()))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Language code already exists")
+    
+    language = AppLanguage(
+        code=data.code.lower(),
+        name=data.name,
+        native_name=data.native_name,
+        script=data.script,
+        direction=data.direction,
+        is_active=data.is_active,
+        sort_order=data.sort_order
+    )
+    db.add(language)
+    await db.commit()
+    await db.refresh(language)
+    return language
+
+
+@router.put("/languages/{language_id}", response_model=AppLanguageResponse)
+async def update_language(
+    language_id: int,
+    data: AppLanguageUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Update an application language (Admin can enable/disable)."""
+    result = await db.execute(select(AppLanguage).where(AppLanguage.id == language_id))
+    language = result.scalar_one_or_none()
+    
+    if not language:
+        raise HTTPException(status_code=404, detail="Language not found")
+    
+    if data.name is not None:
+        language.name = data.name
+    if data.native_name is not None:
+        language.native_name = data.native_name
+    if data.script is not None:
+        language.script = data.script
+    if data.direction is not None:
+        language.direction = data.direction
+    if data.is_active is not None:
+        language.is_active = data.is_active
+    if data.sort_order is not None:
+        language.sort_order = data.sort_order
+    
+    await db.commit()
+    await db.refresh(language)
+    return language
+
+
+@router.delete("/languages/{language_id}")
+async def delete_language(
+    language_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Delete an application language (only if not default)."""
+    result = await db.execute(select(AppLanguage).where(AppLanguage.id == language_id))
+    language = result.scalar_one_or_none()
+    
+    if not language:
+        raise HTTPException(status_code=404, detail="Language not found")
+    
+    if language.code == "en":
+        raise HTTPException(status_code=400, detail="Cannot delete default English language")
+    
+    await db.delete(language)
+    await db.commit()
+    return {"message": "Language deleted"}
+
+
+@router.post("/languages/seed-indian")
+async def seed_indian_languages(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Seed all 22 official Indian languages + English."""
+    indian_languages = [
+        # Schedule VIII languages of India + English
+        {"code": "en", "name": "English", "native_name": "English", "script": "Latin", "sort_order": 1},
+        {"code": "hi", "name": "Hindi", "native_name": "हिन्दी", "script": "Devanagari", "sort_order": 2},
+        {"code": "bn", "name": "Bengali", "native_name": "বাংলা", "script": "Bengali", "sort_order": 3},
+        {"code": "te", "name": "Telugu", "native_name": "తెలుగు", "script": "Telugu", "sort_order": 4},
+        {"code": "mr", "name": "Marathi", "native_name": "मराठी", "script": "Devanagari", "sort_order": 5},
+        {"code": "ta", "name": "Tamil", "native_name": "தமிழ்", "script": "Tamil", "sort_order": 6},
+        {"code": "gu", "name": "Gujarati", "native_name": "ગુજરાતી", "script": "Gujarati", "sort_order": 7},
+        {"code": "kn", "name": "Kannada", "native_name": "ಕನ್ನಡ", "script": "Kannada", "sort_order": 8},
+        {"code": "ml", "name": "Malayalam", "native_name": "മലയാളം", "script": "Malayalam", "sort_order": 9},
+        {"code": "or", "name": "Odia", "native_name": "ଓଡ଼ିଆ", "script": "Odia", "sort_order": 10},
+        {"code": "pa", "name": "Punjabi", "native_name": "ਪੰਜਾਬੀ", "script": "Gurmukhi", "sort_order": 11},
+        {"code": "as", "name": "Assamese", "native_name": "অসমীয়া", "script": "Bengali", "sort_order": 12},
+        {"code": "mai", "name": "Maithili", "native_name": "मैथिली", "script": "Devanagari", "sort_order": 13},
+        {"code": "sat", "name": "Santali", "native_name": "ᱥᱟᱱᱛᱟᱲᱤ", "script": "Ol Chiki", "sort_order": 14},
+        {"code": "ks", "name": "Kashmiri", "native_name": "कॉशुर", "script": "Devanagari", "sort_order": 15},
+        {"code": "ne", "name": "Nepali", "native_name": "नेपाली", "script": "Devanagari", "sort_order": 16},
+        {"code": "sd", "name": "Sindhi", "native_name": "سنڌي", "script": "Arabic", "direction": "rtl", "sort_order": 17},
+        {"code": "kok", "name": "Konkani", "native_name": "कोंकणी", "script": "Devanagari", "sort_order": 18},
+        {"code": "doi", "name": "Dogri", "native_name": "डोगरी", "script": "Devanagari", "sort_order": 19},
+        {"code": "mni", "name": "Manipuri", "native_name": "মৈতৈলোন্", "script": "Bengali", "sort_order": 20},
+        {"code": "brx", "name": "Bodo", "native_name": "बड़ो", "script": "Devanagari", "sort_order": 21},
+        {"code": "sa", "name": "Sanskrit", "native_name": "संस्कृतम्", "script": "Devanagari", "sort_order": 22},
+        {"code": "ur", "name": "Urdu", "native_name": "اردو", "script": "Arabic", "direction": "rtl", "sort_order": 23},
+    ]
+    
+    added = 0
+    for lang in indian_languages:
+        existing = await db.execute(select(AppLanguage).where(AppLanguage.code == lang["code"]))
+        if not existing.scalar_one_or_none():
+            db.add(AppLanguage(
+                code=lang["code"],
+                name=lang["name"],
+                native_name=lang["native_name"],
+                script=lang.get("script"),
+                direction=lang.get("direction", "ltr"),
+                is_active=lang["code"] in ["en", "hi"],  # Only English and Hindi active by default
+                sort_order=lang["sort_order"]
+            ))
+            added += 1
+    
+    await db.commit()
+    return {"message": f"Seeded {added} Indian languages", "total_available": len(indian_languages)}
 

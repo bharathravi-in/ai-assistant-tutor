@@ -26,6 +26,9 @@ class ContentType(str, enum.Enum):
     TLM = "tlm"
     ASSESSMENT = "assessment"
     WORKSHEET = "worksheet"
+    QUICK_REFERENCE = "quick_reference"
+    STUDY_GUIDE = "study_guide"
+    EXPLANATION = "explanation"
     OTHER = "other"
 
 
@@ -51,6 +54,11 @@ class TeacherContent(Base):
     topic: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
     tags: Mapped[Optional[List[str]]] = mapped_column(ARRAY(String), nullable=True)
     
+    # File Storage (PDF, etc.)
+    pdf_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # GCP or local path
+    pdf_url: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)  # Public/signed URL
+    file_size_bytes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    
     # Approval Workflow
     status: Mapped[ContentStatus] = mapped_column(Enum(ContentStatus), default=ContentStatus.DRAFT)
     reviewer_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
@@ -59,6 +67,7 @@ class TeacherContent(Base):
     
     # Vector Search
     qdrant_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    is_vectorized: Mapped[bool] = mapped_column(Boolean, default=False)
     
     # Engagement Metrics
     view_count: Mapped[int] = mapped_column(Integer, default=0)

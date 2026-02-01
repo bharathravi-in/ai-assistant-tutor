@@ -108,6 +108,24 @@ export const configApi = {
         })
         return response.data
     },
+    // App Languages (for i18n)
+    getLanguages: async () => {
+        const response = await api.get('/admin/config/public/languages')
+        return response.data
+    },
+    // Admin only - all languages including inactive
+    getAllLanguages: async () => {
+        const response = await api.get('/admin/config/languages')
+        return response.data
+    },
+    updateLanguage: async (id: number, data: { is_active?: boolean; sort_order?: number }) => {
+        const response = await api.put(`/admin/config/languages/${id}`, data)
+        return response.data
+    },
+    seedIndianLanguages: async () => {
+        const response = await api.post('/admin/config/languages/seed-indian')
+        return response.data
+    },
 }
 
 // AI endpoints
@@ -870,7 +888,7 @@ export const programApi = {
 
 // Content API - Teacher-created content with approval workflow
 export const contentApi = {
-    // Create new content (starts as draft)
+    // Create new content (starts as draft) with optional PDF generation and vectorization
     create: async (data: {
         title: string
         content_type: string
@@ -880,6 +898,8 @@ export const contentApi = {
         subject?: string
         topic?: string
         tags?: string[]
+        generate_pdf?: boolean
+        vectorize?: boolean
     }) => {
         const response = await api.post('/content/', data)
         return response.data
@@ -972,6 +992,18 @@ export const contentApi = {
     // Like/unlike content
     toggleLike: async (id: number) => {
         const response = await api.post(`/content/${id}/like`)
+        return response.data
+    },
+
+    // Get PDF for content
+    getPdf: async (id: number) => {
+        const response = await api.get(`/content/${id}/pdf`)
+        return response.data
+    },
+
+    // Regenerate PDF for content
+    regeneratePdf: async (id: number) => {
+        const response = await api.post(`/content/${id}/regenerate-pdf`)
         return response.data
     },
 }

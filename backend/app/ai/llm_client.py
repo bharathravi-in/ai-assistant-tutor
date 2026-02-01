@@ -3,6 +3,7 @@ LLM Client - Abstraction layer for LLM providers
 Supports multi-tenant organization-specific API keys
 """
 import os
+import asyncio
 from typing import Optional
 from app.config import get_settings
 from app.utils.encryption import decrypt_value
@@ -270,30 +271,203 @@ class LLMClient:
             prompt = f"{lang_instruction}\n\n{prompt}"
         
         if self.provider == "openai":
+            print(f"[LLM] Calling OpenAI - model: {self._model}")
             return await self._generate_openai(prompt, max_tokens, temperature)
         elif self.provider == "gemini":
+            print(f"[LLM] Calling Gemini - model: {self._model}")
             return await self._generate_gemini(prompt, max_tokens, temperature, media_path)
         elif self.provider == "azure_openai":
+            print(f"[LLM] Calling Azure OpenAI - model: {self._model}")
             return await self._generate_azure_openai(prompt, max_tokens, temperature)
         elif self.provider == "anthropic":
+            print(f"[LLM] Calling Anthropic - model: {self._model}")
             return await self._generate_anthropic(prompt, max_tokens, temperature)
         elif self.provider == "litellm":
+            print(f"[LLM] Calling LiteLLM - model: {self._model}")
             return await self._generate_litellm(prompt, max_tokens, temperature)
         else:
             # Fallback: return a demo response
+            print(f"[LLM] No valid provider '{self.provider}', returning demo response")
             return self._get_demo_response(prompt)
+    
+    async def chat(
+        self,
+        messages: list[dict],
+        temperature: float = 0.7,
+        max_tokens: int = 4000
+    ) -> str:
+        """
+        Chat completion with message history.
+        
+        Args:
+            messages: List of message dicts with 'role' and 'content'
+            temperature: Creativity parameter (0-1)
+            max_tokens: Maximum tokens in response
+        
+        Returns:
+            Generated text response
+        """
+        # Check if client is available
+        if self._client is None:
+            # Fallback: use last user message
+            last_user_msg = next((m['content'] for m in reversed(messages) if m['role'] == 'user'), "")
+            return self._get_demo_response(last_user_msg)
+        
+        if self.provider == "openai":
+            return await self._chat_openai(messages, max_tokens, temperature)
+        elif self.provider == "gemini":
+            return await self._chat_gemini(messages, max_tokens, temperature)
+        elif self.provider == "azure_openai":
+            return await self._chat_azure_openai(messages, max_tokens, temperature)
+        elif self.provider == "anthropic":
+            return await self._chat_anthropic(messages, max_tokens, temperature)
+        elif self.provider == "litellm":
+            return await self._chat_litellm(messages, max_tokens, temperature)
+        else:
+            # Fallback
+            last_user_msg = next((m['content'] for m in reversed(messages) if m['role'] == 'user'), "")
+            return self._get_demo_response(last_user_msg)
+    
+    async def _chat_openai(self, messages: list[dict], max_tokens: int, temperature: float) -> str:
+        """Chat using OpenAI."""
+        try:
+            response = await asyncio.wait_for(
+                self._client.chat.completions.create(
+                    model=self._model,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                ),
+                timeout=30.0
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"Error generating response: {str(e)}"
+    
+    async def _chat_azure_openai(self, messages: list[dict], max_tokens: int, temperature: float) -> str:
+        """Chat using Azure OpenAI."""
+        try:
+            response = await self._client.chat.completions.create(
+                model=self._model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"Error generating response: {str(e)}"
+    
+    async def _chat_gemini(self, messages: list[dict], max_tokens: int, temperature: float) -> str:
+        """Chat using Google Gemini."""
+        try:
+            # Gemini uses a different message format
+            chat = self._client.start_chat(history=[])
+            
+            # Convert messages to Gemini format
+            for msg in messages[:-1]:  # All except last
+                if msg['role'] == 'user':
+                    chat.send_message(msg['content'])
+            
+            # Send final user message
+            last_msg = messages[-1]['content'] if messages else ""
+            response = await asyncio.wait_for(
+                chat.send_message_async(
+                    last_msg,
+                    generation_config={
+                        "temperature": temperature,
+                        "max_output_tokens": max_tokens,
+                    }
+                ),
+                timeout=30.0
+            )
+            return response.text
+        except Exception as e:
+            return f"Error generating response: {str(e)}"
+    
+    async def _chat_anthropic(self, messages: list[dict], max_tokens: int, temperature: float) -> str:
+        """Chat using Anthropic."""
+        try:
+            # Anthropic separates system message
+            system_msg = next((m['content'] for m in messages if m['role'] == 'system'), "")
+            user_msgs = [m for m in messages if m['role'] != 'system']
+            
+            response = await self._client.messages.create(
+                model=self._model,
+                system=system_msg,
+                messages=user_msgs,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+            return response.content[0].text
+        except Exception as e:
+            return f"Error generating response: {str(e)}"
+    
+    async def _chat_litellm(self, messages: list[dict], max_tokens: int, temperature: float) -> str:
+        """Chat using LiteLLM."""
+        try:
+            import litellm
+            
+            # Determine base URL - check all sources
+            api_base = None
+            if self.org_settings and hasattr(self.org_settings, 'litellm_base_url') and self.org_settings.litellm_base_url:
+                api_base = self.org_settings.litellm_base_url
+            elif self.system_settings and hasattr(self.system_settings, 'litellm_base_url') and self.system_settings.litellm_base_url:
+                api_base = self.system_settings.litellm_base_url
+            elif self._settings.litellm_base_url:
+                api_base = self._settings.litellm_base_url
+            else:
+                api_base = os.getenv("LITELLM_BASE_URL", "")
+            
+            # Clean up base URL
+            if api_base:
+                api_base = api_base.strip().rstrip('/')
+            
+            # Model name - for LiteLLM with custom proxy, use openai/ prefix
+            model_to_use = self._model
+            if api_base and not model_to_use.startswith('openai/'):
+                model_to_use = f"openai/{model_to_use}"
+            
+            print(f"[LLM] Chat with LiteLLM - model: {model_to_use}, base: {api_base}")
+            
+            # Build completion kwargs
+            completion_kwargs = {
+                "model": model_to_use,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            }
+            
+            # Add API key and base URL if available
+            if self._api_key:
+                completion_kwargs["api_key"] = self._api_key
+            if api_base:
+                completion_kwargs["api_base"] = api_base
+            
+            response = await litellm.acompletion(**completion_kwargs)
+            result = response.choices[0].message.content
+            print(f"[LLM] LiteLLM chat success, response length: {len(result)}")
+            return result
+        except Exception as e:
+            error_msg = f"Error generating response: {str(e)}"
+            print(f"[LLM] LiteLLM chat exception: {error_msg}")
+            import traceback
+            print(f"[LLM] Traceback: {traceback.format_exc()}")
+            return error_msg
     
     async def _generate_openai(self, prompt: str, max_tokens: int, temperature: float) -> str:
         """Generate using OpenAI."""
         try:
-            response = await self._client.chat.completions.create(
-                model=self._model,
-                messages=[
-                    {"role": "system", "content": "You are an expert teaching assistant for government school teachers. Provide practical, actionable advice that can be implemented immediately in the classroom."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=max_tokens,
-                temperature=temperature,
+            response = await asyncio.wait_for(
+                self._client.chat.completions.create(
+                    model=self._model,
+                    messages=[
+                        {"role": "system", "content": "You are an expert teaching assistant for government school teachers. Provide practical, actionable advice that can be implemented immediately in the classroom."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                ),
+                timeout=30.0
             )
             return response.choices[0].message.content
         except Exception as e:
@@ -382,42 +556,72 @@ class LLMClient:
         try:
             # Determine base URL - check all sources including os.getenv
             api_base = None
-            if self.org_settings and self.org_settings.litellm_base_url:
+            if self.org_settings and hasattr(self.org_settings, 'litellm_base_url') and self.org_settings.litellm_base_url:
                 api_base = self.org_settings.litellm_base_url
-            elif self.system_settings and self.system_settings.litellm_base_url:
+            elif self.system_settings and hasattr(self.system_settings, 'litellm_base_url') and self.system_settings.litellm_base_url:
                 api_base = self.system_settings.litellm_base_url
             elif self._settings.litellm_base_url:
                 api_base = self._settings.litellm_base_url
             else:
                 api_base = os.getenv("LITELLM_BASE_URL", "")
-                
-            # IMPORTANT: If a custom base URL is provided, we force litellm to treat it
-            # as an OpenAI-style proxy to avoid automatic routing to Vertex/Google.
-            model_to_use = self._model
             
+            # Clean up base URL
             if api_base:
-                # Force it to use the proxy for specific models if needed
-                # Prefixing with 'openai/' tells LiteLLM to use OpenAI-style calling
-                if "gemini" in model_to_use.lower() and "/" not in model_to_use:
-                    model_to_use = f"openai/{model_to_use}"
+                api_base = api_base.strip().rstrip('/')
+                
+            # Model name to use - for LiteLLM with custom proxy, use openai/ prefix
+            model_to_use = self._model
+            if api_base and not model_to_use.startswith('openai/'):
+                # Force OpenAI-compatible API for custom proxy
+                model_to_use = f"openai/{model_to_use}"
             
-            print(f"[LLM] Generating with LiteLLM - model: {model_to_use}, base: {api_base}")
+            # Log the actual request parameters
+            print(f"[LLM] Generating with LiteLLM - model: {model_to_use}, base: {api_base}, key_len: {len(self._api_key) if self._api_key else 0}")
             
-            response = await self._client.acompletion(
-                model=model_to_use,
-                messages=[
-                    {"role": "system", "content": "You are an expert teaching assistant for government school teachers."},
+            # Build kwargs for the completion call
+            completion_kwargs = {
+                "model": model_to_use,
+                "messages": [
+                    {"role": "system", "content": "You are an expert teaching assistant for government school teachers. Provide practical, actionable advice."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=max_tokens,
-                temperature=temperature,
-                api_key=self._api_key,
-                api_base=api_base if api_base else None,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            }
+            
+            # Add API key and base URL if available
+            if self._api_key:
+                completion_kwargs["api_key"] = self._api_key
+            if api_base:
+                completion_kwargs["api_base"] = api_base
+            
+            response = await asyncio.wait_for(
+                self._client.acompletion(**completion_kwargs),
+                timeout=60.0  # Increased timeout to 60 seconds
             )
-            return response.choices[0].message.content
+            
+            # Handle potential null content from the response
+            if response and response.choices and len(response.choices) > 0:
+                result = response.choices[0].message.content
+                if result is None:
+                    print(f"[LLM] Warning: LiteLLM returned null content. Model: {model_to_use}")
+                    return "Error generating response: The AI model returned an empty response. Please try again or contact support."
+                print(f"[LLM] LiteLLM response received, length: {len(result) if result else 0}")
+                return result
+            else:
+                print(f"[LLM] Warning: LiteLLM returned invalid response structure")
+                return "Error generating response: Invalid response from AI service."
+            return result
+        except asyncio.TimeoutError:
+            error_msg = "Request timed out after 60 seconds. Please try again."
+            print(f"[LLM] LiteLLM timeout error: {error_msg}")
+            return f"Error generating response: {error_msg}"
         except Exception as e:
-            print(f"[LLM] Error in LiteLLM generation: {str(e)}")
-            return f"Error generating response: {str(e)}"
+            error_str = str(e) if str(e) else "Unknown error occurred"
+            print(f"[LLM] Error in LiteLLM generation: {error_str}")
+            import traceback
+            traceback.print_exc()
+            return f"Error generating response: {error_str}"
     
     def _get_language_instruction(self, language: str) -> str:
         """Get language instruction for the prompt."""

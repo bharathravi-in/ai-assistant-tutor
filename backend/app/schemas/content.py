@@ -17,6 +17,8 @@ class ContentCreate(BaseModel):
     subject: Optional[str] = None
     topic: Optional[str] = None
     tags: Optional[List[str]] = None
+    generate_pdf: bool = Field(default=True, description="Generate and store PDF")
+    vectorize: bool = Field(default=True, description="Index in vector DB for search")
 
 
 class ContentUpdate(BaseModel):
@@ -50,6 +52,9 @@ class ContentResponse(BaseModel):
     subject: Optional[str]
     topic: Optional[str]
     tags: Optional[List[str]]
+    pdf_url: Optional[str] = None
+    file_size_bytes: Optional[int] = None
+    is_vectorized: bool = False
     status: ContentStatus
     reviewer_id: Optional[int]
     reviewer_name: Optional[str] = None

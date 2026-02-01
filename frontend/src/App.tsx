@@ -19,9 +19,12 @@ import Reflections from './pages/teacher/Reflections'
 import FeedbackInbox from './pages/teacher/FeedbackInbox'
 import TeacherSurveys from './pages/teacher/Surveys'
 import ContentCreator from './pages/teacher/ContentCreator'
+import SimpleContentCreator from './pages/teacher/SimpleContentCreator'
 import MyContent from './pages/teacher/MyContent'
 import MyVisits from './pages/teacher/MyVisits'
 import ContentLibrary from './pages/common/ContentLibrary'
+import ConversationList from './components/ConversationList'
+import ChatInterface from './components/ChatInterface'
 import CRPDashboard from './pages/crp/Dashboard'
 import FeedbackAssist from './pages/crp/FeedbackAssist'
 import VisitSchedule from './pages/crp/VisitSchedule'
@@ -58,6 +61,11 @@ import CreateOrganization from './pages/superadmin/CreateOrganization'
 import PlansPage from './pages/superadmin/PlansPage'
 import SettingsPage from './pages/superadmin/SettingsPage'
 import AISettingsPage from './pages/superadmin/AISettingsPage'
+import AnalyticsPage from './pages/AnalyticsPage'
+import LearningPage from './pages/LearningPage'
+import ModuleDetailPage from './pages/ModuleDetailPage'
+import ScenariosPage from './pages/ScenariosPage'
+import ScenarioDetailPage from './pages/ScenarioDetailPage'
 
 // Layout
 import Layout from './components/common/Layout'
@@ -195,6 +203,11 @@ function App() {
             } />
             <Route path="/teacher/content/create" element={
                 <ProtectedRoute roles={['teacher']}>
+                    <SimpleContentCreator />
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/content/new" element={
+                <ProtectedRoute roles={['teacher']}>
                     <Layout>
                         <ContentCreator />
                     </Layout>
@@ -228,7 +241,57 @@ function App() {
                     </Layout>
                 </ProtectedRoute>
             } />
+            <Route path="/teacher/chat" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <ConversationList />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/teacher/chat/:conversationId" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <Layout>
+                        <ChatInterface />
+                    </Layout>
+                </ProtectedRoute>
+            } />
 
+            {/* Common routes - Analytics & Learning */}
+            <Route path="/analytics" element={
+                <ProtectedRoute roles={['teacher', 'crp', 'arp', 'admin']}>
+                    <Layout>
+                        <AnalyticsPage />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/learning" element={
+                <ProtectedRoute roles={['teacher', 'crp', 'arp', 'admin']}>
+                    <Layout>
+                        <LearningPage />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/learning/modules/:id" element={
+                <ProtectedRoute roles={['teacher', 'crp', 'arp', 'admin']}>
+                    <Layout>
+                        <ModuleDetailPage />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/learning/scenarios" element={
+                <ProtectedRoute roles={['teacher', 'crp', 'arp', 'admin']}>
+                    <Layout>
+                        <ScenariosPage />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/learning/scenarios/:id" element={
+                <ProtectedRoute roles={['teacher', 'crp', 'arp', 'admin']}>
+                    <Layout>
+                        <ScenarioDetailPage />
+                    </Layout>
+                </ProtectedRoute>
+            } />
 
             {/* CRP routes */}
             <Route path="/crp" element={

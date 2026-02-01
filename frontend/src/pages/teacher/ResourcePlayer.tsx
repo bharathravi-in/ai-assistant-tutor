@@ -22,7 +22,7 @@ import {
     Play
 } from 'lucide-react'
 import { resourcesApi, storageApi } from '../../services/api'
-
+import SparkleAssistant from '../../components/common/SparkleAssistant'
 interface Resource {
     id: number
     title: string
@@ -105,6 +105,9 @@ export default function ResourcePlayer() {
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
     const [chatInput, setChatInput] = useState('')
     const [loadingChat, setLoadingChat] = useState(false)
+
+    // Sparkle Assistant State
+    const [showSparkleAssistant, setShowSparkleAssistant] = useState(false)
 
     // Initialize on mount
     useEffect(() => {
@@ -255,6 +258,18 @@ export default function ResourcePlayer() {
             }])
         } finally {
             setLoadingChat(false)
+        }
+    }
+
+    // Handle Sparkle Assistant messages
+    const handleSparkleMessage = async (message: string): Promise<string> => {
+        if (!resource) return "I couldn't find the resource. Please try again."
+        
+        try {
+            const response = await resourcesApi.askAboutResource(resource.id, message)
+            return response.answer
+        } catch (err) {
+            return `I'd be happy to help explain "${resource.title}". However, I'm having trouble connecting right now. Please try again in a moment.`
         }
     }
 
@@ -636,6 +651,42 @@ export default function ResourcePlayer() {
                     </div>
                 </div>
             </div>
+
+            {/* Floating Sparkle AI Button */}
+            <button
+                onClick={() => setShowSparkleAssistant(true)}
+                className="fixed bottom-6 right-6 z-40 group"
+                title="Ask Sparkle AI to explain this resource"
+            >
+                <div className="relative">
+                    {/* Animated glow effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 rounded-full blur-lg opacity-75 group-hover:opacity-100 animate-pulse" />
+                    
+                    {/* Button */}
+                    <div className="relative w-14 h-14 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 rounded-full flex items-center justify-center shadow-xl transform transition-all group-hover:scale-110">
+                        <Sparkles className="w-7 h-7 text-white" />
+                    </div>
+                    
+                    {/* Sparkle particles */}
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full animate-ping" />
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full" />
+                </div>
+                
+                {/* Tooltip */}
+                <div className="absolute bottom-full right-0 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <div className="bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
+                        ✨ Ask Sparkle to explain
+                    </div>
+                </div>
+            </button>
+
+            {/* Sparkle Assistant Panel */}
+            <SparkleAssistant
+                isOpen={showSparkleAssistant}
+                onClose={() => setShowSparkleAssistant(false)}
+                resourceTitle={resource.title}
+                onAsk={handleSparkleMessage}
+            />
         </div>
     )
 }

@@ -15,6 +15,9 @@ from app.models.survey import Survey, SurveyResponse, SurveyAssignment, SurveySt
 from app.models.program import Program, ProgramResource, ResourcePublishRequest, ProgramStatus
 from app.models.config import State, District, Block, Subject, Grade, Board, Medium, AcademicYear, School
 from app.models.teacher_content import TeacherContent, ContentLike, ContentStatus, ContentType
+from app.models.chat import Conversation, ChatMessage, TeacherProfile, ChatMode
+from app.models.notification import Notification, NotificationType
+from app.models.learning import LearningModule, ModuleProgress, ScenarioTemplate, LearningModuleCategory, LearningModuleDifficulty
 
 __all__ = [
     # User
@@ -66,4 +69,18 @@ __all__ = [
     "ContentLike",
     "ContentStatus",
     "ContentType",
+    # Chat & Conversations
+    "Conversation",
+    "ChatMessage",
+    "TeacherProfile",
+    "ChatMode",
+    # Notifications
+    "Notification",
+    "NotificationType",
+    # Learning & Scenarios
+    "LearningModule",
+    "ModuleProgress",
+    "ScenarioTemplate",
+    "LearningModuleCategory",
+    "LearningModuleDifficulty",
 ]
