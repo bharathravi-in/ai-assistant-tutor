@@ -1,13 +1,28 @@
 """Configuration models for master data."""
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Integer, Boolean, ForeignKey, DateTime, func
+from sqlalchemy import String, Integer, Boolean, ForeignKey, DateTime, func, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
 if TYPE_CHECKING:
     pass
+
+
+class AppLanguage(Base):
+    """Application UI languages - All Indian languages supported."""
+    __tablename__ = "app_languages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    code: Mapped[str] = mapped_column(String(10), nullable=False, unique=True)  # en, hi, kn, ta, te, mr, etc.
+    name: Mapped[str] = mapped_column(String(50), nullable=False)  # English, Hindi, Kannada, etc.
+    native_name: Mapped[str] = mapped_column(String(50), nullable=False)  # English, हिन्दी, ಕನ್ನಡ, etc.
+    script: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # Latin, Devanagari, Kannada, etc.
+    direction: Mapped[str] = mapped_column(String(3), default="ltr")  # ltr or rtl
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)  # Admin controls visibility
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)  # Display order
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
 class State(Base):

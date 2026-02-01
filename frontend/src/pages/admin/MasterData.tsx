@@ -12,9 +12,13 @@ import {
     Languages,
     Trash2,
     CheckCircle,
-    AlertCircle
+    AlertCircle,
+    Globe,
+    Eye,
+    EyeOff
 } from 'lucide-react'
 import api from '../../services/api'
+import { useAdminLanguages, type AppLanguage } from '../../hooks/useAppLanguages'
 
 interface BaseItem {
     id: number
@@ -50,7 +54,7 @@ interface Medium extends BaseItem {
     code: string
 }
 
-type TabType = 'states' | 'districts' | 'subjects' | 'grades' | 'boards' | 'mediums'
+type TabType = 'states' | 'districts' | 'subjects' | 'grades' | 'boards' | 'mediums' | 'languages'
 
 const TABS: { id: TabType; label: string; icon: React.ElementType }[] = [
     { id: 'states', label: 'States', icon: MapPin },
@@ -59,7 +63,164 @@ const TABS: { id: TabType; label: string; icon: React.ElementType }[] = [
     { id: 'grades', label: 'Classes', icon: GraduationCap },
     { id: 'boards', label: 'Boards', icon: Building },
     { id: 'mediums', label: 'Mediums', icon: Languages },
+    { id: 'languages', label: 'App Languages', icon: Globe },
 ]
+
+// Languages Panel Component
+function LanguagesPanel() {
+    const { languages, isLoading, toggleLanguage, seedLanguages, refetch } = useAdminLanguages()
+    const [seeding, setSeeding] = useState(false)
+    const [togglingId, setTogglingId] = useState<number | null>(null)
+    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+    const handleSeedLanguages = async () => {
+        setSeeding(true)
+        try {
+            const result = await seedLanguages()
+            setMessage({ type: 'success', text: result.message })
+            setTimeout(() => setMessage(null), 3000)
+        } catch (err: any) {
+            setMessage({ type: 'error', text: err.response?.data?.detail || 'Failed to seed languages' })
+        } finally {
+            setSeeding(false)
+        }
+    }
+
+    const handleToggleLanguage = async (id: number, currentActive: boolean) => {
+        setTogglingId(id)
+        try {
+            await toggleLanguage(id, !currentActive)
+            setMessage({ type: 'success', text: `Language ${!currentActive ? 'enabled' : 'disabled'} successfully` })
+            setTimeout(() => setMessage(null), 2000)
+        } catch (err: any) {
+            setMessage({ type: 'error', text: err.response?.data?.detail || 'Failed to toggle language' })
+        } finally {
+            setTogglingId(null)
+        }
+    }
+
+    if (isLoading) {
+        return (
+            <div className="p-12 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
+            </div>
+        )
+    }
+
+    return (
+        <div className="space-y-4">
+            {/* Info Banner */}
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                <div className="flex items-start gap-3">
+                    <Globe className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <div>
+                        <h4 className="font-medium text-blue-800 dark:text-blue-300">Application Languages</h4>
+                        <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                            Enable or disable languages that teachers can use in the app. Only enabled languages will appear in the language selector.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {message && (
+                <div className={`p-3 rounded-lg flex items-center gap-2 ${
+                    message.type === 'success' 
+                        ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-300' 
+                        : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300'
+                }`}>
+                    {message.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                    {message.text}
+                </div>
+            )}
+
+            {/* Seed Button */}
+            {languages.length === 0 && (
+                <div className="text-center py-8">
+                    <Globe className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">No Languages Configured</h3>
+                    <p className="text-gray-500 mb-4">Click below to add all official Indian languages</p>
+                    <button
+                        onClick={handleSeedLanguages}
+                        disabled={seeding}
+                        className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2 mx-auto"
+                    >
+                        {seeding ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+                        Seed All Indian Languages
+                    </button>
+                </div>
+            )}
+
+            {/* Languages Grid */}
+            {languages.length > 0 && (
+                <>
+                    <div className="flex justify-between items-center">
+                        <p className="text-sm text-gray-500">
+                            {languages.filter(l => l.is_active).length} of {languages.length} languages enabled
+                        </p>
+                        <button
+                            onClick={handleSeedLanguages}
+                            disabled={seeding}
+                            className="text-sm text-amber-600 hover:text-amber-700 flex items-center gap-1"
+                        >
+                            {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                            Add Missing Languages
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {languages.map((lang) => (
+                            <div
+                                key={lang.id}
+                                className={`p-4 rounded-xl border transition-all ${
+                                    lang.is_active
+                                        ? 'bg-white dark:bg-gray-800 border-green-200 dark:border-green-800'
+                                        : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 opacity-60'
+                                }`}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold ${
+                                            lang.is_active 
+                                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                                                : 'bg-gray-200 dark:bg-gray-700 text-gray-500'
+                                        }`}>
+                                            {lang.native_name.slice(0, 2)}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-medium text-gray-900 dark:text-white">{lang.name}</h4>
+                                            <p className="text-sm text-gray-500">{lang.native_name} • {lang.code.toUpperCase()}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleToggleLanguage(lang.id, lang.is_active)}
+                                        disabled={togglingId === lang.id || lang.code === 'en'}
+                                        className={`p-2 rounded-lg transition-colors ${
+                                            lang.is_active
+                                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 hover:bg-green-200'
+                                                : 'bg-gray-200 dark:bg-gray-700 text-gray-500 hover:bg-gray-300'
+                                        } disabled:opacity-50`}
+                                        title={lang.code === 'en' ? 'English cannot be disabled' : (lang.is_active ? 'Disable' : 'Enable')}
+                                    >
+                                        {togglingId === lang.id ? (
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : lang.is_active ? (
+                                            <Eye className="w-5 h-5" />
+                                        ) : (
+                                            <EyeOff className="w-5 h-5" />
+                                        )}
+                                    </button>
+                                </div>
+                                {lang.script && (
+                                    <p className="text-xs text-gray-400 mt-2">Script: {lang.script}</p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+        </div>
+    )
+}
 
 export default function MasterData() {
     const [activeTab, setActiveTab] = useState<TabType>('states')
@@ -431,7 +592,13 @@ export default function MasterData() {
                 </div>
             </div>
 
-            {/* Data Table */}
+            {/* Languages Tab - Special Panel */}
+            {activeTab === 'languages' ? (
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+                    <LanguagesPanel />
+                </div>
+            ) : (
+            /* Data Table for other tabs */
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                 {loading ? (
                     <div className="p-12 flex items-center justify-center">
@@ -515,9 +682,10 @@ export default function MasterData() {
                     </div>
                 )}
             </div>
+            )}
 
             {/* Create/Edit Modal */}
-            {showModal && (
+            {showModal && activeTab !== 'languages' && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-2xl shadow-xl">
                         <div className="p-6 bg-gradient-to-r from-amber-600 to-orange-600">

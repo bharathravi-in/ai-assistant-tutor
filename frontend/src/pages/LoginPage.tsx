@@ -4,11 +4,13 @@ import { useTranslation } from 'react-i18next'
 import { Phone, Lock, Loader2, GraduationCap, ArrowRight, Eye, EyeOff, Globe } from 'lucide-react'
 import { authApi } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
+import { useAppLanguages } from '../hooks/useAppLanguages'
 
 export default function LoginPage() {
     const { i18n } = useTranslation()
     const navigate = useNavigate()
     const { setAuth } = useAuthStore()
+    const { languages, changeLanguage } = useAppLanguages()
 
     const [phone, setPhone] = useState('')
     const [password, setPassword] = useState('')
@@ -197,29 +199,24 @@ export default function LoginPage() {
                         </form>
                     </div>
 
-                    {/* Language selector - Compact */}
+                    {/* Language selector - Dynamic from master data */}
                     <div className="mt-6">
                         <div className="flex items-center justify-center gap-1 mb-2">
                             <Globe className="w-4 h-4 text-gray-400" />
                             <span className="text-xs text-gray-400">Select Language</span>
                         </div>
-                        <div className="flex justify-center gap-2">
-                            {[
-                                { code: 'en', label: 'EN', name: 'English' },
-                                { code: 'hi', label: 'हि', name: 'Hindi' },
-                                { code: 'ta', label: 'த', name: 'Tamil' },
-                                { code: 'te', label: 'తె', name: 'Telugu' },
-                            ].map((lang) => (
+                        <div className="flex justify-center gap-2 flex-wrap">
+                            {languages.slice(0, 6).map((lang) => (
                                 <button
                                     key={lang.code}
-                                    onClick={() => i18n.changeLanguage(lang.code)}
+                                    onClick={() => changeLanguage(lang.code)}
                                     title={lang.name}
                                     className={`w-10 h-10 rounded-full text-sm font-medium transition-all duration-200 ${i18n.language === lang.code
                                         ? 'bg-primary-500 text-white shadow-md scale-110'
                                         : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 hover:scale-105'
                                         }`}
                                 >
-                                    {lang.label}
+                                    {lang.native_name.slice(0, 2)}
                                 </button>
                             ))}
                         </div>

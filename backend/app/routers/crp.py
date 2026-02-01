@@ -860,6 +860,19 @@ async def create_visit(
     }
     _visits_store.append(new_visit)
     
+    # Send notification to teacher about scheduled visit
+    # Note: In production, you'd look up the teacher by name and get their user_id
+    # For now, this is a placeholder showing the pattern
+    # await create_notification(
+    #     db=db,
+    #     user_id=teacher_user_id,  # Would need to look this up
+    #     notification_type=NotificationType.CRP_VISIT,
+    #     title="CRP Visit Scheduled 📅",
+    #     message=f"Your CRP has scheduled a visit on {visit.date} at {visit.time}. Purpose: {visit.purpose}",
+    #     action_url="/teacher/my-visits",
+    #     action_label="View Visit Details"
+    # )
+    
     return new_visit
 
 

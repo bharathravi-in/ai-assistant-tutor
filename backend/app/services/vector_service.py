@@ -205,6 +205,65 @@ class VectorService:
             print(f"⚠️ Search failed: {e}")
             return []
     
+    async def search_similar(
+        self,
+        query_text: str,
+        limit: int = 5,
+        filters: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Search for similar content with full payload.
+        
+        Args:
+            query_text: Search query
+            limit: Max results
+            filters: Optional filters (grade, subject, etc.)
+        
+        Returns:
+            List of dicts with score and full payload
+        """
+        try:
+            # Generate query embedding
+            query_embedding = self._create_embedding(query_text)
+            
+            # Build filter conditions from dict
+            filter_conditions = []
+            if filters:
+                for key, value in filters.items():
+                    if value is not None:
+                        filter_conditions.append(
+                            models.FieldCondition(
+                                key=key,
+                                match=models.MatchValue(value=value)
+                            )
+                        )
+            
+            # Create filter
+            query_filter = None
+            if filter_conditions:
+                query_filter = models.Filter(must=filter_conditions)
+            
+            # Search
+            results = self.client.search(
+                collection_name=COLLECTION_NAME,
+                query_vector=query_embedding,
+                query_filter=query_filter,
+                limit=limit
+            )
+            
+            return [
+                {
+                    "id": hit.id,
+                    "score": hit.score,
+                    "payload": hit.payload
+                }
+                for hit in results
+            ]
+            
+        except Exception as e:
+            print(f"⚠️ RAG search failed: {e}")
+            return []
+    
     async def delete_content(self, content_id: int) -> bool:
         """Remove content from Qdrant index."""
         try:

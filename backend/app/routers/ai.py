@@ -19,6 +19,22 @@ from sqlalchemy import select
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
+# Lazy load vector service
+_vector_service = None
+
+def get_vector_service():
+    """Lazy load vector service to avoid startup errors."""
+    global _vector_service
+    if _vector_service is None:
+        try:
+            from app.services.vector_service import VectorService
+            _vector_service = VectorService()
+            print("✅ Vector service loaded for RAG")
+        except Exception as e:
+            print(f"⚠️ Vector service not available: {e}")
+            return None
+    return _vector_service
+
 
 def classify_query_type(input_text: str, mode: str, subject: str = None, topic: str = None) -> str:
     """
@@ -97,10 +113,51 @@ async def ask_ai(
     # Fetch global AI settings first
     system_settings = await db.scalar(select(SystemSettings).limit(1))
     
+    # RAG: Search for relevant content using vector similarity
+    relevant_context = ""
+    vector_service = get_vector_service()
+    if vector_service:
+        try:
+            # Search for similar content based on query
+            search_text = f"{request.input_text}"
+            if request.subject:
+                search_text += f" {request.subject}"
+            if request.topic:
+                search_text += f" {request.topic}"
+            
+            # Search in vector database
+            search_results = await vector_service.search_similar(
+                query_text=search_text,
+                limit=3,
+                filters={
+                    "grade": request.grade,
+                    "subject": request.subject
+                } if request.grade or request.subject else None
+            )
+            
+            # Build context from search results
+            if search_results:
+                relevant_context = "\n\n**Relevant Teaching Resources:**\n"
+                for idx, result in enumerate(search_results, 1):
+                    relevant_context += f"\n{idx}. **{result['payload'].get('title', 'Untitled')}**"
+                    if desc := result['payload'].get('description'):
+                        relevant_context += f"\n   {desc[:200]}..."
+                    relevant_context += f"\n   (Relevance: {result['score']:.2%})\n"
+                
+                print(f"✅ RAG: Found {len(search_results)} relevant resources")
+        except Exception as e:
+            print(f"⚠️ RAG search failed: {e}")
+            # Continue without RAG if it fails
+    
     # Create orchestrator and get response
     orchestrator = AIOrchestrator(system_settings=system_settings)
     
     try:
+        # Add RAG context to the request if available
+        enhanced_context = request.context or ""
+        if relevant_context:
+            enhanced_context = f"{enhanced_context}\n\n{relevant_context}".strip()
+        
         response = await orchestrator.process_request(
             mode=request.mode,
             input_text=request.input_text,
@@ -108,7 +165,7 @@ async def ask_ai(
             grade=request.grade,
             subject=request.subject,
             topic=request.topic,
-            context=request.context,
+            context=enhanced_context if enhanced_context else None,
             media_path=request.media_path,
             is_multigrade=request.is_multigrade,
             class_size=request.class_size,

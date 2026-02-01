@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useAppLanguages } from '../../hooks/useAppLanguages'
+import NotificationBell from '../NotificationBell'
+import OfflineIndicator from '../OfflineIndicator'
 import {
     Home,
     History,
@@ -35,10 +38,10 @@ import {
     Library,
     CheckSquare,
     PenTool,
-    Calendar
+    Calendar,
+    MessagesSquare
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
-import NotificationBell from './NotificationBell'
 
 interface LayoutProps {
     children: React.ReactNode
@@ -49,6 +52,7 @@ export default function Layout({ children }: LayoutProps) {
     const navigate = useNavigate()
     const location = useLocation()
     const { user, logout } = useAuthStore()
+    const { languages, changeLanguage } = useAppLanguages()
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
     const [darkMode, setDarkMode] = useState(false)
@@ -74,10 +78,6 @@ export default function Layout({ children }: LayoutProps) {
     const toggleDarkMode = () => {
         setDarkMode(!darkMode)
         document.documentElement.classList.toggle('dark')
-    }
-
-    const changeLanguage = (lang: string) => {
-        i18n.changeLanguage(lang)
     }
 
     const getNavItems = () => {
@@ -138,7 +138,10 @@ export default function Layout({ children }: LayoutProps) {
         return [
             { icon: Home, label: t('nav.home'), path: '/teacher' },
             { icon: MessageSquare, label: 'Ask AI', path: '/teacher/ask-question' },
+            { icon: MessagesSquare, label: 'Chat', path: '/teacher/chat' },
             { icon: History, label: t('nav.history'), path: '/teacher/history' },
+            { icon: BarChart3, label: 'Analytics', path: '/analytics' },
+            { icon: BookOpen, label: 'Learning', path: '/learning' },
             { icon: BookMarked, label: 'Resources', path: '/teacher/resources' },
             { icon: PenTool, label: 'My Content', path: '/teacher/my-content' },
             { icon: Library, label: 'Content Library', path: '/teacher/content-library' },
@@ -268,20 +271,21 @@ export default function Layout({ children }: LayoutProps) {
 
                 {/* Bottom actions */}
                 <div className={`absolute bottom-0 left-0 right-0 ${sidebarCollapsed ? 'p-2' : 'p-3'} border-t border-gray-100 dark:border-gray-700 space-y-1 bg-white dark:bg-gray-800`}>
-                    {/* Language selector */}
-                    {!sidebarCollapsed && (
+                    {/* Language selector - from master data */}
+                    {!sidebarCollapsed && languages.length > 0 && (
                         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                             <Globe className="w-5 h-5 text-gray-400 flex-shrink-0" />
                             <select
                                 value={i18n.language}
                                 onChange={(e) => changeLanguage(e.target.value)}
                                 className="flex-1 bg-transparent text-sm text-gray-600 dark:text-gray-300 focus:outline-none cursor-pointer"
+                                dir="ltr"
                             >
-                                <option value="en">English</option>
-                                <option value="hi">हिंदी</option>
-                                <option value="ta">தமிழ்</option>
-                                <option value="te">తెలుగు</option>
-                                <option value="kn">ಕನ್ನಡ</option>
+                                {languages.map(lang => (
+                                    <option key={lang.code} value={lang.code}>
+                                        {lang.native_name}
+                                    </option>
+                                ))}
                             </select>
                         </div>
                     )}
@@ -424,6 +428,9 @@ export default function Layout({ children }: LayoutProps) {
                     {helpOpen ? <X className="w-6 h-6" /> : <HelpCircle className="w-6 h-6" />}
                 </button>
             </div>
+
+            {/* Offline Indicator */}
+            <OfflineIndicator />
         </div >
     )
 }

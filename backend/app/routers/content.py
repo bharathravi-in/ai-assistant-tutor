@@ -1,9 +1,12 @@
 """
 Content Router - Teacher-created content with approval workflow
+Enhanced with PDF generation, GCP storage, and Qdrant vectorization
 """
+import asyncio
 from datetime import datetime
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.orm import selectinload
@@ -16,6 +19,45 @@ from app.schemas.content import (
     ContentListResponse, ContentSearchRequest, ContentSearchResult
 )
 from app.routers.auth import get_current_user
+from app.services.storage import get_storage_provider
+from app.routers.notifications import create_notification
+from app.models.notification import NotificationType
+
+# Lazy imports for optional services
+_pdf_service = None
+_pdf_service_loaded = False
+_vector_service = None
+_vector_service_loaded = False
+
+def get_pdf_service():
+    """Lazy load PDF service - retry on each call if previously failed."""
+    global _pdf_service, _pdf_service_loaded
+    if not _pdf_service_loaded:
+        try:
+            from app.services.pdf_service import get_pdf_service as _get_pdf
+            _pdf_service = _get_pdf()
+            _pdf_service_loaded = True
+            print("✅ PDF service loaded successfully")
+        except ImportError as e:
+            print(f"⚠️ PDF service not available: {e}")
+            # Don't mark as loaded - will retry on next call
+            return None
+    return _pdf_service
+
+def get_vector_service():
+    """Lazy load vector service - retry on each call if previously failed."""
+    global _vector_service, _vector_service_loaded
+    if not _vector_service_loaded:
+        try:
+            from app.services.vector_service import VectorService
+            _vector_service = VectorService()
+            _vector_service_loaded = True
+            print("✅ Vector service loaded successfully")
+        except ImportError as e:
+            print(f"⚠️ Vector service not available: {e}")
+            # Don't mark as loaded - will retry on next call
+            return None
+    return _vector_service
 
 router = APIRouter(prefix="/content", tags=["Content"])
 
@@ -34,6 +76,9 @@ def content_to_response(content: TeacherContent, current_user_id: int = None, is
         subject=content.subject,
         topic=content.topic,
         tags=content.tags,
+        pdf_url=getattr(content, 'pdf_url', None),
+        file_size_bytes=getattr(content, 'file_size_bytes', None),
+        is_vectorized=getattr(content, 'is_vectorized', False) or False,
         status=content.status,
         reviewer_id=content.reviewer_id,
         reviewer_name=content.reviewer.name if content.reviewer else None,
@@ -48,15 +93,116 @@ def content_to_response(content: TeacherContent, current_user_id: int = None, is
     )
 
 
+async def process_content_async(
+    content_id: int,
+    title: str,
+    content_type: str,
+    description: str,
+    content_json: Optional[dict],
+    metadata: dict,
+    author_name: str,
+    generate_pdf: bool,
+    vectorize: bool,
+    db_url: str
+):
+    """Background task to generate PDF and vectorize content."""
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession as AS
+    from sqlalchemy.orm import sessionmaker
+    
+    engine = create_async_engine(db_url)
+    async_session = sessionmaker(engine, class_=AS, expire_on_commit=False)
+    
+    async with async_session() as db:
+        try:
+            # Get content
+            result = await db.execute(
+                select(TeacherContent).where(TeacherContent.id == content_id)
+            )
+            content = result.scalar_one_or_none()
+            if not content:
+                print(f"Content {content_id} not found for processing")
+                return
+            
+            # Generate PDF
+            if generate_pdf:
+                try:
+                    pdf_service = get_pdf_service()
+                    if pdf_service is None:
+                        print(f"⚠️ PDF service not available for content {content_id}")
+                    else:
+                        structured_data = content_json.get('structured_data') if content_json else None
+                        
+                        pdf_bytes = pdf_service.generate_content_pdf(
+                            title=title,
+                            content_type=content_type,
+                            description=description,
+                            structured_data=structured_data,
+                            metadata=metadata,
+                            author_name=author_name
+                        )
+                        
+                        # Upload to storage
+                        storage = get_storage_provider()
+                        file_path = f"content/{content_id}/{title.replace(' ', '_')[:50]}.pdf"
+                        
+                        await storage.upload_file(
+                            file_data=pdf_bytes,
+                            destination_path=file_path,
+                            content_type="application/pdf"
+                        )
+                        
+                        # Get URL
+                        pdf_url = storage.get_signed_url(file_path, expiration_minutes=60*24*7)  # 7 days
+                        
+                        content.pdf_path = file_path
+                        content.pdf_url = pdf_url
+                        content.file_size_bytes = len(pdf_bytes)
+                        
+                        print(f"✅ PDF generated for content {content_id}: {file_path}")
+                except Exception as e:
+                    print(f"⚠️ PDF generation failed for content {content_id}: {e}")
+            
+            # Vectorize content
+            if vectorize:
+                try:
+                    vector_service = get_vector_service()
+                    if vector_service is None:
+                        print(f"⚠️ Vector service not available for content {content_id}")
+                    else:
+                        qdrant_id = await vector_service.index_content(
+                            content_id=content_id,
+                            title=title,
+                            description=description,
+                            content_type=content_type,
+                            grade=metadata.get('grade'),
+                            subject=metadata.get('subject'),
+                            topic=metadata.get('topic'),
+                            tags=metadata.get('tags')
+                        )
+                        content.qdrant_id = qdrant_id
+                        content.is_vectorized = True
+                        print(f"✅ Content {content_id} vectorized in Qdrant")
+                except Exception as e:
+                    print(f"⚠️ Vectorization failed for content {content_id}: {e}")
+            
+            await db.commit()
+            
+        except Exception as e:
+            print(f"❌ Background processing failed for content {content_id}: {e}")
+        finally:
+            await engine.dispose()
+
+
 # ==================== TEACHER ENDPOINTS ====================
 
 @router.post("/", response_model=ContentResponse)
 async def create_content(
     content_data: ContentCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Create new content (starts as draft)."""
+    """Create new content with optional PDF generation and vectorization."""
     content = TeacherContent(
         author_id=current_user.id,
         title=content_data.title,
@@ -73,6 +219,31 @@ async def create_content(
     db.add(content)
     await db.commit()
     await db.refresh(content)
+    
+    # Schedule background processing for PDF and vectorization
+    from app.config import get_settings
+    settings = get_settings()
+    
+    metadata = {
+        'grade': content_data.grade,
+        'subject': content_data.subject,
+        'topic': content_data.topic,
+        'tags': content_data.tags
+    }
+    
+    background_tasks.add_task(
+        process_content_async,
+        content_id=content.id,
+        title=content_data.title,
+        content_type=content_data.content_type.value,
+        description=content_data.description,
+        content_json=content_data.content_json,
+        metadata=metadata,
+        author_name=current_user.name,
+        generate_pdf=content_data.generate_pdf,
+        vectorize=content_data.vectorize,
+        db_url=settings.database_url
+    )
     
     # Load relationships
     result = await db.execute(
@@ -334,10 +505,40 @@ async def review_content(
         content.status = ContentStatus.PUBLISHED
         content.published_at = datetime.utcnow()
         
+        # Send approval notification to teacher
+        await create_notification(
+            db=db,
+            user_id=content.author_id,
+            notification_type=NotificationType.CONTENT_APPROVED,
+            title="Content Approved! 🎉",
+            message=f'Your content "{content.title}" has been approved and is now published.',
+            action_url=f"/teacher/my-content",
+            action_label="View My Content",
+            related_entity_type="content",
+            related_entity_id=content.id
+        )
+        
         # TODO: Index content in Qdrant for search
         # await vector_service.index_content(content)
     else:
         content.status = ContentStatus.REJECTED
+        
+        # Send rejection notification to teacher
+        rejection_message = f'Your content "{content.title}" needs revision.'
+        if review_data.review_notes:
+            rejection_message += f" Feedback: {review_data.review_notes}"
+        
+        await create_notification(
+            db=db,
+            user_id=content.author_id,
+            notification_type=NotificationType.CONTENT_REJECTED,
+            title="Content Needs Revision",
+            message=rejection_message,
+            action_url=f"/teacher/content/edit/{content.id}",
+            action_label="Edit Content",
+            related_entity_type="content",
+            related_entity_id=content.id
+        )
     
     await db.commit()
     await db.refresh(content)
@@ -459,6 +660,142 @@ async def toggle_like(
     return {"liked": liked, "like_count": content.like_count}
 
 
+# ==================== PDF DOWNLOAD ENDPOINT ====================
+
+@router.get("/{content_id}/pdf")
+async def download_content_pdf(
+    content_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Download or generate PDF for content."""
+    import traceback
+    
+    result = await db.execute(
+        select(TeacherContent)
+        .options(selectinload(TeacherContent.author))
+        .where(TeacherContent.id == content_id)
+    )
+    content = result.scalar_one_or_none()
+    
+    if not content:
+        raise HTTPException(status_code=404, detail="Content not found")
+    
+    # Check access
+    if content.status == ContentStatus.DRAFT and content.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # If PDF exists and is stored, return signed URL or redirect
+    pdf_path = getattr(content, 'pdf_path', None)
+    if pdf_path:
+        storage = get_storage_provider()
+        signed_url = storage.get_signed_url(pdf_path, expiration_minutes=60)
+        return {"pdf_url": signed_url, "file_size_bytes": getattr(content, 'file_size_bytes', None)}
+    
+    # Generate PDF on-the-fly if not stored
+    try:
+        print(f"📄 Generating PDF for content {content_id}...")
+        pdf_service = get_pdf_service()
+        if pdf_service is None:
+            print("❌ PDF service is None - reportlab not installed?")
+            raise HTTPException(status_code=503, detail="PDF service not available - reportlab may not be installed")
+        
+        # Extract structured data safely
+        structured_data = None
+        if content.content_json:
+            structured_data = content.content_json.get('structured_data')
+            print(f"📦 Structured data keys: {list(structured_data.keys()) if structured_data else 'None'}")
+        
+        metadata = {
+            'grade': content.grade,
+            'subject': content.subject,
+            'topic': content.topic,
+            'tags': content.tags
+        }
+        
+        # Get content type value safely
+        content_type_value = content.content_type.value if hasattr(content.content_type, 'value') else str(content.content_type)
+        
+        print(f"📝 Generating PDF: title={content.title}, type={content_type_value}")
+        
+        pdf_bytes = pdf_service.generate_content_pdf(
+            title=content.title,
+            content_type=content_type_value,
+            description=content.description or "",
+            structured_data=structured_data,
+            metadata=metadata,
+            author_name=content.author.name if content.author else "Unknown"
+        )
+        
+        print(f"✅ PDF generated: {len(pdf_bytes)} bytes")
+        
+        # Sanitize filename
+        safe_title = "".join(c for c in content.title[:50] if c.isalnum() or c in " _-").replace(" ", "_")
+        
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{safe_title}.pdf"'
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_detail = traceback.format_exc()
+        print(f"❌ PDF generation failed: {error_detail}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
+
+
+@router.post("/{content_id}/regenerate-pdf", response_model=ContentResponse)
+async def regenerate_pdf(
+    content_id: int,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Regenerate PDF for content."""
+    result = await db.execute(
+        select(TeacherContent)
+        .options(selectinload(TeacherContent.author))
+        .where(TeacherContent.id == content_id)
+    )
+    content = result.scalar_one_or_none()
+    
+    if not content:
+        raise HTTPException(status_code=404, detail="Content not found")
+    
+    if content.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You can only regenerate PDFs for your own content")
+    
+    # Schedule PDF regeneration
+    from app.config import get_settings
+    settings = get_settings()
+    
+    metadata = {
+        'grade': content.grade,
+        'subject': content.subject,
+        'topic': content.topic,
+        'tags': content.tags
+    }
+    
+    background_tasks.add_task(
+        process_content_async,
+        content_id=content.id,
+        title=content.title,
+        content_type=content.content_type.value,
+        description=content.description,
+        content_json=content.content_json,
+        metadata=metadata,
+        author_name=current_user.name,
+        generate_pdf=True,
+        vectorize=False,
+        db_url=settings.database_url
+    )
+    
+    return content_to_response(content, current_user.id)
+
+
 # ==================== SEMANTIC SEARCH ENDPOINT ====================
 
 @router.post("/search", response_model=List[ContentSearchResult])
@@ -471,9 +808,60 @@ async def search_content(
     Semantic search for content using Qdrant.
     Falls back to keyword search if Qdrant is unavailable.
     """
-    # TODO: Implement Qdrant semantic search
-    # For now, use keyword search as fallback
+    results = []
     
+    # Try Qdrant semantic search first
+    try:
+        vector_service = get_vector_service()
+        vector_results = await vector_service.search_content(
+            query=search_data.query,
+            content_type=search_data.content_type.value if search_data.content_type else None,
+            grade=search_data.grade,
+            subject=search_data.subject,
+            limit=search_data.limit
+        )
+        
+        if vector_results:
+            # Get full content for each result
+            content_ids = [r['content_id'] for r in vector_results]
+            
+            result = await db.execute(
+                select(TeacherContent)
+                .options(selectinload(TeacherContent.author))
+                .where(
+                    TeacherContent.id.in_(content_ids),
+                    TeacherContent.status == ContentStatus.PUBLISHED
+                )
+            )
+            contents = {c.id: c for c in result.scalars().all()}
+            
+            # Check likes
+            like_check = await db.execute(
+                select(ContentLike.content_id).where(
+                    ContentLike.user_id == current_user.id,
+                    ContentLike.content_id.in_(content_ids)
+                )
+            )
+            liked_ids = set(like_check.scalars().all())
+            
+            for vr in vector_results:
+                if vr['content_id'] in contents:
+                    results.append(ContentSearchResult(
+                        content=content_to_response(
+                            contents[vr['content_id']], 
+                            current_user.id, 
+                            vr['content_id'] in liked_ids
+                        ),
+                        score=vr['score']
+                    ))
+            
+            if results:
+                return results
+                
+    except Exception as e:
+        print(f"⚠️ Qdrant search failed, falling back to keyword search: {e}")
+    
+    # Fallback to keyword search
     query = select(TeacherContent).where(TeacherContent.status == ContentStatus.PUBLISHED)
     
     # Apply filters

@@ -43,6 +43,7 @@ psutil
 
 # PDF
 pypdf==4.0.0
+reportlab==4.0.8
 
 # Vector Database
 qdrant-client==1.7.0

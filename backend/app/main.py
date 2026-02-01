@@ -15,6 +15,10 @@ from app.routers.settings import router as settings_router
 from app.routers.feedback import router as feedback_router
 from app.routers.surveys import router as surveys_router
 from app.routers.programs import router as programs_router
+from app.routers.chat import router as chat_router
+from app.routers.analytics import router as analytics_router
+from app.routers.notifications import router as notifications_router
+from app.routers.learning import router as learning_router
 
 settings = get_settings()
 
@@ -70,12 +74,20 @@ app.include_router(programs_router, prefix="/api")
 app.include_router(config_router, prefix="/api")
 # Content creation with approval workflow
 app.include_router(content_router, prefix="/api")
+# Chat/Conversation interface with context memory
+app.include_router(chat_router, prefix="/api")
+# Real-time analytics and insights
+app.include_router(analytics_router, prefix="/api")
+# Push notifications and alerts
+app.include_router(notifications_router, prefix="/api")
+# Micro-learning modules and scenario templates
+app.include_router(learning_router, prefix="/api")
 
 
 
 # Mount static files for uploads - create directories first
 uploads_dir = "/app/uploads"
-for subdir in ["", "general", "resources", "audio", "media"]:
+for subdir in ["", "general", "resources", "audio", "media", "voices"]:
     path = os.path.join(uploads_dir, subdir)
     os.makedirs(path, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
