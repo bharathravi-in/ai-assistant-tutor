@@ -18,6 +18,8 @@ from app.models.teacher_content import TeacherContent, ContentLike, ContentStatu
 from app.models.chat import Conversation, ChatMessage, TeacherProfile, ChatMode
 from app.models.notification import Notification, NotificationType
 from app.models.learning import LearningModule, ModuleProgress, ScenarioTemplate, LearningModuleCategory, LearningModuleDifficulty
+from app.models.visit import Visit, VisitPurpose, VisitStatus, TeacherVisitResponse
+from app.models.direct_message import DirectMessage
 
 __all__ = [
     # User
@@ -83,4 +85,11 @@ __all__ = [
     "ScenarioTemplate",
     "LearningModuleCategory",
     "LearningModuleDifficulty",
+    # Visits
+    "Visit",
+    "VisitPurpose",
+    "VisitStatus",
+    "TeacherVisitResponse",
+    # Direct Messages
+    "DirectMessage",
 ]

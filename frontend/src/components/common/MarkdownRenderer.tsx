@@ -51,7 +51,7 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
 
                     // Bold and emphasis
                     strong: ({ children }) => (
-                        <strong className="font-semibold text-gray-900 dark:text-white">
+                        <strong className="font-bold text-gray-900 dark:text-white">
                             {children}
                         </strong>
                     ),

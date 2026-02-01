@@ -28,95 +28,127 @@ async def get_teacher_usage_stats(
     db: AsyncSession = Depends(get_db)
 ):
     """Get teacher's usage statistics."""
-    
-    start_date = datetime.utcnow() - timedelta(days=days)
-    
-    # Total queries
-    total_queries_result = await db.execute(
-        select(func.count(Query.id))
-        .where(Query.user_id == current_user.id, Query.created_at >= start_date)
-    )
-    total_queries = total_queries_result.scalar() or 0
-    
-    # Queries by mode
-    queries_by_mode_result = await db.execute(
-        select(Query.mode, func.count(Query.id))
-        .where(Query.user_id == current_user.id, Query.created_at >= start_date)
-        .group_by(Query.mode)
-    )
-    queries_by_mode = {mode: count for mode, count in queries_by_mode_result}
-    
-    # Content created
-    content_created_result = await db.execute(
-        select(func.count(TeacherContent.id))
-        .where(TeacherContent.user_id == current_user.id, TeacherContent.created_at >= start_date)
-    )
-    content_created = content_created_result.scalar() or 0
-    
-    # Reflections
-    reflections_result = await db.execute(
-        select(
-            func.count(Reflection.id),
-            func.count(case((Reflection.worked == True, 1))),
-            func.count(case((Reflection.worked == False, 1)))
+    try:
+        start_date = datetime.utcnow() - timedelta(days=days)
+        
+        # Debug: Check what we're querying
+        print(f"[ANALYTICS DEBUG] User ID: {current_user.id}, Days: {days}, Start Date: {start_date}")
+        
+        # First, let's count ALL queries for this user (no date filter)
+        all_queries_result = await db.execute(
+            select(func.count(Query.id))
+            .where(Query.user_id == current_user.id)
         )
-        .join(Query, Query.id == Reflection.query_id)
-        .where(Query.user_id == current_user.id, Query.created_at >= start_date)
-    )
-    total_reflections, worked, not_worked = reflections_result.one()
-    
-    # Chat conversations
-    conversations_result = await db.execute(
-        select(func.count(Conversation.id), func.sum(Conversation.message_count))
-        .where(Conversation.user_id == current_user.id, Conversation.created_at >= start_date)
-    )
-    total_conversations, total_messages = conversations_result.one()
-    
-    # Daily activity (queries per day)
-    daily_activity_result = await db.execute(
-        select(
-            func.date(Query.created_at).label('date'),
-            func.count(Query.id).label('count')
+        all_queries = all_queries_result.scalar() or 0
+        print(f"[ANALYTICS DEBUG] ALL queries for user {current_user.id}: {all_queries}")
+        
+        # Total queries with date filter
+        total_queries_result = await db.execute(
+            select(func.count(Query.id))
+            .where(Query.user_id == current_user.id, Query.created_at >= start_date)
         )
-        .where(Query.user_id == current_user.id, Query.created_at >= start_date)
-        .group_by(func.date(Query.created_at))
-        .order_by(func.date(Query.created_at))
-    )
-    daily_activity = [{"date": str(date), "queries": count} for date, count in daily_activity_result]
-    
-    # Most used subjects/topics
-    subjects_result = await db.execute(
-        select(Query.subject, func.count(Query.id))
-        .where(
-            Query.user_id == current_user.id,
-            Query.created_at >= start_date,
-            Query.subject.isnot(None)
+        total_queries = total_queries_result.scalar() or 0
+        print(f"[ANALYTICS DEBUG] Queries in date range: {total_queries}")
+        
+        # Queries by mode
+        queries_by_mode_result = await db.execute(
+            select(Query.mode, func.count(Query.id))
+            .where(Query.user_id == current_user.id, Query.created_at >= start_date)
+            .group_by(Query.mode)
         )
-        .group_by(Query.subject)
-        .order_by(desc(func.count(Query.id)))
-        .limit(5)
-    )
-    top_subjects = [{"subject": subj, "count": count} for subj, count in subjects_result]
-    
-    return {
-        "period_days": days,
-        "total_queries": total_queries,
-        "queries_by_mode": queries_by_mode,
-        "content_created": content_created,
-        "reflections": {
-            "total": total_reflections or 0,
-            "worked": worked or 0,
-            "not_worked": not_worked or 0,
-            "success_rate": round((worked / total_reflections * 100) if total_reflections else 0, 1)
-        },
-        "chat": {
-            "conversations": total_conversations or 0,
-            "messages": int(total_messages) if total_messages else 0,
-            "avg_messages_per_conversation": round((total_messages / total_conversations) if total_conversations else 0, 1)
-        },
-        "daily_activity": daily_activity,
-        "top_subjects": top_subjects
-    }
+        queries_by_mode = {mode.value if hasattr(mode, 'value') else str(mode): count for mode, count in queries_by_mode_result}
+        
+        # Content created
+        content_created_result = await db.execute(
+            select(func.count(TeacherContent.id))
+            .where(TeacherContent.user_id == current_user.id, TeacherContent.created_at >= start_date)
+        )
+        content_created = content_created_result.scalar() or 0
+        
+        # Reflections - with error handling for missing data
+        try:
+            reflections_result = await db.execute(
+                select(
+                    func.count(Reflection.id),
+                    func.count(case((Reflection.worked == True, 1))),
+                    func.count(case((Reflection.worked == False, 1)))
+                )
+                .join(Query, Query.id == Reflection.query_id)
+                .where(Query.user_id == current_user.id, Query.created_at >= start_date)
+            )
+            total_reflections, worked, not_worked = reflections_result.one()
+        except Exception:
+            total_reflections, worked, not_worked = 0, 0, 0
+        
+        # Chat conversations - with error handling
+        try:
+            conversations_result = await db.execute(
+                select(func.count(Conversation.id), func.sum(Conversation.message_count))
+                .where(Conversation.user_id == current_user.id, Conversation.created_at >= start_date)
+            )
+            total_conversations, total_messages = conversations_result.one()
+        except Exception:
+            total_conversations, total_messages = 0, 0
+        
+        # Daily activity (queries per day)
+        daily_activity_result = await db.execute(
+            select(
+                func.date(Query.created_at).label('date'),
+                func.count(Query.id).label('count')
+            )
+            .where(Query.user_id == current_user.id, Query.created_at >= start_date)
+            .group_by(func.date(Query.created_at))
+            .order_by(func.date(Query.created_at))
+        )
+        daily_activity = [{"date": str(date), "queries": count} for date, count in daily_activity_result]
+        
+        # Most used subjects/topics
+        subjects_result = await db.execute(
+            select(Query.subject, func.count(Query.id))
+            .where(
+                Query.user_id == current_user.id,
+                Query.created_at >= start_date,
+                Query.subject.isnot(None)
+            )
+            .group_by(Query.subject)
+            .order_by(desc(func.count(Query.id)))
+            .limit(5)
+        )
+        top_subjects = [{"subject": subj, "count": count} for subj, count in subjects_result]
+        
+        return {
+            "period_days": days,
+            "total_queries": total_queries,
+            "all_queries_debug": all_queries,  # Debug: show count without date filter
+            "queries_by_mode": queries_by_mode,
+            "content_created": content_created,
+            "reflections": {
+                "total": total_reflections or 0,
+                "worked": worked or 0,
+                "not_worked": not_worked or 0,
+                "success_rate": round((worked / total_reflections * 100) if total_reflections else 0, 1)
+            },
+            "chat": {
+                "conversations": total_conversations or 0,
+                "messages": int(total_messages) if total_messages else 0,
+                "avg_messages_per_conversation": round((total_messages / total_conversations) if total_conversations else 0, 1)
+            },
+            "daily_activity": daily_activity,
+            "top_subjects": top_subjects
+        }
+    except Exception as e:
+        # Return empty stats on error rather than 500
+        print(f"Analytics error: {e}")
+        return {
+            "period_days": days,
+            "total_queries": 0,
+            "queries_by_mode": {},
+            "content_created": 0,
+            "reflections": {"total": 0, "worked": 0, "not_worked": 0, "success_rate": 0},
+            "chat": {"conversations": 0, "messages": 0, "avg_messages_per_conversation": 0},
+            "daily_activity": [],
+            "top_subjects": []
+        }
 
 
 @router.get("/content/engagement")
@@ -125,51 +157,59 @@ async def get_content_engagement(
     db: AsyncSession = Depends(get_db)
 ):
     """Get engagement metrics for teacher's content."""
-    
-    # Content by status
-    status_result = await db.execute(
-        select(TeacherContent.status, func.count(TeacherContent.id))
-        .where(TeacherContent.user_id == current_user.id)
-        .group_by(TeacherContent.status)
-    )
-    by_status = {status.value: count for status, count in status_result}
-    
-    # Content by type
-    type_result = await db.execute(
-        select(TeacherContent.content_type, func.count(TeacherContent.id))
-        .where(TeacherContent.user_id == current_user.id)
-        .group_by(TeacherContent.content_type)
-    )
-    by_type = {ctype.value: count for ctype, count in type_result}
-    
-    # Recent content with metadata
-    recent_result = await db.execute(
-        select(TeacherContent)
-        .where(TeacherContent.user_id == current_user.id)
-        .order_by(desc(TeacherContent.created_at))
-        .limit(10)
-    )
-    recent_content = recent_result.scalars().all()
-    
-    recent_list = []
-    for content in recent_content:
-        recent_list.append({
-            "id": content.id,
-            "title": content.title,
-            "type": content.content_type.value,
-            "status": content.status.value,
-            "views": content.view_count or 0,
-            "likes": content.like_count or 0,
-            "downloads": content.download_count or 0,
-            "created_at": content.created_at.isoformat()
-        })
-    
-    return {
-        "by_status": by_status,
-        "by_type": by_type,
-        "recent_content": recent_list,
-        "total_content": sum(by_status.values())
-    }
+    try:
+        # Content by status
+        status_result = await db.execute(
+            select(TeacherContent.status, func.count(TeacherContent.id))
+            .where(TeacherContent.user_id == current_user.id)
+            .group_by(TeacherContent.status)
+        )
+        by_status = {status.value if hasattr(status, 'value') else str(status): count for status, count in status_result}
+        
+        # Content by type
+        type_result = await db.execute(
+            select(TeacherContent.content_type, func.count(TeacherContent.id))
+            .where(TeacherContent.user_id == current_user.id)
+            .group_by(TeacherContent.content_type)
+        )
+        by_type = {ctype.value if hasattr(ctype, 'value') else str(ctype): count for ctype, count in type_result}
+        
+        # Recent content with metadata
+        recent_result = await db.execute(
+            select(TeacherContent)
+            .where(TeacherContent.user_id == current_user.id)
+            .order_by(desc(TeacherContent.created_at))
+            .limit(10)
+        )
+        recent_content = recent_result.scalars().all()
+        
+        recent_list = []
+        for content in recent_content:
+            recent_list.append({
+                "id": content.id,
+                "title": content.title,
+                "type": content.content_type.value if hasattr(content.content_type, 'value') else str(content.content_type),
+                "status": content.status.value if hasattr(content.status, 'value') else str(content.status),
+                "views": content.view_count or 0,
+                "likes": content.like_count or 0,
+                "downloads": content.download_count or 0,
+                "created_at": content.created_at.isoformat()
+            })
+        
+        return {
+            "by_status": by_status,
+            "by_type": by_type,
+            "recent_content": recent_list,
+            "total_content": sum(by_status.values()) if by_status else 0
+        }
+    except Exception as e:
+        print(f"Content engagement error: {e}")
+        return {
+            "by_status": {},
+            "by_type": {},
+            "recent_content": [],
+            "total_content": 0
+        }
 
 
 # ===== Admin/CRP/ARP Analytics =====

@@ -11,18 +11,19 @@ from app.database import Base
 
 class NotificationType(str, enum.Enum):
     """Notification type enum."""
-    INFO = "info"
-    SUCCESS = "success"
-    WARNING = "warning"
-    ERROR = "error"
-    CONTENT_APPROVED = "content_approved"
-    CONTENT_REJECTED = "content_rejected"
-    QUERY_RESPONSE = "query_response"
-    REFLECTION_REMINDER = "reflection_reminder"
-    NEW_RESOURCE = "new_resource"
-    SYSTEM_UPDATE = "system_update"
-    CRP_VISIT = "crp_visit"
-    SURVEY_ASSIGNED = "survey_assigned"
+    INFO = "INFO"
+    SUCCESS = "SUCCESS"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    CONTENT_APPROVED = "CONTENT_APPROVED"
+    CONTENT_REJECTED = "CONTENT_REJECTED"
+    QUERY_RESPONSE = "QUERY_RESPONSE"
+    REFLECTION_REMINDER = "REFLECTION_REMINDER"
+    NEW_RESOURCE = "NEW_RESOURCE"
+    SYSTEM_UPDATE = "SYSTEM_UPDATE"
+    CRP_VISIT = "CRP_VISIT"
+    SURVEY_ASSIGNED = "SURVEY_ASSIGNED"
+    MESSAGE = "MESSAGE"
 
 
 class Notification(Base):

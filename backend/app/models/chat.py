@@ -49,7 +49,7 @@ class Conversation(Base):
     
     # Relationships
     user = relationship("User", backref="conversations")
-    messages = relationship("ChatMessage", back_populates="conversation", cascade="all, delete-orphan")
+    messages = relationship("ChatMessage", back_populates="conversation", cascade="all, delete-orphan", order_by="ChatMessage.created_at")
     
     def __repr__(self) -> str:
         return f"<Conversation {self.id}: {self.title or 'Untitled'}>"

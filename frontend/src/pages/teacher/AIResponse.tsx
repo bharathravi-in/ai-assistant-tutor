@@ -12,6 +12,9 @@ import {
     ClipboardList,
     BookOpen,
     Volume2,
+    VolumeX,
+    Pause,
+    Play,
     RefreshCw,
     MessageSquare,
     AlertCircle,
@@ -25,6 +28,7 @@ import {
 } from 'lucide-react'
 import { aiApi } from '../../services/api'
 import MarkdownRenderer from '../../components/common/MarkdownRenderer'
+import { useTTS } from '../../hooks/useTTS'
 
 interface ResponseState {
     response: {
@@ -53,6 +57,9 @@ export default function AIResponse() {
     const [feedback, setFeedback] = useState<'helpful' | 'not_helpful' | null>(null)
     const [copied, setCopied] = useState(false)
     const [isSaved, setIsSaved] = useState(false)
+
+    // TTS hook
+    const { speak, stop, pause, resume, isSpeaking, isPaused, currentLanguage } = useTTS()
 
     // Action button states
     const [loadingQuiz, setLoadingQuiz] = useState(false)
@@ -115,11 +122,28 @@ export default function AIResponse() {
         // TODO: Share with mentor functionality
     }
 
-    const speakResponse = () => {
-        if ('speechSynthesis' in window) {
-            const utterance = new SpeechSynthesisUtterance(content)
-            utterance.lang = 'en-IN'
-            window.speechSynthesis.speak(utterance)
+    const handleTTS = () => {
+        if (isSpeaking && !isPaused) {
+            stop()
+        } else {
+            // Strip markdown for cleaner speech
+            const plainText = content
+                .replace(/#+\s/g, '') // Remove headers
+                .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+                .replace(/\*(.*?)\*/g, '$1') // Remove italic
+                .replace(/`(.*?)`/g, '$1') // Remove code
+                .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Remove links
+                .replace(/^-\s/gm, '') // Remove list markers
+                .trim()
+            speak(plainText, { language: 'auto' })
+        }
+    }
+
+    const handlePauseResume = () => {
+        if (isPaused) {
+            resume()
+        } else {
+            pause()
         }
     }
 
@@ -213,13 +237,30 @@ export default function AIResponse() {
                             <span className="font-semibold text-gray-900 dark:text-white">AI Assistant</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button
-                                onClick={speakResponse}
-                                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                title="Listen to response"
-                            >
-                                <Volume2 className="w-4 h-4 text-gray-500" />
-                            </button>
+                            {/* TTS Controls */}
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={handleTTS}
+                                    className={`p-2 rounded-lg transition-colors ${isSpeaking ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600' : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500'}`}
+                                    title={isSpeaking ? 'Stop' : 'Listen to response'}
+                                >
+                                    {isSpeaking ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                                </button>
+                                {isSpeaking && (
+                                    <button
+                                        onClick={handlePauseResume}
+                                        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 transition-colors"
+                                        title={isPaused ? 'Resume' : 'Pause'}
+                                    >
+                                        {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                                    </button>
+                                )}
+                                {isSpeaking && currentLanguage && (
+                                    <span className="text-xs text-gray-400 px-1">
+                                        {currentLanguage === 'hi' ? '🇮🇳 Hindi' : '🇬🇧 English'}
+                                    </span>
+                                )}
+                            </div>
                             <button
                                 onClick={handleCopy}
                                 className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"

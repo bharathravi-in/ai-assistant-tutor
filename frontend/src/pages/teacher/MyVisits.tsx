@@ -1,8 +1,10 @@
 /**
  * MyVisits - Teacher view of scheduled interventions/visits from CRPs
+ * 
+ * Simple read-only view - teachers see upcoming CRP visits to be prepared
  */
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, MapPin, CheckCircle, XCircle, CalendarCheck, CalendarPlus } from 'lucide-react'
+import { Calendar, Clock, MapPin, CheckCircle, XCircle, CalendarCheck, CalendarPlus, User } from 'lucide-react'
 import { teacherApi } from '../../services/api'
 
 interface Visit {
@@ -29,22 +31,25 @@ interface VisitsResponse {
     }
 }
 
-const purposeLabels: Record<string, { label: string; color: string }> = {
-    routine: { label: 'Routine Visit', color: 'bg-blue-100 text-blue-700' },
-    follow_up: { label: 'Follow-up', color: 'bg-amber-100 text-amber-700' },
-    training: { label: 'Training', color: 'bg-purple-100 text-purple-700' },
-    observation: { label: 'Observation', color: 'bg-green-100 text-green-700' },
+const purposeLabels: Record<string, { label: string; color: string; icon: string }> = {
+    routine: { label: 'Routine Visit', color: 'bg-blue-100 text-blue-700', icon: '📋' },
+    follow_up: { label: 'Follow-up', color: 'bg-amber-100 text-amber-700', icon: '🔄' },
+    training: { label: 'Training', color: 'bg-purple-100 text-purple-700', icon: '📚' },
+    observation: { label: 'Classroom Observation', color: 'bg-green-100 text-green-700', icon: '👀' },
+    support: { label: 'Support Visit', color: 'bg-indigo-100 text-indigo-700', icon: '🤝' },
+    assessment: { label: 'Assessment', color: 'bg-pink-100 text-pink-700', icon: '📝' },
 }
 
-const statusIcons: Record<string, JSX.Element> = {
-    scheduled: <CalendarCheck className="w-4 h-4 text-blue-500" />,
-    completed: <CheckCircle className="w-4 h-4 text-green-500" />,
-    cancelled: <XCircle className="w-4 h-4 text-red-500" />,
+const statusConfig: Record<string, { label: string; color: string; icon: JSX.Element }> = {
+    scheduled: { label: 'Scheduled', color: 'bg-blue-100 text-blue-700', icon: <CalendarCheck className="w-4 h-4" /> },
+    confirmed: { label: 'Confirmed', color: 'bg-green-100 text-green-700', icon: <CheckCircle className="w-4 h-4" /> },
+    completed: { label: 'Completed', color: 'bg-green-100 text-green-700', icon: <CheckCircle className="w-4 h-4" /> },
+    cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-700', icon: <XCircle className="w-4 h-4" /> },
 }
 
 // Generate Google Calendar URL for a visit
 const generateCalendarUrl = (visit: Visit): string => {
-    const startDate = new Date(`${visit.date}T${visit.time}:00`)
+    const startDate = new Date(`${visit.date}T${visit.time || '10:00'}:00`)
     const endDate = new Date(startDate.getTime() + 60 * 60 * 1000) // 1 hour duration
 
     const formatGoogleDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
@@ -59,7 +64,7 @@ const generateCalendarUrl = (visit: Visit): string => {
 
 // Generate ICS file content for download
 const generateIcsContent = (visit: Visit): string => {
-    const startDate = new Date(`${visit.date}T${visit.time}:00`)
+    const startDate = new Date(`${visit.date}T${visit.time || '10:00'}:00`)
     const endDate = new Date(startDate.getTime() + 60 * 60 * 1000)
 
     const formatIcsDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
@@ -114,19 +119,34 @@ export default function MyVisits() {
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr)
         return date.toLocaleDateString('en-IN', {
-            weekday: 'short',
+            weekday: 'long',
             day: 'numeric',
-            month: 'short',
+            month: 'long',
             year: 'numeric'
         })
     }
 
     const formatTime = (timeStr: string) => {
+        if (!timeStr) return 'Time TBD'
         const [hours, minutes] = timeStr.split(':')
         const hour = parseInt(hours)
         const ampm = hour >= 12 ? 'PM' : 'AM'
         const displayHour = hour % 12 || 12
         return `${displayHour}:${minutes} ${ampm}`
+    }
+
+    const getDaysUntil = (dateStr: string) => {
+        const visitDate = new Date(dateStr)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        visitDate.setHours(0, 0, 0, 0)
+        const diffTime = visitDate.getTime() - today.getTime()
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+        if (diffDays === 0) return { text: 'Today', color: 'text-red-600 bg-red-50' }
+        if (diffDays === 1) return { text: 'Tomorrow', color: 'text-orange-600 bg-orange-50' }
+        if (diffDays <= 7) return { text: `In ${diffDays} days`, color: 'text-blue-600 bg-blue-50' }
+        return { text: `In ${diffDays} days`, color: 'text-gray-600 bg-gray-50' }
     }
 
     if (loading) {
@@ -142,11 +162,9 @@ export default function MyVisits() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">CRP Visits</h1>
-                    <p className="text-gray-500">Interventions and support visits scheduled by your CRP</p>
-                </div>
+            <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">CRP Visits</h1>
+                <p className="text-gray-500">Support visits scheduled by your Cluster Resource Person</p>
             </div>
 
             {/* Stats Cards */}
@@ -201,75 +219,102 @@ export default function MyVisits() {
                     </p>
                 </div>
             ) : (
-                <div className="space-y-3">
-                    {displayVisits.map((visit) => (
-                        <div key={visit.id} className="card p-4 hover:shadow-md transition-shadow">
-                            <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        {statusIcons[visit.status]}
-                                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${purposeLabels[visit.purpose]?.color || 'bg-gray-100 text-gray-700'
-                                            }`}>
-                                            {purposeLabels[visit.purpose]?.label || visit.purpose}
+                <div className="space-y-4">
+                    {displayVisits.map((visit) => {
+                        const daysInfo = activeTab === 'upcoming' ? getDaysUntil(visit.date) : null
+                        const purposeInfo = purposeLabels[visit.purpose] || { label: visit.purpose, color: 'bg-gray-100 text-gray-700', icon: '📅' }
+                        const statusInfo = statusConfig[visit.status] || statusConfig.scheduled
+
+                        return (
+                            <div key={visit.id} className="card p-5 hover:shadow-lg transition-all duration-200">
+                                {/* Header Row */}
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="text-2xl">{purposeInfo.icon}</div>
+                                        <div>
+                                            <h3 className="font-semibold text-gray-900 dark:text-white">
+                                                {purposeInfo.label}
+                                            </h3>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${statusInfo.color}`}>
+                                                    {statusInfo.icon}
+                                                    {statusInfo.label}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {daysInfo && (
+                                        <span className={`px-3 py-1 text-sm font-medium rounded-full ${daysInfo.color}`}>
+                                            {daysInfo.text}
                                         </span>
-                                    </div>
-
-                                    <div className="space-y-1 text-sm">
-                                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-                                            <Calendar className="w-4 h-4" />
-                                            <span>{formatDate(visit.date)}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-                                            <Clock className="w-4 h-4" />
-                                            <span>{formatTime(visit.time)}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-                                            <MapPin className="w-4 h-4" />
-                                            <span>{visit.school}</span>
-                                        </div>
-                                    </div>
-
-                                    {visit.notes && (
-                                        <p className="mt-2 text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 p-2 rounded">
-                                            {visit.notes}
-                                        </p>
-                                    )}
-
-                                    {/* Add to Calendar buttons - only for scheduled visits */}
-                                    {visit.status === 'scheduled' && (
-                                        <div className="mt-3 flex gap-2">
-                                            <a
-                                                href={generateCalendarUrl(visit)}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#007AFF] text-white rounded-lg hover:bg-[#0056b3] transition-colors"
-                                            >
-                                                <CalendarPlus className="w-3.5 h-3.5" />
-                                                Add to Google Calendar
-                                            </a>
-                                            <button
-                                                onClick={() => downloadIcs(visit)}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-300 text-gray-700 dark:text-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                                            >
-                                                <CalendarPlus className="w-3.5 h-3.5" />
-                                                Download .ics
-                                            </button>
-                                        </div>
                                     )}
                                 </div>
 
-                                <div className={`px-2 py-1 text-xs font-medium rounded ${visit.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                    visit.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                        'bg-blue-100 text-blue-700'
-                                    }`}>
-                                    {visit.status.charAt(0).toUpperCase() + visit.status.slice(1)}
+                                {/* Details */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                                        <Calendar className="w-4 h-4 text-gray-400" />
+                                        <span className="text-sm">{formatDate(visit.date)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                                        <Clock className="w-4 h-4 text-gray-400" />
+                                        <span className="text-sm">{formatTime(visit.time)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                                        <MapPin className="w-4 h-4 text-gray-400" />
+                                        <span className="text-sm">{visit.school}</span>
+                                    </div>
                                 </div>
+
+                                {/* Notes from CRP */}
+                                {visit.notes && (
+                                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-3 mb-4">
+                                        <div className="flex items-start gap-2">
+                                            <User className="w-4 h-4 text-blue-500 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">Message from CRP</p>
+                                                <p className="text-sm text-blue-600 dark:text-blue-400">{visit.notes}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Calendar Actions - only for upcoming visits */}
+                                {activeTab === 'upcoming' && visit.status !== 'cancelled' && (
+                                    <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100 dark:border-gray-700">
+                                        <a
+                                            href={generateCalendarUrl(visit)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#007AFF] text-white rounded-lg hover:bg-[#0056b3] transition-colors"
+                                        >
+                                            <CalendarPlus className="w-3.5 h-3.5" />
+                                            Add to Google Calendar
+                                        </a>
+                                        <button
+                                            onClick={() => downloadIcs(visit)}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-300 text-gray-700 dark:text-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                        >
+                                            <CalendarPlus className="w-3.5 h-3.5" />
+                                            Download .ics
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    ))}
+                        )
+                    })}
+                </div>
+            )}
+
+            {/* Info Banner */}
+            {activeTab === 'upcoming' && data?.upcoming && data.upcoming.length > 0 && (
+                <div className="card p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                        💡 <strong>Tip:</strong> Add visits to your calendar to ensure you're prepared. Your CRP visits are an opportunity for professional development and support.
+                    </p>
                 </div>
             )}
         </div>
     )
 }
-

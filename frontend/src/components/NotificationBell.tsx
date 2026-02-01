@@ -53,7 +53,7 @@ const NotificationBell: React.FC = () => {
     }
   };
 
-  const handleMarkRead = async (id: string) => {
+  const handleMarkRead = async (id: number) => {
     try {
       await markNotificationRead(id);
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
@@ -135,9 +135,8 @@ const NotificationBell: React.FC = () => {
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                      !notification.is_read ? 'bg-blue-50' : ''
-                    }`}
+                    className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${!notification.is_read ? 'bg-blue-50' : ''
+                      }`}
                     onClick={() => !notification.is_read && handleMarkRead(notification.id)}
                   >
                     <div className="flex gap-3">

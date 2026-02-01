@@ -33,8 +33,8 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - network first, fallback to cache
 self.addEventListener('fetch', (event) => {
-    // Skip non-GET requests
-    if (event.request.method !== 'GET') return;
+    // Skip non-GET requests or non-http/https schemes
+    if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
 
     // Skip API requests - always go to network
     if (event.request.url.includes('/api/')) return;

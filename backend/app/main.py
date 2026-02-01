@@ -19,6 +19,7 @@ from app.routers.chat import router as chat_router
 from app.routers.analytics import router as analytics_router
 from app.routers.notifications import router as notifications_router
 from app.routers.learning import router as learning_router
+from app.routers.messaging import router as messaging_router
 
 settings = get_settings()
 
@@ -82,6 +83,8 @@ app.include_router(analytics_router, prefix="/api")
 app.include_router(notifications_router, prefix="/api")
 # Micro-learning modules and scenario templates
 app.include_router(learning_router, prefix="/api")
+# Direct messaging between teachers and CRPs
+app.include_router(messaging_router, prefix="/api")
 
 
 
