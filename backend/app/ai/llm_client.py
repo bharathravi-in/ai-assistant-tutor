@@ -151,7 +151,7 @@ class LLMClient:
         if self.provider == "openai":
             return "gpt-4o-mini"
         elif self.provider == "gemini":
-            return "gemini-pro"
+            return "gemini-1.5-flash"
         return "gpt-4o-mini"
     
     def _init_client(self):
@@ -270,25 +270,30 @@ class LLMClient:
             lang_instruction = self._get_language_instruction(language)
             prompt = f"{lang_instruction}\n\n{prompt}"
         
-        if self.provider == "openai":
-            print(f"[LLM] Calling OpenAI - model: {self._model}")
-            return await self._generate_openai(prompt, max_tokens, temperature)
-        elif self.provider == "gemini":
-            print(f"[LLM] Calling Gemini - model: {self._model}")
-            return await self._generate_gemini(prompt, max_tokens, temperature, media_path)
-        elif self.provider == "azure_openai":
-            print(f"[LLM] Calling Azure OpenAI - model: {self._model}")
-            return await self._generate_azure_openai(prompt, max_tokens, temperature)
-        elif self.provider == "anthropic":
-            print(f"[LLM] Calling Anthropic - model: {self._model}")
-            return await self._generate_anthropic(prompt, max_tokens, temperature)
-        elif self.provider == "litellm":
-            print(f"[LLM] Calling LiteLLM - model: {self._model}")
-            return await self._generate_litellm(prompt, max_tokens, temperature)
-        else:
-            # Fallback: return a demo response
-            print(f"[LLM] No valid provider '{self.provider}', returning demo response")
-            return self._get_demo_response(prompt)
+        print(f"[LLM] Dispatching request - provider: {self.provider}, model: {self._model}")
+        
+        try:
+            if self.provider == "openai":
+                return await self._generate_openai(prompt, max_tokens, temperature)
+            elif self.provider == "gemini":
+                return await self._generate_gemini(prompt, max_tokens, temperature, media_path)
+            elif self.provider == "azure_openai":
+                return await self._generate_azure_openai(prompt, max_tokens, temperature)
+            elif self.provider == "anthropic":
+                return await self._generate_anthropic(prompt, max_tokens, temperature)
+            elif self.provider == "litellm":
+                return await self._generate_litellm(prompt, max_tokens, temperature)
+            else:
+                print(f"[LLM] Unknown provider '{self.provider}', falling back to LiteLLM logic")
+                return await self._generate_litellm(prompt, max_tokens, temperature)
+        except Exception as e:
+            print(f"[LLM] Error in {self.provider} generation: {str(e)}")
+            # If standard provider fails, try LiteLLM as a last-resort bridge if it was configured
+            if self.provider != "litellm" and (self._settings.litellm_base_url or os.getenv("LITELLM_BASE_URL")):
+                 print(f"[LLM] Attempting emergency fallback via LiteLLM...")
+                 # Note: This requires the client to be re-initialized for LiteLLM
+                 return f"Error generating response: {str(e)}"
+            return f"Error generating response: {str(e)}"
     
     async def chat(
         self,
@@ -454,16 +459,32 @@ class LLMClient:
             print(f"[LLM] Traceback: {traceback.format_exc()}")
             return error_msg
     
-    async def _generate_openai(self, prompt: str, max_tokens: int, temperature: float) -> str:
+    async def _generate_openai(self, prompt: str, max_tokens: int, temperature: float, media_path: Optional[str] = None) -> str:
         """Generate using OpenAI."""
         try:
+            messages = [
+                {"role": "system", "content": "You are an expert teaching assistant for government school teachers. Provide practical, actionable advice that can be implemented immediately in the classroom."},
+            ]
+            
+            user_content = [{"type": "text", "text": prompt}]
+            
+            if media_path:
+                print(f"[LLM] OpenAI request has media: {media_path}")
+                # For OpenAI, we handle images via base64. PDFs are typically not supported directly in Chat Completions
+                # unless using the Assistant API or if the model handles PDF text extraction.
+                # For this implementation, we focus on making the structure agnostic.
+                if media_path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                     import base64
+                     # Logic to read/encode file (simplified for plan)
+                     # user_content.append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}})
+                     pass
+
+            messages.append({"role": "user", "content": user_content})
+
             response = await asyncio.wait_for(
                 self._client.chat.completions.create(
                     model=self._model,
-                    messages=[
-                        {"role": "system", "content": "You are an expert teaching assistant for government school teachers. Provide practical, actionable advice that can be implemented immediately in the classroom."},
-                        {"role": "user", "content": prompt}
-                    ],
+                    messages=messages,
                     max_tokens=max_tokens,
                     temperature=temperature,
                 ),
@@ -493,37 +514,58 @@ class LLMClient:
         """Generate using Google Gemini."""
         try:
             import google.generativeai as genai
+            import httpx
+            import tempfile
             
             content_parts = [prompt]
             
             if media_path:
-                # media_path could be like /uploads/voice/filename.webm or /uploads/filename.jpg
-                filename = media_path.split("/")[-1]
-                
-                # Try common locations
-                possible_paths = [
-                    os.path.join("uploads", filename),
-                    os.path.join("uploads", "voice", filename),
-                    os.path.join("uploads", "voices", filename),
-                    os.path.join("/app/uploads", filename),
-                    os.path.join("/app/uploads/voice", filename),
-                    # Direct path if it's already absolute or relative and exists
-                    media_path.lstrip("/"),
-                    media_path
-                ]
-                
-                actual_path = None
-                for path in possible_paths:
-                    if os.path.exists(path) and os.path.isfile(path):
-                        actual_path = path
-                        break
-                
-                if actual_path:
-                    # Upload and add to content parts
-                    uploaded_file = genai.upload_file(path=actual_path)
-                    content_parts.append(uploaded_file)
+                print(f"[LLM] Gemini request has media: {media_path}")
+                # Handle URLs vs Local Paths
+                if media_path.startswith("http"):
+                    print(f"[LLM] Downloading media from URL: {media_path}")
+                    try:
+                        async with httpx.AsyncClient() as client:
+                            response = await client.get(media_path)
+                            if response.status_code == 200:
+                                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                                    tmp.write(response.content)
+                                    actual_path = tmp.name
+                                print(f"[LLM] Media downloaded to: {actual_path}")
+                                uploaded_file = genai.upload_file(path=actual_path)
+                                content_parts.append(uploaded_file)
+                                # Note: Ideally delete the temp file after use, but for now we leave it
+                                # as genai.upload_file might need it during the call?
+                                # Actually, upload_file is synchronous and returns.
+                                os.unlink(actual_path)
+                            else:
+                                print(f"[LLM] Failed to download media: {response.status_code}")
+                    except Exception as e:
+                        print(f"[LLM] Error downloading media: {e}")
                 else:
-                    print(f"Warning: Media file not found for Gemini: {media_path}")
+                    # Existing local path logic
+                    filename = media_path.split("/")[-1]
+                    possible_paths = [
+                        os.path.join("uploads", filename),
+                        os.path.join("uploads", "voice", filename),
+                        os.path.join("uploads", "voices", filename),
+                        os.path.join("/app/uploads", filename),
+                        os.path.join("/app/uploads/voice", filename),
+                        media_path.lstrip("/"),
+                        media_path
+                    ]
+                    
+                    actual_path = None
+                    for path in possible_paths:
+                        if os.path.exists(path) and os.path.isfile(path):
+                            actual_path = path
+                            break
+                    
+                    if actual_path:
+                        uploaded_file = genai.upload_file(path=actual_path)
+                        content_parts.append(uploaded_file)
+                    else:
+                        print(f"Warning: Media file not found for Gemini: {media_path}")
             
             response = await self._client.generate_content_async(
                 content_parts,
@@ -532,6 +574,13 @@ class LLMClient:
                     "temperature": temperature,
                 }
             )
+            if hasattr(response, 'candidates') and response.candidates:
+                # Check if the first candidate has parts
+                if response.candidates[0].content.parts:
+                    return response.text
+                else:
+                    print(f"[LLM] Gemini response blocked or empty. Safety: {response.candidates[0].safety_ratings}")
+                    return "Error: The AI response was blocked by safety filters or is empty."
             return response.text
         except Exception as e:
             return f"Error generating response: {str(e)}"

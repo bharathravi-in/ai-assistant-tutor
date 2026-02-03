@@ -141,8 +141,8 @@ export default function MyContent() {
                             key={status}
                             onClick={() => { setStatusFilter(status); setCurrentPage(1) }}
                             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${statusFilter === status
-                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                 }`}
                         >
                             {status === '' ? 'All' : statusConfig[status]?.label || status}
@@ -245,7 +245,7 @@ export default function MyContent() {
                                             {/* Actions */}
                                             <div className="flex items-center gap-2">
                                                 <button
-                                                    onClick={() => navigate(`/teacher/content/view/${content.id}`)}
+                                                    onClick={() => navigate(`/content/player/${content.id}`)}
                                                     className="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                                                     title="View"
                                                 >
@@ -295,8 +295,8 @@ export default function MyContent() {
                             key={page}
                             onClick={() => setCurrentPage(page)}
                             className={`w-10 h-10 rounded-lg font-medium transition-colors ${currentPage === page
-                                    ? 'bg-blue-500 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                 }`}
                         >
                             {page}

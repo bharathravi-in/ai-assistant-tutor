@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
     Search,
     FileText,
@@ -10,16 +9,17 @@ import {
     Heart,
     Eye,
     User,
-    Calendar,
     Filter,
     Loader2,
     Sparkles,
     BookOpen,
-    X
+    X,
+    Download
 } from 'lucide-react'
 import { contentApi } from '../../services/api'
 import { useMasterData } from '../../hooks/useMasterData'
 import MarkdownRenderer from '../../components/common/MarkdownRenderer'
+import StructuredAIResponse from '../../components/common/StructuredAIResponse'
 
 // Content type icons
 const contentTypeIcons: Record<string, any> = {
@@ -43,6 +43,12 @@ interface Content {
     title: string
     content_type: string
     description: string
+    content_json?: {
+        original_query?: string
+        ai_response?: string
+        structured_data?: any
+        generation_mode?: string
+    }
     grade?: number
     subject?: string
     topic?: string
@@ -52,10 +58,10 @@ interface Content {
     is_liked: boolean
     published_at?: string
     tags?: string[]
+    pdf_url?: string
 }
 
 export default function ContentLibrary() {
-    const navigate = useNavigate()
     const { grades, subjects } = useMasterData()
 
     const [contents, setContents] = useState<Content[]>([])
@@ -67,8 +73,9 @@ export default function ContentLibrary() {
     const [totalPages, setTotalPages] = useState(1)
     const [currentPage, setCurrentPage] = useState(1)
 
-    // Preview modal
+    // Content Viewer modal
     const [selectedContent, setSelectedContent] = useState<Content | null>(null)
+    const [loadingContent, setLoadingContent] = useState(false)
 
     useEffect(() => {
         loadContent()
@@ -100,6 +107,30 @@ export default function ContentLibrary() {
         loadContent()
     }
 
+    // Open content viewer and fetch full content (also increments view count)
+    const openContentViewer = async (contentId: number) => {
+        setLoadingContent(true)
+        try {
+            const fullContent = await contentApi.getById(contentId)
+            setSelectedContent(fullContent)
+        } catch (err) {
+            console.error('Failed to load content:', err)
+        } finally {
+            setLoadingContent(false)
+        }
+    }
+
+    const handleDownloadPdf = async (contentId: number) => {
+        try {
+            const result = await contentApi.getPdf(contentId)
+            if (result?.pdf_url) {
+                window.open(result.pdf_url, '_blank')
+            }
+        } catch (err) {
+            console.error('Failed to download PDF:', err)
+        }
+    }
+
     const handleLike = async (id: number) => {
         try {
             const result = await contentApi.toggleLike(id)
@@ -114,14 +145,6 @@ export default function ContentLibrary() {
         } catch (err) {
             console.error('Failed to toggle like:', err)
         }
-    }
-
-    const formatDate = (dateStr: string) => {
-        return new Date(dateStr).toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
-        })
     }
 
     return (
@@ -236,7 +259,7 @@ export default function ContentLibrary() {
                         return (
                             <div
                                 key={content.id}
-                                onClick={() => setSelectedContent(content)}
+                                onClick={() => openContentViewer(content.id)}
                                 className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden hover:shadow-xl transition-all cursor-pointer group"
                             >
                                 {/* Header */}
@@ -311,8 +334,8 @@ export default function ContentLibrary() {
                             key={page}
                             onClick={() => setCurrentPage(page)}
                             className={`w-10 h-10 rounded-lg font-medium transition-colors ${currentPage === page
-                                    ? 'bg-blue-500 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                 }`}
                         >
                             {page}
@@ -321,56 +344,84 @@ export default function ContentLibrary() {
                 </div>
             )}
 
-            {/* Content Preview Modal */}
-            {selectedContent && (
+            {/* Content Viewer Modal */}
+            {(selectedContent || loadingContent) && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-                        {/* Modal Header */}
-                        <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-start justify-between">
-                            <div>
-                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">{selectedContent.title}</h2>
-                                <div className="flex items-center gap-3 mt-2 text-sm text-gray-500 dark:text-gray-400">
-                                    <span className="capitalize">{selectedContent.content_type.replace('_', ' ')}</span>
-                                    {selectedContent.grade && <span>• Class {selectedContent.grade}</span>}
-                                    {selectedContent.subject && <span>• {selectedContent.subject}</span>}
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        {loadingContent ? (
+                            <div className="flex items-center justify-center h-64">
+                                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                            </div>
+                        ) : selectedContent && (
+                            <>
+                                {/* Modal Header */}
+                                <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-start justify-between">
+                                    <div>
+                                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">{selectedContent.title}</h2>
+                                        <div className="flex items-center gap-3 mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                            <span className="capitalize">{selectedContent.content_type.replace('_', ' ')}</span>
+                                            {selectedContent.grade && <span>• Class {selectedContent.grade}</span>}
+                                            {selectedContent.subject && <span>• {selectedContent.subject}</span>}
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setSelectedContent(null)}
+                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
                                 </div>
-                            </div>
-                            <button
-                                onClick={() => setSelectedContent(null)}
-                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
 
-                        {/* Modal Body */}
-                        <div className="flex-1 overflow-y-auto p-6">
-                            <div className="prose prose-sm dark:prose-invert max-w-none">
-                                <MarkdownRenderer content={selectedContent.description} />
-                            </div>
-                        </div>
+                                {/* Modal Body - Show full AI response */}
+                                <div className="flex-1 overflow-y-auto p-6">
+                                    {selectedContent.content_json?.structured_data ? (
+                                        <StructuredAIResponse
+                                            content={selectedContent.content_json.ai_response || selectedContent.description}
+                                            structured={selectedContent.content_json.structured_data}
+                                        />
+                                    ) : selectedContent.content_json?.ai_response ? (
+                                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                                            <MarkdownRenderer content={selectedContent.content_json.ai_response} />
+                                        </div>
+                                    ) : (
+                                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                                            <MarkdownRenderer content={selectedContent.description} />
+                                        </div>
+                                    )}
+                                </div>
 
-                        {/* Modal Footer */}
-                        <div className="p-6 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-900/50">
-                            <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-                                <span className="flex items-center gap-1">
-                                    <User className="w-4 h-4" /> {selectedContent.author_name || 'Anonymous'}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                    <Eye className="w-4 h-4" /> {selectedContent.view_count} views
-                                </span>
-                            </div>
-                            <button
-                                onClick={() => handleLike(selectedContent.id)}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${selectedContent.is_liked
-                                        ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
-                                    }`}
-                            >
-                                <Heart className={`w-5 h-5 ${selectedContent.is_liked ? 'fill-current' : ''}`} />
-                                {selectedContent.is_liked ? 'Liked' : 'Like'} ({selectedContent.like_count})
-                            </button>
-                        </div>
+                                {/* Modal Footer */}
+                                <div className="p-6 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-900/50">
+                                    <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                                        <span className="flex items-center gap-1">
+                                            <User className="w-4 h-4" /> {selectedContent.author_name || 'Anonymous'}
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <Eye className="w-4 h-4" /> {selectedContent.view_count} views
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => handleDownloadPdf(selectedContent.id)}
+                                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+                                        >
+                                            <Download className="w-4 h-4" />
+                                            Download PDF
+                                        </button>
+                                        <button
+                                            onClick={() => handleLike(selectedContent.id)}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${selectedContent.is_liked
+                                                ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                                                }`}
+                                        >
+                                            <Heart className={`w-5 h-5 ${selectedContent.is_liked ? 'fill-current' : ''}`} />
+                                            {selectedContent.is_liked ? 'Liked' : 'Like'} ({selectedContent.like_count})
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}

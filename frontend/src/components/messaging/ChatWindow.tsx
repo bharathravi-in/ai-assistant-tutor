@@ -79,41 +79,41 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ userId, userName, onBack }) => 
     }
 
     return (
-        <div className="flex-1 flex flex-col h-full bg-gray-50 border-r">
+        <div className="flex-1 flex flex-col h-full bg-slate-50 dark:bg-black/20">
             {/* Header */}
-            <div className="bg-white border-b p-4 flex items-center gap-3">
+            <div className="bg-white dark:bg-[#1C1C1E] border-b border-gray-100 dark:border-white/10 p-4 flex items-center gap-3">
                 {onBack && (
-                    <button onClick={onBack} className="md:hidden p-1 hover:bg-gray-100 rounded">
-                        <ChevronLeft />
+                    <button onClick={onBack} className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors">
+                        <ChevronLeft className="dark:text-gray-400" />
                     </button>
                 )}
-                <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
+                <div className="w-10 h-10 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-full flex items-center justify-center shadow-sm">
                     <User className="w-6 h-6" />
                 </div>
                 <div>
-                    <h3 className="font-bold text-gray-900">{userName}</h3>
-                    <p className="text-xs text-green-500 font-medium">Online</p>
+                    <h3 className="font-bold text-gray-900 dark:text-white">{userName}</h3>
+                    <p className="text-[10px] text-green-500 font-bold uppercase tracking-wider">Online</p>
                 </div>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-100/30">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50 dark:bg-black/20">
                 {messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-gray-400 opacity-60">
+                    <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-600 opacity-60">
                         <MessageCircle className="w-12 h-12 mb-2" />
-                        <p>Start a conversation with {userName}</p>
+                        <p className="font-medium">Start a conversation with {userName}</p>
                     </div>
                 ) : (
                     messages.map((msg) => (
-                        <div key={msg.id} className={`flex ${msg.sender_id === userId ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[85%] rounded-2xl p-4 shadow-md border ${msg.sender_id === userId
-                                ? 'bg-blue-600 text-white border-blue-500 shadow-blue-500/20 dark:bg-blue-700 dark:border-blue-600'
-                                : 'bg-white text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700'
+                        <div key={msg.id} className={`flex ${msg.sender_id === userId ? 'justify-start' : 'justify-end'}`}>
+                            <div className={`max-w-[85%] rounded-2xl p-4 shadow-sm border ${msg.sender_id === userId
+                                ? 'bg-white text-gray-900 border-gray-100 dark:bg-gray-800 dark:text-white dark:border-white/5'
+                                : 'bg-blue-600 text-white border-blue-500 shadow-blue-500/20 dark:bg-blue-700 dark:border-blue-600'
                                 }`}>
-                                <div className="prose prose-sm dark:prose-invert max-w-none text-gray-800 dark:text-gray-200">
+                                <div className="prose prose-sm dark:prose-invert max-w-none">
                                     <MarkdownRenderer content={msg.content} />
                                 </div>
-                                <div className={`text-[10px] mt-1 flex items-center gap-1 ${msg.sender_id === userId ? 'text-gray-400' : 'text-blue-100'
+                                <div className={`text-[10px] mt-2 flex items-center gap-1 font-medium uppercase tracking-wider ${msg.sender_id === userId ? 'text-gray-400 dark:text-gray-500' : 'text-blue-100/80'
                                     }`}>
                                     {new Date(msg.created_at.includes('Z') || msg.created_at.includes('+') ? msg.created_at : `${msg.created_at}Z`).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     {msg.sender_id !== userId && (
@@ -128,17 +128,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ userId, userName, onBack }) => 
             </div>
 
             {/* Input */}
-            <div className="bg-white border-t p-4">
+            <div className="bg-white dark:bg-[#1C1C1E] border-t border-gray-100 dark:border-white/10 p-4 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
                 <div className="flex items-end gap-2 max-w-4xl mx-auto">
-                    <textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyPress}
-                        placeholder="Type a message..."
-                        rows={1}
-                        className="flex-1 resize-none border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 max-h-32"
-                        style={{ height: 'auto', minHeight: '44px' }}
-                    />
+                    <div className="relative flex-1">
+                        <textarea
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={handleKeyPress}
+                            placeholder="Type a message..."
+                            rows={1}
+                            className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none dark:text-white transition-all text-sm"
+                            style={{ minHeight: '48px', maxHeight: '150px' }}
+                        />
+                    </div>
                     <button
                         onClick={handleSend}
                         disabled={!input.trim() || sending}

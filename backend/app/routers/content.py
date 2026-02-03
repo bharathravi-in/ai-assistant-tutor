@@ -248,7 +248,7 @@ async def create_content(
     # Load relationships
     result = await db.execute(
         select(TeacherContent)
-        .options(selectinload(TeacherContent.author))
+        .options(selectinload(TeacherContent.author), selectinload(TeacherContent.reviewer))
         .where(TeacherContent.id == content.id)
     )
     content = result.scalar_one()
@@ -349,7 +349,7 @@ async def update_content(
     """Update content (only drafts can be edited)."""
     result = await db.execute(
         select(TeacherContent)
-        .options(selectinload(TeacherContent.author))
+        .options(selectinload(TeacherContent.author), selectinload(TeacherContent.reviewer))
         .where(TeacherContent.id == content_id)
     )
     content = result.scalar_one_or_none()
@@ -383,7 +383,7 @@ async def submit_for_review(
     """Submit content for review (draft → pending)."""
     result = await db.execute(
         select(TeacherContent)
-        .options(selectinload(TeacherContent.author))
+        .options(selectinload(TeacherContent.author), selectinload(TeacherContent.reviewer))
         .where(TeacherContent.id == content_id)
     )
     content = result.scalar_one_or_none()
@@ -457,7 +457,7 @@ async def get_pending_content(
     total = total_result.scalar()
     
     # Get paginated results
-    query = query.options(selectinload(TeacherContent.author))
+    query = query.options(selectinload(TeacherContent.author), selectinload(TeacherContent.reviewer))
     query = query.order_by(TeacherContent.created_at.asc())  # Oldest first
     query = query.offset((page - 1) * page_size).limit(page_size)
     
@@ -587,10 +587,13 @@ async def browse_library(
     # Count total
     count_query = select(func.count()).select_from(query.subquery())
     total_result = await db.execute(count_query)
-    total = total_result.scalar()
+    total = total_result.scalar() or 0
     
     # Get paginated results ordered by popularity
-    query = query.options(selectinload(TeacherContent.author))
+    query = query.options(
+        selectinload(TeacherContent.author),
+        selectinload(TeacherContent.reviewer)
+    )
     query = query.order_by(TeacherContent.like_count.desc(), TeacherContent.view_count.desc())
     query = query.offset((page - 1) * page_size).limit(page_size)
     
@@ -598,13 +601,15 @@ async def browse_library(
     contents = result.scalars().all()
     
     # Check which ones are liked by current user
-    like_check = await db.execute(
-        select(ContentLike.content_id).where(
-            ContentLike.user_id == current_user.id,
-            ContentLike.content_id.in_([c.id for c in contents])
+    liked_ids = set()
+    if contents:
+        like_check = await db.execute(
+            select(ContentLike.content_id).where(
+                ContentLike.user_id == current_user.id,
+                ContentLike.content_id.in_([c.id for c in contents])
+            )
         )
-    )
-    liked_ids = set(like_check.scalars().all())
+        liked_ids = set(like_check.scalars().all())
     
     return ContentListResponse(
         items=[content_to_response(c, current_user.id, c.id in liked_ids) for c in contents],
@@ -673,7 +678,7 @@ async def download_content_pdf(
     
     result = await db.execute(
         select(TeacherContent)
-        .options(selectinload(TeacherContent.author))
+        .options(selectinload(TeacherContent.author), selectinload(TeacherContent.reviewer))
         .where(TeacherContent.id == content_id)
     )
     content = result.scalar_one_or_none()
@@ -757,7 +762,7 @@ async def regenerate_pdf(
     """Regenerate PDF for content."""
     result = await db.execute(
         select(TeacherContent)
-        .options(selectinload(TeacherContent.author))
+        .options(selectinload(TeacherContent.author), selectinload(TeacherContent.reviewer))
         .where(TeacherContent.id == content_id)
     )
     content = result.scalar_one_or_none()
@@ -827,7 +832,7 @@ async def search_content(
             
             result = await db.execute(
                 select(TeacherContent)
-                .options(selectinload(TeacherContent.author))
+                .options(selectinload(TeacherContent.author), selectinload(TeacherContent.reviewer))
                 .where(
                     TeacherContent.id.in_(content_ids),
                     TeacherContent.status == ContentStatus.PUBLISHED
@@ -880,7 +885,7 @@ async def search_content(
     )
     query = query.where(search_filter)
     
-    query = query.options(selectinload(TeacherContent.author))
+    query = query.options(selectinload(TeacherContent.author), selectinload(TeacherContent.reviewer))
     query = query.limit(search_data.limit)
     
     result = await db.execute(query)

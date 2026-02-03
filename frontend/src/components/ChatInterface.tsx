@@ -3,7 +3,7 @@
  */
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Send, Mic, ArrowLeft, MoreVertical, Loader2 } from 'lucide-react';
+import { Send, ArrowLeft, MoreVertical, Loader2 } from 'lucide-react';
 import { ChatMessage, Conversation } from '../types/chat';
 import { getConversation, sendMessage } from '../services/chatService';
 import { useTranslation } from 'react-i18next';
@@ -125,19 +125,19 @@ const ChatInterface: React.FC = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-120px)]">
       {/* Header */}
-      <div className="bg-white border-b p-4">
+      <div className="bg-white dark:bg-[#1C1C1E] border-b border-gray-100 dark:border-white/10 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/teacher/chat')}
-              className="p-2 hover:bg-gray-100 rounded-lg"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 dark:text-gray-400" />
             </button>
             <div>
-              <h2 className="text-lg font-semibold">{conversation.title || 'Conversation'}</h2>
+              <h2 className="text-lg font-semibold dark:text-white">{conversation.title || 'Conversation'}</h2>
               <div className="flex gap-2 mt-1">
-                <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
+                <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded">
                   {conversation.mode}
                 </span>
                 {conversation.subject && (
@@ -160,7 +160,7 @@ const ChatInterface: React.FC = () => {
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 bg-gray-100/30">
+      <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50 dark:bg-black/20">
         {[...messages].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()).map((msg) => (
           <div key={msg.id} className="mb-4">
             {/* Message Bubble */}
@@ -168,10 +168,10 @@ const ChatInterface: React.FC = () => {
               <div
                 className={`max-w-[85%] p-4 rounded-2xl ${msg.role === 'user'
                   ? 'bg-blue-600 text-white shadow-lg dark:bg-blue-700'
-                  : 'bg-white text-gray-900 shadow-md border border-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700'
+                  : 'bg-white text-gray-900 shadow-md border border-gray-100 dark:bg-gray-800 dark:text-white dark:border-white/5'
                   }`}
               >
-                <div className="prose prose-sm dark:prose-invert max-w-none break-words text-gray-800 dark:text-gray-200">
+                <div className="prose prose-sm dark:prose-invert max-w-none break-words">
                   {msg.role === 'assistant' && msg.structured_data && Object.keys(msg.structured_data).filter(k => !['mode', 'raw_response'].includes(k)).length > 0 ? (
                     <StructuredAIResponse
                       content={msg.content}
@@ -185,7 +185,7 @@ const ChatInterface: React.FC = () => {
                 </div>
 
                 {/* Metadata */}
-                <p className={`text-xs mt-2 ${msg.role === 'user' ? 'text-blue-100' : 'text-gray-500'}`}>
+                <p className={`text-[10px] mt-2 font-medium uppercase tracking-wider ${msg.role === 'user' ? 'text-blue-100/80' : 'text-gray-400 dark:text-gray-500'}`}>
                   {formatTimeAgo(msg.created_at)}
                   {msg.was_voice_input && ' • Voice'}
                   {msg.response_time_ms && ` • ${(msg.response_time_ms / 1000).toFixed(1)}s`}
@@ -201,7 +201,7 @@ const ChatInterface: React.FC = () => {
                     <button
                       key={idx}
                       onClick={() => handleFollowUpClick(suggestion)}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-full hover:bg-gray-100 transition"
+                      className="px-3 py-1.5 text-xs font-medium border border-gray-200 dark:border-white/10 rounded-full hover:bg-gray-100 dark:hover:bg-white/5 dark:text-gray-400 dark:hover:text-white transition-all shadow-sm"
                     >
                       {suggestion}
                     </button>
@@ -215,9 +215,9 @@ const ChatInterface: React.FC = () => {
         {/* Loading Indicator */}
         {loading && (
           <div className="flex justify-start mb-4">
-            <div className="bg-white p-3 rounded-lg shadow">
-              <Loader2 className="animate-spin w-5 h-5 text-blue-600 inline mr-2" />
-              <span className="text-sm">Thinking...</span>
+            <div className="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-white/5 flex items-center gap-2">
+              <Loader2 className="animate-spin w-4 h-4 text-blue-500" />
+              <span className="text-xs font-medium dark:text-gray-400">Thinking...</span>
             </div>
           </div>
         )}
@@ -226,44 +226,38 @@ const ChatInterface: React.FC = () => {
       </div>
 
       {/* Error Alert */}
-      {
-        error && (
-          <div className="mx-4 my-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex justify-between items-center">
-              <p className="text-red-800 text-sm">{error}</p>
-              <button onClick={() => setError('')} className="text-red-800 hover:text-red-900">
-                ×
-              </button>
-            </div>
+      {error && (
+        <div className="mx-4 my-2 p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-xl">
+          <div className="flex justify-between items-center text-[13px]">
+            <p className="text-red-800 dark:text-red-400 font-medium">{error}</p>
+            <button onClick={() => setError('')} className="text-red-800 dark:text-red-400 hover:opacity-70">
+              ×
+            </button>
           </div>
-        )
-      }
+        </div>
+      )}
 
       {/* Input Area */}
-      <div className="bg-white border-t p-4">
-        <div className="flex gap-2 items-end">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={t('chat.typePlaceholder', 'Type your message...')}
-            disabled={loading}
-            rows={1}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            style={{ minHeight: '44px', maxHeight: '120px' }}
-          />
-          <button
-            disabled
-            className="p-3 text-gray-400 hover:text-blue-600 disabled:opacity-50"
-          >
-            <Mic className="w-5 h-5" />
-          </button>
+      <div className="bg-white dark:bg-[#1C1C1E] border-t border-gray-100 dark:border-white/10 p-4 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+        <div className="flex gap-2 items-end max-w-4xl mx-auto">
+          <div className="relative flex-1">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={t('chat.typePlaceholder', 'Ask anything...')}
+              disabled={loading}
+              rows={1}
+              className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none dark:text-white transition-all text-sm"
+              style={{ minHeight: '48px', maxHeight: '150px' }}
+            />
+          </div>
           <button
             onClick={handleSendMessage}
             disabled={loading || !input.trim()}
-            className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md active:scale-95"
           >
-            <Send className="w-5 h-5" />
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
           </button>
         </div>
       </div>

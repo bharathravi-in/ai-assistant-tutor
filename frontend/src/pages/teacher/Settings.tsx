@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
     Settings,
     Volume2,
@@ -16,8 +15,9 @@ import {
     Plus
 } from 'lucide-react'
 import { settingsApi } from '../../services/api'
+import { useSettingsStore } from '../../stores/settingsStore'
+import { useTTS } from '../../hooks/useTTS'
 
-// Voice options with ids - using Web Speech API voices
 const DEFAULT_VOICES = [
     { id: 'voice-1', name: 'Priya', gender: 'female', language: 'hi-IN', description: 'Warm, friendly female voice', isCustom: false },
     { id: 'voice-2', name: 'Arjun', gender: 'male', language: 'hi-IN', description: 'Clear, professional male voice', isCustom: false },
@@ -26,38 +26,27 @@ const DEFAULT_VOICES = [
     { id: 'voice-5', name: 'Ananya', gender: 'female', language: 'ta-IN', description: 'Energetic, Tamil female voice', isCustom: false },
 ]
 
-interface CustomVoice {
-    id: string
-    name: string
-    gender: 'male' | 'female'
-    audioUrl: string
-    createdAt: string
-}
-
-interface SettingsState {
-    selectedVoice: string
-    voiceRate: number
-    voicePitch: number
-    autoPlayResponse: boolean
-    customVoices: CustomVoice[]
-}
-
 export default function TeacherSettings() {
-    const { t } = useTranslation()
-    const [settings, setSettings] = useState<SettingsState>({
-        selectedVoice: 'voice-1',
-        voiceRate: 1,
-        voicePitch: 1,
-        autoPlayResponse: false,
-        customVoices: []
-    })
-    const [loading, setLoading] = useState(true)
+    const {
+        selectedVoice,
+        voiceRate,
+        voicePitch,
+        autoPlayResponse,
+        customVoices,
+        setSettings,
+        addCustomVoice,
+        removeCustomVoice,
+        updateRemote
+    } = useSettingsStore()
+
+    const { speak, isSpeaking } = useTTS()
+
+    const [loading] = useState(false)
     const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState(false)
-    const [playingVoice, setPlayingVoice] = useState<string | null>(null)
-    const [speechSynthesis, setSpeechSynthesis] = useState<SpeechSynthesis | null>(null)
+    const [previewVoiceId, setPreviewVoiceId] = useState<string | null>(null)
 
-    // Custom voice recording
+    // Custom voice recording state
     const [showCustomVoiceModal, setShowCustomVoiceModal] = useState(false)
     const [isRecording, setIsRecording] = useState(false)
     const [recordingTime, setRecordingTime] = useState(0)
@@ -72,111 +61,29 @@ export default function TeacherSettings() {
     const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
-    const customVoicesArray = settings.customVoices || []
-    const allVoices = [...DEFAULT_VOICES, ...customVoicesArray.map(v => ({
+    const allVoices = [...DEFAULT_VOICES, ...customVoices.map(v => ({
         ...v,
         description: 'Your custom voice',
         language: 'custom',
         isCustom: true
     }))]
 
-    // Load settings from API on mount
-    useEffect(() => {
-        loadSettings()
-        if (typeof window !== 'undefined' && window.speechSynthesis) {
-            setSpeechSynthesis(window.speechSynthesis)
-        }
-    }, [])
-
-    const loadSettings = async () => {
-        try {
-            const data = await settingsApi.getSettings()
-            setSettings({
-                selectedVoice: data.selectedVoice || 'voice-1',
-                voiceRate: data.voiceRate || 1,
-                voicePitch: data.voicePitch || 1,
-                autoPlayResponse: data.autoPlayResponse || false,
-                customVoices: data.customVoices || []
-            })
-        } catch (error) {
-            console.error('Failed to load settings:', error)
-            // Fall back to localStorage if API fails
-            try {
-                const saved = localStorage.getItem('teacherSettings')
-                if (saved) {
-                    const parsed = JSON.parse(saved)
-                    setSettings({
-                        selectedVoice: parsed.selectedVoice || 'voice-1',
-                        voiceRate: parsed.voiceRate || 1,
-                        voicePitch: parsed.voicePitch || 1,
-                        autoPlayResponse: parsed.autoPlayResponse || false,
-                        customVoices: parsed.customVoices || []
-                    })
-                }
-            } catch (e) {
-                console.error('Failed to load from localStorage:', e)
-            }
-        } finally {
-            setLoading(false)
-        }
-    }
-
     const playVoiceSample = (voiceId: string) => {
-        // Check if it's a custom voice
-        const customVoice = (settings.customVoices || []).find(v => v.id === voiceId)
-        if (customVoice && customVoice.audioUrl) {
-            setPlayingVoice(voiceId)
-            // Prepend API base URL if the audioUrl is a relative path
-            const audioUrl = customVoice.audioUrl.startsWith('http')
-                ? customVoice.audioUrl
-                : `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}${customVoice.audioUrl}`
+        setPreviewVoiceId(voiceId)
 
-            console.log('Playing custom voice:', audioUrl)
-            const audio = new Audio(audioUrl)
-            audio.onended = () => setPlayingVoice(null)
-            audio.onerror = (e) => {
-                console.error('Audio playback error:', e)
-                setPlayingVoice(null)
-                alert('Failed to play audio. Please try re-uploading the voice.')
-            }
-            audio.play().catch(err => {
-                console.error('Audio play failed:', err)
-                setPlayingVoice(null)
-            })
-            return
-        }
-
-        if (!speechSynthesis) return
-        speechSynthesis.cancel()
-
-        const voice = DEFAULT_VOICES.find(v => v.id === voiceId)
+        const voice = allVoices.find(v => v.id === voiceId)
         if (!voice) return
 
-        setPlayingVoice(voiceId)
-
-        const utterance = new SpeechSynthesisUtterance(
-            'Hello! I am your AI teaching assistant. I will help you explain concepts to your students.'
-        )
-
-        const availableVoices = speechSynthesis.getVoices()
-        const matchingVoice = availableVoices.find(v =>
-            v.lang.startsWith(voice.language.split('-')[0]) &&
-            (voice.gender === 'female' ? v.name.toLowerCase().includes('female') || !v.name.toLowerCase().includes('male') : v.name.toLowerCase().includes('male'))
-        ) || availableVoices[0]
-
-        if (matchingVoice) {
-            utterance.voice = matchingVoice
-        }
-
-        utterance.rate = settings.voiceRate
-        utterance.pitch = settings.voicePitch
-        utterance.lang = voice.language
-
-        utterance.onend = () => setPlayingVoice(null)
-        utterance.onerror = () => setPlayingVoice(null)
-
-        speechSynthesis.speak(utterance)
+        speak('Hello! I am your AI teaching assistant. I will help you explain concepts to your students.', {
+            voiceId: voiceId
+        })
     }
+
+    useEffect(() => {
+        if (!isSpeaking) {
+            setPreviewVoiceId(null)
+        }
+    }, [isSpeaking])
 
     const startRecording = async () => {
         try {
@@ -239,11 +146,7 @@ export default function TeacherSettings() {
         setUploadingVoice(true)
         try {
             const newVoice = await settingsApi.createCustomVoice(newVoiceName, newVoiceGender, recordedAudio)
-
-            setSettings(prev => ({
-                ...prev,
-                customVoices: [...(prev.customVoices || []), newVoice]
-            }))
+            addCustomVoice(newVoice)
 
             // Reset modal
             setShowCustomVoiceModal(false)
@@ -260,16 +163,11 @@ export default function TeacherSettings() {
     }
 
     const deleteCustomVoice = async (voiceId: string) => {
-        // Extract numeric ID from "custom-123" format
         const numericId = parseInt(voiceId.replace('custom-', ''))
 
         try {
             await settingsApi.deleteCustomVoice(numericId)
-            setSettings(prev => ({
-                ...prev,
-                customVoices: (prev.customVoices || []).filter(v => v.id !== voiceId),
-                selectedVoice: prev.selectedVoice === voiceId ? 'voice-1' : prev.selectedVoice
-            }))
+            removeCustomVoice(voiceId)
         } catch (error) {
             console.error('Failed to delete custom voice:', error)
             alert('Failed to delete voice. Please try again.')
@@ -279,22 +177,18 @@ export default function TeacherSettings() {
     const handleSave = async () => {
         setSaving(true)
         try {
-            await settingsApi.updateSettings({
-                selected_voice: settings.selectedVoice,
-                voice_rate: settings.voiceRate,
-                voice_pitch: settings.voicePitch,
-                auto_play_response: settings.autoPlayResponse
+            await updateRemote({
+                selected_voice: selectedVoice,
+                voice_rate: voiceRate,
+                voice_pitch: voicePitch,
+                auto_play_response: autoPlayResponse
             })
-
-            // Also save to localStorage as backup
-            localStorage.setItem('teacherSettings', JSON.stringify(settings))
 
             setSaved(true)
             setTimeout(() => setSaved(false), 2000)
         } catch (error) {
             console.error('Failed to save settings:', error)
-            // Try localStorage only as fallback
-            localStorage.setItem('teacherSettings', JSON.stringify(settings))
+            alert('Failed to sync settings. They are saved locally.')
             setSaved(true)
             setTimeout(() => setSaved(false), 2000)
         } finally {
@@ -303,7 +197,7 @@ export default function TeacherSettings() {
     }
 
     const handleVoiceSelect = (voiceId: string) => {
-        setSettings(prev => ({ ...prev, selectedVoice: voiceId }))
+        setSettings({ selectedVoice: voiceId })
     }
 
     const formatTime = (seconds: number) => {
@@ -365,8 +259,7 @@ export default function TeacherSettings() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                         {allVoices.map((voice) => {
-                            const isSelected = settings.selectedVoice === voice.id
-                            const isPlaying = playingVoice === voice.id
+                            const isSelected = selectedVoice === voice.id
                             const isCustom = 'isCustom' in voice && voice.isCustom
 
                             return (
@@ -435,14 +328,14 @@ export default function TeacherSettings() {
                                                 e.stopPropagation()
                                                 playVoiceSample(voice.id)
                                             }}
-                                            disabled={isPlaying}
+                                            disabled={isSpeaking && previewVoiceId === voice.id}
                                             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:shadow-sm"
                                             style={{
                                                 background: 'rgba(239, 149, 30, 0.1)',
                                                 color: '#EF951E'
                                             }}
                                         >
-                                            {isPlaying ? (
+                                            {isSpeaking && previewVoiceId === voice.id ? (
                                                 <>
                                                     <Loader2 className="w-4 h-4 animate-spin" />
                                                     Playing...
@@ -479,17 +372,17 @@ export default function TeacherSettings() {
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Speech Rate
                                 </label>
-                                <span className="text-sm text-gray-500">{settings.voiceRate.toFixed(1)}x</span>
+                                <span className="text-sm text-gray-500">{voiceRate.toFixed(1)}x</span>
                             </div>
                             <input
                                 type="range"
                                 min="0.5"
                                 max="2"
                                 step="0.1"
-                                value={settings.voiceRate}
-                                onChange={(e) => setSettings(prev => ({ ...prev, voiceRate: parseFloat(e.target.value) }))}
+                                value={voiceRate}
+                                onChange={(e) => setSettings({ voiceRate: parseFloat(e.target.value) })}
                                 className="w-full h-2 rounded-full appearance-none cursor-pointer"
-                                style={{ background: `linear-gradient(to right, #264092 0%, #264092 ${((settings.voiceRate - 0.5) / 1.5) * 100}%, #e5e7eb ${((settings.voiceRate - 0.5) / 1.5) * 100}%, #e5e7eb 100%)` }}
+                                style={{ background: `linear-gradient(to right, #264092 0%, #264092 ${((voiceRate - 0.5) / 1.5) * 100}%, #e5e7eb ${((voiceRate - 0.5) / 1.5) * 100}%, #e5e7eb 100%)` }}
                             />
                         </div>
 
@@ -498,17 +391,17 @@ export default function TeacherSettings() {
                                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Voice Pitch
                                 </label>
-                                <span className="text-sm text-gray-500">{settings.voicePitch.toFixed(1)}</span>
+                                <span className="text-sm text-gray-500">{voicePitch.toFixed(1)}</span>
                             </div>
                             <input
                                 type="range"
                                 min="0.5"
                                 max="1.5"
                                 step="0.1"
-                                value={settings.voicePitch}
-                                onChange={(e) => setSettings(prev => ({ ...prev, voicePitch: parseFloat(e.target.value) }))}
+                                value={voicePitch}
+                                onChange={(e) => setSettings({ voicePitch: parseFloat(e.target.value) })}
                                 className="w-full h-2 rounded-full appearance-none cursor-pointer"
-                                style={{ background: `linear-gradient(to right, #EF951E 0%, #EF951E ${((settings.voicePitch - 0.5) / 1) * 100}%, #e5e7eb ${((settings.voicePitch - 0.5) / 1) * 100}%, #e5e7eb 100%)` }}
+                                style={{ background: `linear-gradient(to right, #EF951E 0%, #EF951E ${((voicePitch - 0.5) / 1) * 100}%, #e5e7eb ${((voicePitch - 0.5) / 1) * 100}%, #e5e7eb 100%)` }}
                             />
                         </div>
                     </div>
@@ -527,11 +420,11 @@ export default function TeacherSettings() {
                             </div>
                         </div>
                         <button
-                            onClick={() => setSettings(prev => ({ ...prev, autoPlayResponse: !prev.autoPlayResponse }))}
+                            onClick={() => setSettings({ autoPlayResponse: !autoPlayResponse })}
                             className="relative w-14 h-7 rounded-full transition-colors"
-                            style={{ background: settings.autoPlayResponse ? '#264092' : '#d1d5db' }}
+                            style={{ background: autoPlayResponse ? '#264092' : '#d1d5db' }}
                         >
-                            <span className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${settings.autoPlayResponse ? 'left-8' : 'left-1'}`} />
+                            <span className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${autoPlayResponse ? 'left-8' : 'left-1'}`} />
                         </button>
                     </div>
                 </div>

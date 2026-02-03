@@ -155,3 +155,14 @@ class AuditResponse(BaseModel):
     weaknesses: List[str]
     improvement_suggestions: List[str]
     ncert_ref: Optional[str] = None
+
+
+class TutorChatRequest(BaseModel):
+    """Schema for AI Tutor chat request."""
+    content_id: int
+    active_section_id: str
+    section_index: Optional[int] = 0
+    total_sections: Optional[int] = 0
+    user_message: str
+    history: Optional[List[dict]] = None
+    language: str = "en"

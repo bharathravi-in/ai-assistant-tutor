@@ -161,29 +161,35 @@ async def get_my_stats(
     """Get teacher's usage statistics."""
     # Total queries
     total_result = await db.execute(
-        select(func.count()).where(QueryModel.user_id == current_user.id)
+        select(func.count(QueryModel.id)).where(QueryModel.user_id == current_user.id)
     )
-    total_queries = total_result.scalar()
+    total_queries = total_result.scalar() or 0
     
     # Queries by mode
     mode_counts = {}
     for mode in QueryMode:
         result = await db.execute(
-            select(func.count()).where(
+            select(func.count(QueryModel.id)).where(
                 QueryModel.user_id == current_user.id,
                 QueryModel.mode == mode
             )
         )
-        mode_counts[mode.value] = result.scalar()
+        mode_counts[mode.value] = result.scalar() or 0
     
     # Reflection stats
-    reflection_result = await db.execute(
-        select(func.count()).select_from(Reflection).join(QueryModel).where(
-            QueryModel.user_id == current_user.id,
-            Reflection.worked == True
+    try:
+        reflection_result = await db.execute(
+            select(func.count(Reflection.id))
+            .join(QueryModel, Reflection.query_id == QueryModel.id)
+            .where(
+                QueryModel.user_id == current_user.id,
+                Reflection.worked == True
+            )
         )
-    )
-    successful_suggestions = reflection_result.scalar()
+        successful_suggestions = reflection_result.scalar() or 0
+    except Exception as e:
+        print(f"Error fetching reflection stats: {e}")
+        successful_suggestions = 0
     
     return {
         "total_queries": total_queries,

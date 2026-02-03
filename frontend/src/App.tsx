@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
+import { useSettingsStore } from './stores/settingsStore'
 import { initializeTheme } from './hooks/useOrgSettings'
 
 // Pages
@@ -23,6 +24,8 @@ import SimpleContentCreator from './pages/teacher/SimpleContentCreator'
 import MyContent from './pages/teacher/MyContent'
 import MyVisits from './pages/teacher/MyVisits'
 import ContentLibrary from './pages/common/ContentLibrary'
+import ContentBrowse from './pages/common/ContentBrowse'
+import ContentPlayer from './pages/common/ContentPlayer'
 import ConversationList from './components/ConversationList'
 import ChatInterface from './components/ChatInterface'
 import CRPDashboard from './pages/crp/Dashboard'
@@ -107,9 +110,12 @@ function RoleBasedRedirect() {
 }
 
 function App() {
-    // Initialize theme from org settings on app load
+    // Initialize theme and settings on app load
     useEffect(() => {
         initializeTheme()
+        if (useAuthStore.getState().isAuthenticated) {
+            useSettingsStore.getState().initialize()
+        }
     }, [])
 
     return (
@@ -271,6 +277,18 @@ function App() {
                     <Layout>
                         <AnalyticsPage />
                     </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/content/browse" element={
+                <ProtectedRoute roles={['teacher', 'crp', 'arp', 'admin', 'superadmin']}>
+                    <Layout>
+                        <ContentBrowse />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/content/player/:id" element={
+                <ProtectedRoute roles={['teacher', 'crp', 'arp', 'admin', 'superadmin']}>
+                    <ContentPlayer />
                 </ProtectedRoute>
             } />
             <Route path="/learning" element={

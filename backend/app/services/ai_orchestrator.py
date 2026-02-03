@@ -112,6 +112,9 @@ class AIOrchestrator:
         # Parse structured response
         structured = self._parse_response(response, mode)
         
+        # Transform to sequential sections for the AI Tutor
+        structured["sections"] = self._to_sequential_sections(structured, mode)
+        
         # Format for display
         formatted = self._format_response(structured, mode, language)
         
@@ -124,6 +127,84 @@ class AIOrchestrator:
             "structured": structured,
             "suggestions": suggestions,
         }
+    
+    def _to_sequential_sections(self, data: Dict[str, Any], mode: QueryMode) -> list:
+        """Transform structured data into a sequential list of sections for the AI Tutor."""
+        sections = []
+        
+        if mode == QueryMode.EXPLAIN:
+            mapping = [
+                ("conceptual_briefing", "explanation", "Conceptual Briefing"),
+                ("simple_explanation", "explanation", "Simple Explanation"),
+                ("mnemonics_hooks", "mnemonic", "Mnemonics & Hooks"),
+                ("what_to_say", "script", "What to Say"),
+                ("specific_examples", "example", "Contextual Examples"),
+                ("generic_examples", "example", "Generic Examples"),
+                ("visual_aid_idea", "tlm", "Visual Aid / TLM Idea"),
+                ("check_for_understanding", "assessment", "Check for Understanding"),
+                ("common_misconceptions", "warning", "Common Misconceptions"),
+                ("oral_questions", "discussion", "Oral Questions")
+            ]
+        elif mode == QueryMode.ASSIST:
+            mapping = [
+                ("understanding", "explanation", "Support"),
+                ("immediate_action", "script", "Do This NOW"),
+                ("mnemonics_hooks", "mnemonic", "Quick Hooks"),
+                ("quick_activity", "activity", "Quick Activity"),
+                ("bridge_the_gap", "explanation", "Bridge to Lesson"),
+                ("check_progress", "assessment", "Check Progress"),
+                ("for_later", "tip", "For Tomorrow")
+            ]
+        elif mode == QueryMode.PLAN:
+            sections.append({
+                "id": "learning_objectives",
+                "title": "Learning Objectives",
+                "type": "explanation",
+                "content": self._to_string(data.get("learning_objectives")),
+                "narration": f"Our learning objectives for today: {self._to_string(data.get('learning_objectives'))}"
+            })
+            
+            activities = data.get("activities", [])
+            if isinstance(activities, list):
+                for i, act in enumerate(activities):
+                    sections.append({
+                        "id": f"activity_{i+1}",
+                        "title": act.get("activity_name", f"Activity {i+1}"),
+                        "type": "activity",
+                        "content": act.get("description", ""),
+                        "narration": f"Now, let's look at {act.get('activity_name', f'Activity {i+1}')}. {act.get('description', '')}"
+                    })
+            
+            mapping = [
+                ("multi_grade_adaptations", "explanation", "Multigrade Adaptations"),
+                ("low_tlm_alternatives", "explanation", "Low-Resource Alternatives"),
+                ("exit_questions", "assessment", "Exit Questions")
+            ]
+        else:
+            return []
+
+        for key, sec_type, title in mapping:
+            if key in data and data[key]:
+                content = self._to_string(data[key])
+                sections.append({
+                    "id": key,
+                    "title": title,
+                    "type": sec_type,
+                    "content": content,
+                    "narration": f"Let's move on to {title}. {content}"
+                })
+                
+        return sections
+
+    def _to_string(self, val: Any) -> str:
+        """Helper to convert various data formats to a clean string."""
+        if not val: return ""
+        if isinstance(val, str): return val
+        if isinstance(val, list):
+            return "\n".join([f"• {str(i)}" if not isinstance(i, dict) else f"• {i.get('title', i.get('name', ''))}: {i.get('description', i.get('content', ''))}" for i in val])
+        if isinstance(val, dict):
+            return "\n".join([f"**{k.replace('_', ' ').title()}**: {v}" for k, v in val.items()])
+        return str(val)
     
     async def generate_quiz(
         self,
@@ -210,6 +291,48 @@ class AIOrchestrator:
             response = response.strip()
         
         return response or "Unable to generate an answer."
+
+    async def process_pdf_to_sections(
+        self,
+        media_path: str,
+        language: str = "en"
+    ) -> list:
+        """
+        Process a PDF into interactive sections for the AI Tutor.
+        This leverages the active LLM's multi-modal capabilities.
+        """
+        prompt = """
+        Analyze the attached educational document and convert it into a set of interactive, sequential learning sections suitable for a classroom.
+        Break it down into 3-6 logical parts.
+        
+        For each part, provide:
+        1. id: A unique string id
+        2. title: A concise name for the section
+        3. type: One of [explanation, activity, mnemonic, assessment, script, example]
+        4. content: Key knowledge points or activity details formatted in markdown.
+        5. narration: A natural, friendly, and encouraging script that an AI Tutor would say to explain this part to a student.
+        
+        Respond ONLY with a JSON object in this format:
+        {
+          "sections": [
+            { "id": "...", "title": "...", "type": "...", "content": "...", "narration": "..." },
+            ...
+          ]
+        }
+        """
+        print(f"[Orchestrator] Processing PDF to sections: {media_path} (Using provider: {self.llm_client.provider})")
+        
+        # Check if provider supports vision/PDF (Gemini and OpenAI GPT-4o/o1 do)
+        # Note: llm_client.generate handles the implementation details per provider
+        response = await self.llm_client.generate(prompt, language=language, media_path=media_path)
+        
+        data = self._parse_response(response, None)
+        sections = data.get("sections", [])
+        
+        if not sections and "raw_response" not in data:
+            print(f"[Orchestrator] Warning: No sections found in structured data from {self.llm_client.provider}.")
+            
+        return sections
     
     def _parse_response(self, response: str, mode: QueryMode) -> Dict[str, Any]:
         """Parse LLM response into structured format with EXTREME robust JSON extraction."""

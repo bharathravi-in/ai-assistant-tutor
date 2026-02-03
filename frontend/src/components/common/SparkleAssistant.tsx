@@ -12,6 +12,7 @@ import {
     Minimize2,
     Pause
 } from 'lucide-react'
+import { useTTS } from '../../hooks/useTTS'
 
 interface SparkleAssistantProps {
     resourceTitle?: string
@@ -42,14 +43,23 @@ export default function SparkleAssistant({
     const [isLoading, setIsLoading] = useState(false)
     const [avatarState, setAvatarState] = useState<AvatarState>('idle')
     const [isListening, setIsListening] = useState(false)
-    const [isSpeaking, setIsSpeaking] = useState(false)
     const [isMinimized, setIsMinimized] = useState(false)
     const [autoSpeak, setAutoSpeak] = useState(true)
-    
+
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const recognitionRef = useRef<any>(null)
-    const synthRef = useRef<SpeechSynthesisUtterance | null>(null)
     const inputRef = useRef<HTMLInputElement>(null)
+
+    const { speak, stop, isSpeaking } = useTTS()
+
+    // Sync avatar state with speaking status
+    useEffect(() => {
+        if (isSpeaking) {
+            setAvatarState('speaking')
+        } else if (avatarState === 'speaking') {
+            setAvatarState('idle')
+        }
+    }, [isSpeaking])
 
     // Initialize speech recognition
     useEffect(() => {
@@ -65,9 +75,9 @@ export default function SparkleAssistant({
                     .map((result: any) => result[0])
                     .map((result: any) => result.transcript)
                     .join('')
-                
+
                 setInput(transcript)
-                
+
                 if (event.results[0].isFinal) {
                     setIsListening(false)
                     setAvatarState('idle')
@@ -89,9 +99,9 @@ export default function SparkleAssistant({
             if (recognitionRef.current) {
                 recognitionRef.current.abort()
             }
-            window.speechSynthesis.cancel()
+            stop()
         }
-    }, [])
+    }, [stop])
 
     // Scroll to bottom when messages change
     useEffect(() => {
@@ -101,10 +111,10 @@ export default function SparkleAssistant({
     // Initial greeting when opened
     useEffect(() => {
         if (isOpen && messages.length === 0) {
-            const greeting = resourceTitle 
+            const greeting = resourceTitle
                 ? `Hi! I'm Sparkle, your AI learning assistant. I can help you understand "${resourceTitle}" better. Ask me anything about this resource, or I can explain specific concepts in detail!`
                 : `Hi! I'm Sparkle, your AI teaching assistant. How can I help you today?`
-            
+
             addMessage('assistant', greeting)
             if (autoSpeak) {
                 speakText(greeting)
@@ -123,45 +133,19 @@ export default function SparkleAssistant({
 
     const speakText = useCallback((text: string) => {
         if (!autoSpeak) return
-        
-        window.speechSynthesis.cancel()
-        
-        const utterance = new SpeechSynthesisUtterance(text)
-        utterance.rate = 0.9
-        utterance.pitch = 1.1
-        utterance.volume = 1
 
-        // Try to use a female voice
-        const voices = window.speechSynthesis.getVoices()
-        const femaleVoice = voices.find(v => 
-            v.name.includes('Female') || 
-            v.name.includes('Samantha') || 
-            v.name.includes('Victoria') ||
-            v.name.includes('Google') && v.name.includes('Female')
-        )
-        if (femaleVoice) {
-            utterance.voice = femaleVoice
-        }
+        // Strip markdown before speaking
+        const plainText = text
+            .replace(/#+\s/g, '')
+            .replace(/\*\*(.*?)\*\*/g, '$1')
+            .replace(/\*(.*?)\*/g, '$1')
+            .replace(/`(.*?)`/g, '$1')
+            .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+            .replace(/^-\s/gm, '')
+            .trim()
 
-        utterance.onstart = () => {
-            setIsSpeaking(true)
-            setAvatarState('speaking')
-        }
-
-        utterance.onend = () => {
-            setIsSpeaking(false)
-            setAvatarState('idle')
-        }
-
-        synthRef.current = utterance
-        window.speechSynthesis.speak(utterance)
-    }, [autoSpeak])
-
-    const stopSpeaking = () => {
-        window.speechSynthesis.cancel()
-        setIsSpeaking(false)
-        setAvatarState('idle')
-    }
+        speak(plainText, { language: 'auto' })
+    }, [autoSpeak, speak])
 
     const toggleListening = () => {
         if (!recognitionRef.current) {
@@ -174,7 +158,7 @@ export default function SparkleAssistant({
             setIsListening(false)
             setAvatarState('idle')
         } else {
-            stopSpeaking()
+            stop()
             recognitionRef.current.start()
             setIsListening(true)
             setAvatarState('listening')
@@ -183,20 +167,20 @@ export default function SparkleAssistant({
 
     const handleSubmit = async (e?: React.FormEvent) => {
         e?.preventDefault()
-        
+
         if (!input.trim() || isLoading) return
 
         const userMessage = input.trim()
         setInput('')
         addMessage('user', userMessage)
-        
+
         setIsLoading(true)
         setAvatarState('thinking')
 
         try {
             const response = await onAsk(userMessage)
             addMessage('assistant', response)
-            
+
             if (autoSpeak) {
                 speakText(response)
             } else {
@@ -225,11 +209,10 @@ export default function SparkleAssistant({
     if (!isOpen) return null
 
     return (
-        <div className={`fixed z-50 transition-all duration-300 ${
-            isMinimized 
-                ? 'bottom-4 right-4 w-16 h-16' 
-                : 'bottom-4 right-4 w-[420px] h-[600px] max-h-[80vh]'
-        }`}>
+        <div className={`fixed z-50 transition-all duration-300 ${isMinimized
+            ? 'bottom-4 right-4 w-16 h-16'
+            : 'bottom-4 right-4 w-[420px] h-[600px] max-h-[80vh]'
+            }`}>
             {isMinimized ? (
                 // Minimized floating button
                 <button
@@ -245,26 +228,22 @@ export default function SparkleAssistant({
                     <div className="bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 px-4 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             {/* Animated Avatar */}
-                            <div className={`relative w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center ${
-                                avatarState === 'speaking' ? 'animate-pulse' : ''
-                            }`}>
-                                <div className={`absolute inset-0 rounded-full ${
-                                    avatarState === 'listening' ? 'animate-ping bg-white/30' : ''
-                                }`} />
-                                <div className={`absolute inset-0 rounded-full ${
-                                    avatarState === 'thinking' ? 'animate-spin border-2 border-white/30 border-t-white' : ''
-                                }`} style={{ animationDuration: '1s' }} />
-                                <Sparkles className={`w-6 h-6 text-white relative z-10 ${
-                                    avatarState === 'speaking' ? 'animate-bounce' : ''
-                                }`} />
+                            <div className={`relative w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center ${avatarState === 'speaking' ? 'animate-pulse' : ''
+                                }`}>
+                                <div className={`absolute inset-0 rounded-full ${avatarState === 'listening' ? 'animate-ping bg-white/30' : ''
+                                    }`} />
+                                <div className={`absolute inset-0 rounded-full ${avatarState === 'thinking' ? 'animate-spin border-2 border-white/30 border-t-white' : ''
+                                    }`} style={{ animationDuration: '1s' }} />
+                                <Sparkles className={`w-6 h-6 text-white relative z-10 ${avatarState === 'speaking' ? 'animate-bounce' : ''
+                                    }`} />
                                 {/* Speaking indicator waves */}
                                 {avatarState === 'speaking' && (
                                     <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
                                         {[1, 2, 3, 4, 5].map(i => (
-                                            <div 
+                                            <div
                                                 key={i}
                                                 className="w-1 bg-white rounded-full animate-pulse"
-                                                style={{ 
+                                                style={{
                                                     height: `${Math.random() * 12 + 4}px`,
                                                     animationDelay: `${i * 0.1}s`
                                                 }}
@@ -276,12 +255,11 @@ export default function SparkleAssistant({
                             <div>
                                 <h3 className="text-white font-semibold flex items-center gap-2">
                                     Sparkle
-                                    <span className={`w-2 h-2 rounded-full ${
-                                        avatarState === 'idle' ? 'bg-green-400' :
+                                    <span className={`w-2 h-2 rounded-full ${avatarState === 'idle' ? 'bg-green-400' :
                                         avatarState === 'listening' ? 'bg-red-400 animate-pulse' :
-                                        avatarState === 'thinking' ? 'bg-yellow-400 animate-pulse' :
-                                        'bg-blue-400 animate-pulse'
-                                    }`} />
+                                            avatarState === 'thinking' ? 'bg-yellow-400 animate-pulse' :
+                                                'bg-blue-400 animate-pulse'
+                                        }`} />
                                 </h3>
                                 <p className="text-white/70 text-xs">
                                     {avatarState === 'idle' && 'Ready to help'}
@@ -294,9 +272,8 @@ export default function SparkleAssistant({
                         <div className="flex items-center gap-1">
                             <button
                                 onClick={() => setAutoSpeak(!autoSpeak)}
-                                className={`p-2 rounded-lg transition-colors ${
-                                    autoSpeak ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white'
-                                }`}
+                                className={`p-2 rounded-lg transition-colors ${autoSpeak ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white'
+                                    }`}
                                 title={autoSpeak ? 'Disable voice' : 'Enable voice'}
                             >
                                 {autoSpeak ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
@@ -319,25 +296,23 @@ export default function SparkleAssistant({
                     {/* Messages */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-purple-50/50 to-white dark:from-gray-900 dark:to-gray-900">
                         {messages.map((msg) => (
-                            <div 
-                                key={msg.id} 
+                            <div
+                                key={msg.id}
                                 className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
                             >
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                    msg.role === 'assistant' 
-                                        ? 'bg-gradient-to-br from-violet-500 to-purple-500' 
-                                        : 'bg-gray-200 dark:bg-gray-700'
-                                }`}>
-                                    {msg.role === 'assistant' 
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'assistant'
+                                    ? 'bg-gradient-to-br from-violet-500 to-purple-500'
+                                    : 'bg-gray-200 dark:bg-gray-700'
+                                    }`}>
+                                    {msg.role === 'assistant'
                                         ? <Sparkles className="w-4 h-4 text-white" />
                                         : <MessageCircle className="w-4 h-4 text-gray-500" />
                                     }
                                 </div>
-                                <div className={`max-w-[80%] px-4 py-3 rounded-2xl ${
-                                    msg.role === 'assistant'
-                                        ? 'bg-white dark:bg-gray-800 shadow-md border border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-200'
-                                        : 'bg-gradient-to-r from-violet-500 to-purple-500 text-white'
-                                }`}>
+                                <div className={`max-w-[80%] px-4 py-3 rounded-2xl ${msg.role === 'assistant'
+                                    ? 'bg-white dark:bg-gray-800 shadow-md border border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-200'
+                                    : 'bg-gradient-to-r from-violet-500 to-purple-500 text-white'
+                                    }`}>
                                     <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
                                     {msg.role === 'assistant' && (
                                         <button
@@ -351,7 +326,7 @@ export default function SparkleAssistant({
                                 </div>
                             </div>
                         ))}
-                        
+
                         {isLoading && (
                             <div className="flex gap-3">
                                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
@@ -361,7 +336,7 @@ export default function SparkleAssistant({
                                     <div className="flex items-center gap-2">
                                         <div className="flex gap-1">
                                             {[0, 1, 2].map(i => (
-                                                <div 
+                                                <div
                                                     key={i}
                                                     className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"
                                                     style={{ animationDelay: `${i * 0.15}s` }}
@@ -373,7 +348,7 @@ export default function SparkleAssistant({
                                 </div>
                             </div>
                         )}
-                        
+
                         <div ref={messagesEndRef} />
                     </div>
 
@@ -404,15 +379,14 @@ export default function SparkleAssistant({
                             <button
                                 type="button"
                                 onClick={toggleListening}
-                                className={`p-3 rounded-xl transition-all ${
-                                    isListening 
-                                        ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30' 
-                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-purple-100 hover:text-purple-500'
-                                }`}
+                                className={`p-3 rounded-xl transition-all ${isListening
+                                    ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30'
+                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-purple-100 hover:text-purple-500'
+                                    }`}
                             >
                                 {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                             </button>
-                            
+
                             <div className="flex-1 relative">
                                 <input
                                     ref={inputRef}
@@ -428,7 +402,7 @@ export default function SparkleAssistant({
                             {isSpeaking ? (
                                 <button
                                     type="button"
-                                    onClick={stopSpeaking}
+                                    onClick={stop}
                                     className="p-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors"
                                 >
                                     <Pause className="w-5 h-5" />

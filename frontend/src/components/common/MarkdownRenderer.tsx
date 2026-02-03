@@ -20,43 +20,43 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
                 components={{
                     // Headers
                     h1: ({ children }) => (
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-6 mb-4 flex items-center gap-2">
+                        <h1 className="text-2xl font-bold mt-6 mb-4 flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-blue-500" />
                             {children}
                         </h1>
                     ),
                     h2: ({ children }) => (
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mt-5 mb-3 flex items-center gap-2">
+                        <h2 className="text-xl font-bold mt-5 mb-3 flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                             {children}
                         </h2>
                     ),
                     h3: ({ children }) => (
-                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mt-4 mb-2">
+                        <h3 className="text-lg font-semibold mt-4 mb-2">
                             {children}
                         </h3>
                     ),
                     h4: ({ children }) => (
-                        <h4 className="text-base font-semibold text-gray-800 dark:text-gray-200 mt-3 mb-2">
+                        <h4 className="text-base font-semibold mt-3 mb-2">
                             {children}
                         </h4>
                     ),
 
                     // Paragraphs
                     p: ({ children }) => (
-                        <p className="text-gray-700 dark:text-gray-300 mb-3 leading-relaxed">
+                        <p className="mb-3 leading-relaxed">
                             {children}
                         </p>
                     ),
 
                     // Bold and emphasis
                     strong: ({ children }) => (
-                        <strong className="font-bold text-gray-900 dark:text-white">
+                        <strong className="font-bold">
                             {children}
                         </strong>
                     ),
                     em: ({ children }) => (
-                        <em className="italic text-gray-700 dark:text-gray-300">
+                        <em className="italic">
                             {children}
                         </em>
                     ),
@@ -73,8 +73,8 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
                         </ol>
                     ),
                     li: ({ children }) => (
-                        <li className="flex items-start gap-2 text-gray-700 dark:text-gray-300">
-                            <span className="mt-2 w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
+                        <li className="flex items-start gap-2">
+                            <span className="mt-2 w-1.5 h-1.5 rounded-full bg-current opacity-40 flex-shrink-0" />
                             <span className="flex-1">{children}</span>
                         </li>
                     ),
@@ -128,7 +128,7 @@ export default function MarkdownRenderer({ content, className = '' }: MarkdownRe
                         </th>
                     ),
                     td: ({ children }) => (
-                        <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                        <td className="px-4 py-3 text-sm">
                             {children}
                         </td>
                     ),

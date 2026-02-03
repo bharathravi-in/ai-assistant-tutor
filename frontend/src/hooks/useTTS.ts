@@ -1,12 +1,9 @@
-/**
- * useTTS - Text-to-Speech hook with Hindi/English support and caching
- * 
- * Uses Web Speech API with audio caching for instant replay
- */
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSettingsStore } from '../stores/settingsStore'
 
 interface TTSOptions {
-    language?: 'en' | 'hi' | 'auto'
+    language?: 'en' | 'hi' | 'ta' | 'te' | 'kn' | 'mr' | 'auto'
+    voiceId?: string
     rate?: number
     pitch?: number
     volume?: number
@@ -24,32 +21,41 @@ interface TTSHook {
     currentLanguage: string
 }
 
-// Simple cache for recent audio (avoiding re-synthesis for same text)
-const audioCache = new Map<string, { text: string; timestamp: number }>()
-const CACHE_EXPIRY_MS = 5 * 60 * 1000 // 5 minutes
+// Unused cache variables removed
 
-// Language detection helper
-const detectLanguage = (text: string): 'en' | 'hi' => {
-    // Check for Devanagari script (Hindi)
-    const hindiRegex = /[\u0900-\u097F]/
-    if (hindiRegex.test(text)) {
-        return 'hi'
-    }
+const detectLanguage = (text: string): string => {
+    // Check for Devanagari script (Hindi/Marathi)
+    if (/[\u0900-\u097F]/.test(text)) return 'hi'
+    // Tamil
+    if (/[\u0B80-\u0BFF]/.test(text)) return 'ta'
+    // Telugu
+    if (/[\u0C00-\u0C7F]/.test(text)) return 'te'
+    // Kannada
+    if (/[\u0C80-\u0CFF]/.test(text)) return 'kn'
+
     return 'en'
 }
 
 export function useTTS(): TTSHook {
+    const {
+        selectedVoice: storeVoice,
+        voiceRate: storeRate,
+        voicePitch: storePitch,
+        customVoices
+    } = useSettingsStore()
+
     const [isSpeaking, setIsSpeaking] = useState(false)
     const [isPaused, setIsPaused] = useState(false)
     const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
     const [currentLanguage, setCurrentLanguage] = useState<string>('en')
+
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
+    const audioRef = useRef<HTMLAudioElement | null>(null)
 
-    const isSupported = typeof window !== 'undefined' && 'speechSynthesis' in window
+    const isSupported = typeof window !== 'undefined' && ('speechSynthesis' in window || 'Audio' in window)
 
-    // Load available voices
     useEffect(() => {
-        if (!isSupported) return
+        if (typeof window === 'undefined' || !window.speechSynthesis) return
 
         const loadVoices = () => {
             const availableVoices = window.speechSynthesis.getVoices()
@@ -57,146 +63,170 @@ export function useTTS(): TTSHook {
         }
 
         loadVoices()
-
-        // Some browsers load voices asynchronously
         if (window.speechSynthesis.onvoiceschanged !== undefined) {
             window.speechSynthesis.onvoiceschanged = loadVoices
         }
-    }, [isSupported])
+    }, [])
 
-    // Get best voice for a language
-    const getBestVoice = useCallback((lang: 'en' | 'hi'): SpeechSynthesisVoice | null => {
-        if (voices.length === 0) return null
-
-        // Priority order for Hindi
-        if (lang === 'hi') {
-            // Try Google Hindi first, then any Hindi voice
-            const googleHindi = voices.find(v => v.lang === 'hi-IN' && v.name.includes('Google'))
-            if (googleHindi) return googleHindi
-
-            const anyHindi = voices.find(v => v.lang.startsWith('hi'))
-            if (anyHindi) return anyHindi
+    const stop = useCallback(() => {
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel()
         }
-
-        // Priority order for English
-        if (lang === 'en') {
-            // Try Indian English first for familiarity
-            const indianEnglish = voices.find(v => v.lang === 'en-IN' && v.name.includes('Google'))
-            if (indianEnglish) return indianEnglish
-
-            const anyIndianEnglish = voices.find(v => v.lang === 'en-IN')
-            if (anyIndianEnglish) return anyIndianEnglish
-
-            // Fallback to any English
-            const anyEnglish = voices.find(v => v.lang.startsWith('en'))
-            if (anyEnglish) return anyEnglish
+        if (audioRef.current) {
+            audioRef.current.pause()
+            audioRef.current.currentTime = 0
         }
-
-        // Default to first available voice
-        return voices[0] || null
-    }, [voices])
-
-    // Clean up expired cache entries periodically
-    useEffect(() => {
-        const cleanup = setInterval(() => {
-            const now = Date.now()
-            for (const [key, value] of audioCache.entries()) {
-                if (now - value.timestamp > CACHE_EXPIRY_MS) {
-                    audioCache.delete(key)
-                }
-            }
-        }, 60000) // Cleanup every minute
-
-        return () => clearInterval(cleanup)
+        setIsSpeaking(false)
+        setIsPaused(false)
     }, [])
 
     const speak = useCallback((text: string, options: TTSOptions = {}) => {
         if (!isSupported || !text.trim()) return
 
-        // Stop any ongoing speech
-        window.speechSynthesis.cancel()
+        stop()
 
-        const {
-            language = 'auto',
-            rate = 0.9,
-            pitch = 1,
-            volume = 1
-        } = options
+        const activeVoiceId = options.voiceId || storeVoice
 
-        // Determine language
-        const detectedLang = language === 'auto' ? detectLanguage(text) : language
+        const detectedLang = options.language === 'auto' || !options.language
+            ? detectLanguage(text)
+            : options.language
         setCurrentLanguage(detectedLang)
 
-        // Create utterance
+        // Check if active voice is custom
+        const customVoice = customVoices.find(v => v.id === activeVoiceId)
+
+        if (customVoice) {
+            // Play custom voice audio sample
+            const audioUrl = customVoice.audioUrl.startsWith('http')
+                ? customVoice.audioUrl
+                : `${(import.meta as any).env?.VITE_API_URL || 'http://localhost:8000'}${customVoice.audioUrl}`
+
+            const audio = new Audio(audioUrl)
+            audioRef.current = audio
+
+            audio.onplay = () => {
+                setIsSpeaking(true)
+                setIsPaused(false)
+            }
+            audio.onended = () => {
+                setIsSpeaking(false)
+                setIsPaused(false)
+            }
+            audio.onerror = () => {
+                setIsSpeaking(false)
+                console.error("Custom voice playback failed")
+            }
+
+            audio.play().catch(console.error)
+            return
+        }
+
+        // Web Speech API fallback
         const utterance = new SpeechSynthesisUtterance(text)
         utteranceRef.current = utterance
 
-        // Set voice
-        const voice = getBestVoice(detectedLang)
+        const rate = options.rate ?? storeRate
+        const pitch = options.pitch ?? storePitch
+
+        // Standard voice mapping with metadata hints
+        const VOICE_MAP: Record<string, { lang: string, gender: string, nameHint: string }> = {
+            'voice-1': { lang: 'hi-IN', gender: 'female', nameHint: 'Priya' },
+            'voice-2': { lang: 'hi-IN', gender: 'male', nameHint: 'Arjun' },
+            'voice-3': { lang: 'en-IN', gender: 'female', nameHint: 'Divya' },
+            'voice-4': { lang: 'en-IN', gender: 'male', nameHint: 'Ravi' },
+            'voice-5': { lang: 'ta-IN', gender: 'female', nameHint: 'Ananya' },
+        }
+
+        const voiceMeta = VOICE_MAP[activeVoiceId]
+        const targetLang = voiceMeta?.lang || detectedLang
+
+        const availableVoices = window.speechSynthesis.getVoices()
+
+        // Advanced selection logic:
+        // 1. Try to match exact language and name hint
+        // 2. Try to match language and gender
+        // 3. Fallback to any voice for the language
+
+        let voice: SpeechSynthesisVoice | undefined
+
+        if (voiceMeta) {
+            // Priority 1: Match lang and name hint
+            voice = availableVoices.find(v =>
+                v.lang.startsWith(targetLang) &&
+                v.name.toLowerCase().includes(voiceMeta.nameHint.toLowerCase())
+            )
+
+            // Priority 2: Match lang and gender hint
+            if (!voice) {
+                voice = availableVoices.find(v => {
+                    const name = v.name.toLowerCase()
+                    const isLangMatch = v.lang.startsWith(targetLang)
+                    if (!isLangMatch) return false
+
+                    if (voiceMeta.gender === 'female') {
+                        return name.includes('female') || name.includes('samantha') || name.includes('victoria') || name.includes('google')
+                    } else {
+                        return name.includes('male') || name.includes('alex') || name.includes('daniel')
+                    }
+                })
+            }
+        }
+
+        // Priority 3: Fallback to any voice for the target language
+        if (!voice) {
+            voice = availableVoices.find(v => v.lang.startsWith(targetLang))
+        }
+
+        // Last resort fallback
+        if (!voice && targetLang.includes('-')) {
+            voice = availableVoices.find(v => v.lang.startsWith(targetLang.split('-')[0]))
+        }
+
         if (voice) {
             utterance.voice = voice
             utterance.lang = voice.lang
         } else {
-            utterance.lang = detectedLang === 'hi' ? 'hi-IN' : 'en-IN'
+            utterance.lang = targetLang
         }
 
-        // Set options
         utterance.rate = rate
         utterance.pitch = pitch
-        utterance.volume = volume
+        utterance.volume = options.volume ?? 1
 
-        // Event handlers
         utterance.onstart = () => {
             setIsSpeaking(true)
             setIsPaused(false)
         }
-
         utterance.onend = () => {
             setIsSpeaking(false)
             setIsPaused(false)
         }
-
-        utterance.onerror = (event) => {
-            console.error('TTS error:', event.error)
+        utterance.onerror = () => {
             setIsSpeaking(false)
-            setIsPaused(false)
         }
 
-        utterance.onpause = () => {
-            setIsPaused(true)
-        }
-
-        utterance.onresume = () => {
-            setIsPaused(false)
-        }
-
-        // Add to cache
-        const cacheKey = `${detectedLang}:${text.slice(0, 100)}`
-        audioCache.set(cacheKey, { text, timestamp: Date.now() })
-
-        // Speak
         window.speechSynthesis.speak(utterance)
-    }, [isSupported, getBestVoice])
-
-    const stop = useCallback(() => {
-        if (isSupported) {
-            window.speechSynthesis.cancel()
-            setIsSpeaking(false)
-            setIsPaused(false)
-        }
-    }, [isSupported])
+    }, [isSupported, stop, storeVoice, storeRate, storePitch, customVoices])
 
     const pause = useCallback(() => {
-        if (isSupported && isSpeaking) {
+        if (window.speechSynthesis.speaking) {
             window.speechSynthesis.pause()
+            setIsPaused(true)
+        } else if (audioRef.current && !audioRef.current.paused) {
+            audioRef.current.pause()
+            setIsPaused(true)
         }
-    }, [isSupported, isSpeaking])
+    }, [])
 
     const resume = useCallback(() => {
-        if (isSupported && isPaused) {
+        if (window.speechSynthesis.paused) {
             window.speechSynthesis.resume()
+            setIsPaused(false)
+        } else if (audioRef.current && audioRef.current.paused) {
+            audioRef.current.play().catch(console.error)
+            setIsPaused(false)
         }
-    }, [isSupported, isPaused])
+    }, [])
 
     return {
         speak,
