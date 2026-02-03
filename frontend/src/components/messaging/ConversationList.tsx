@@ -42,21 +42,21 @@ const ConversationList: React.FC<ConversationListProps> = ({
     }
 
     return (
-        <div className="flex flex-col border-r h-full overflow-y-auto bg-white">
-            <div className="p-4 border-b font-semibold text-gray-700 flex justify-between items-center">
-                <span>Messages</span>
+        <div className="flex flex-col border-r border-gray-100 dark:border-white/10 h-full overflow-y-auto bg-white dark:bg-[#1C1C1E]">
+            <div className="p-4 border-b border-gray-100 dark:border-white/10 font-bold uppercase tracking-widest text-[10px] text-gray-400 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
+                <span>Direct Messages</span>
             </div>
             <div className="flex-1">
                 {conversations.map((conv) => (
                     <button
                         key={conv.user_id}
                         onClick={() => onSelectConversation(conv.user_id)}
-                        className={`w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors border-b text-left ${activeUserId === conv.user_id ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
+                        className={`w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-all border-b border-gray-100 dark:border-white/5 text-left group ${activeUserId === conv.user_id ? 'bg-blue-50 dark:bg-blue-900/10 border-l-4 border-l-blue-600' : ''
                             }`}
                     >
-                        <div className={`relative w-12 h-12 flex items-center justify-center rounded-full ${conv.user_role === 'crp' ? 'bg-purple-100 text-purple-600' :
-                                conv.user_role === 'arp' ? 'bg-orange-100 text-orange-600' :
-                                    'bg-blue-100 text-blue-600'
+                        <div className={`relative w-12 h-12 flex items-center justify-center rounded-xl shadow-sm transition-transform group-active:scale-95 ${conv.user_role === 'crp' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' :
+                            conv.user_role === 'arp' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' :
+                                'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
                             }`}>
                             <User className="w-6 h-6" />
                             {conv.unread_count > 0 && (
@@ -67,13 +67,13 @@ const ConversationList: React.FC<ConversationListProps> = ({
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-baseline mb-1">
-                                <h4 className="font-semibold text-gray-900 truncate">{conv.user_name}</h4>
-                                <span className="text-[10px] text-gray-500 whitespace-nowrap ml-2">
+                                <h4 className="font-bold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{conv.user_name}</h4>
+                                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium whitespace-nowrap ml-2">
                                     {new Date(conv.last_message_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                                 </span>
                             </div>
-                            <p className="text-sm text-gray-500 truncate">{conv.last_message}</p>
-                            <span className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 truncate leading-snug">{conv.last_message}</p>
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 mt-1 block">
                                 {conv.user_role}
                             </span>
                         </div>

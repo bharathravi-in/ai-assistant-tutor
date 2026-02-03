@@ -1008,4 +1008,24 @@ export const contentApi = {
     },
 }
 
+// AI Tutor Specific API
+export const tutorApi = {
+    chat: async (data: {
+        content_id: number
+        active_section_id: string
+        section_index?: number
+        total_sections?: number
+        user_message: string
+        history?: any[]
+        language?: string
+    }): Promise<{ answer: string; section_id: string; content_id: number }> => {
+        const response = await api.post('/tutor/chat', data)
+        return response.data
+    },
+    processPdf: async (contentId: number) => {
+        const response = await api.post(`/tutor/process-pdf/${contentId}`)
+        return response.data
+    }
+}
+
 export default api

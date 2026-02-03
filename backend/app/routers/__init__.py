@@ -16,6 +16,7 @@ from app.routers.resources import router as resources_router
 from app.routers.storage import router as storage_router
 from app.routers.config import router as config_router
 from app.routers.content import router as content_router
+from app.routers.tutor import router as tutor_router
 
 __all__ = [
     "auth_router",
@@ -33,4 +34,5 @@ __all__ = [
     "storage_router",
     "config_router",
     "content_router",
+    "tutor_router",
 ]

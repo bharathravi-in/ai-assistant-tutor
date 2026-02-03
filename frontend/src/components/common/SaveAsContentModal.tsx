@@ -36,77 +36,77 @@ interface SaveAsContentModalProps {
 }
 
 const contentTypeOptions = [
-    { 
-        value: 'lesson_plan', 
-        label: 'Lesson Plan', 
-        icon: FileText, 
+    {
+        value: 'lesson_plan',
+        label: 'Lesson Plan',
+        icon: FileText,
         color: 'blue',
         bgColor: 'bg-blue-100 dark:bg-blue-900/30',
         textColor: 'text-blue-600 dark:text-blue-400',
-        description: 'Complete lesson with objectives, activities & assessments' 
+        description: 'Complete lesson with objectives, activities & assessments'
     },
-    { 
-        value: 'explanation', 
-        label: 'Topic Explanation', 
-        icon: BookOpen, 
+    {
+        value: 'explanation',
+        label: 'Topic Explanation',
+        icon: BookOpen,
         color: 'emerald',
         bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
         textColor: 'text-emerald-600 dark:text-emerald-400',
-        description: 'Detailed concept explanation with examples' 
+        description: 'Detailed concept explanation with examples'
     },
-    { 
-        value: 'activity', 
-        label: 'Classroom Activity', 
-        icon: Activity, 
+    {
+        value: 'activity',
+        label: 'Classroom Activity',
+        icon: Activity,
         color: 'green',
         bgColor: 'bg-green-100 dark:bg-green-900/30',
         textColor: 'text-green-600 dark:text-green-400',
-        description: 'Interactive classroom or group activity' 
+        description: 'Interactive classroom or group activity'
     },
-    { 
-        value: 'tlm', 
-        label: 'Teaching Aid (TLM)', 
-        icon: Palette, 
+    {
+        value: 'tlm',
+        label: 'Teaching Aid (TLM)',
+        icon: Palette,
         color: 'pink',
         bgColor: 'bg-pink-100 dark:bg-pink-900/30',
         textColor: 'text-pink-600 dark:text-pink-400',
-        description: 'Visual or DIY teaching material instructions' 
+        description: 'Visual or DIY teaching material instructions'
     },
-    { 
-        value: 'quick_reference', 
-        label: 'Quick Reference', 
-        icon: Lightbulb, 
+    {
+        value: 'quick_reference',
+        label: 'Quick Reference',
+        icon: Lightbulb,
         color: 'amber',
         bgColor: 'bg-amber-100 dark:bg-amber-900/30',
         textColor: 'text-amber-600 dark:text-amber-400',
-        description: 'Summary card for quick classroom reference' 
+        description: 'Summary card for quick classroom reference'
     },
-    { 
-        value: 'assessment', 
-        label: 'Assessment', 
-        icon: ClipboardCheck, 
+    {
+        value: 'assessment',
+        label: 'Assessment',
+        icon: ClipboardCheck,
         color: 'purple',
         bgColor: 'bg-purple-100 dark:bg-purple-900/30',
         textColor: 'text-purple-600 dark:text-purple-400',
-        description: 'Quiz, test, or evaluation questions' 
+        description: 'Quiz, test, or evaluation questions'
     },
-    { 
-        value: 'worksheet', 
-        label: 'Worksheet', 
-        icon: FileSpreadsheet, 
+    {
+        value: 'worksheet',
+        label: 'Worksheet',
+        icon: FileSpreadsheet,
         color: 'orange',
         bgColor: 'bg-orange-100 dark:bg-orange-900/30',
         textColor: 'text-orange-600 dark:text-orange-400',
-        description: 'Practice worksheet for students' 
+        description: 'Practice worksheet for students'
     },
-    { 
-        value: 'study_guide', 
-        label: 'Study Guide', 
-        icon: BookPlus, 
+    {
+        value: 'study_guide',
+        label: 'Study Guide',
+        icon: BookPlus,
         color: 'indigo',
         bgColor: 'bg-indigo-100 dark:bg-indigo-900/30',
         textColor: 'text-indigo-600 dark:text-indigo-400',
-        description: 'Comprehensive study material for students' 
+        description: 'Comprehensive study material for students'
     },
 ]
 
@@ -138,16 +138,16 @@ export default function SaveAsContentModal({
 
     const handleTypeSelect = (type: string) => {
         setSelectedType(type)
-        
+
         // Auto-generate title based on mode and type
         const typeLabel = contentTypeOptions.find(t => t.value === type)?.label || type
         const autoTitle = `${originalQuery} - ${typeLabel}`
         setTitle(autoTitle.substring(0, 100))
-        
+
         // Auto-generate description based on AI response
         let autoDescription = ''
         if (aiResponse.structured) {
-            autoDescription = aiResponse.structured.simple_explanation || 
+            autoDescription = aiResponse.structured.simple_explanation ||
                 aiResponse.structured.conceptual_briefing ||
                 aiResponse.structured.understanding ||
                 aiResponse.structured.description || ''
@@ -160,13 +160,13 @@ export default function SaveAsContentModal({
             autoDescription = `AI-generated ${typeLabel.toLowerCase()} for: ${originalQuery}`
         }
         setDescription(autoDescription.substring(0, 500))
-        
+
         // Auto-suggest tags based on context
         const suggestedTags = []
         if (grade) suggestedTags.push(`Class ${grade}`)
         if (subject) suggestedTags.push(subject)
         if (aiResponse.mode) {
-            const modeMap: {[key: string]: string} = {
+            const modeMap: { [key: string]: string } = {
                 'explain': 'Explanation',
                 'assist': 'Classroom Help',
                 'plan': 'Lesson Plan'
@@ -176,7 +176,7 @@ export default function SaveAsContentModal({
         suggestedTags.push('AI-Generated')
         suggestedTags.push(typeLabel)
         setTags(suggestedTags)
-        
+
         setStep('details')
     }
 
@@ -212,10 +212,13 @@ export default function SaveAsContentModal({
             }
 
             // Create the content with PDF generation and vectorization
+            // Ensure description is never empty (backend requires min_length=1)
+            const finalDescription = description.trim() || `AI-generated ${contentTypeOptions.find(t => t.value === selectedType)?.label || 'content'} for: ${originalQuery}`
+
             const result = await contentApi.create({
                 title: title.trim(),
                 content_type: selectedType,
-                description: description.trim(),
+                description: finalDescription,
                 content_json: contentJson,
                 grade: grade,
                 subject: subject,
@@ -235,7 +238,7 @@ export default function SaveAsContentModal({
             // Wait a moment for PDF generation to complete
             if (generatePdf) {
                 await new Promise(resolve => setTimeout(resolve, 2000))
-                
+
                 // Try to get PDF URL
                 try {
                     const pdfResult = await contentApi.getPdf(result.id)
@@ -281,7 +284,7 @@ export default function SaveAsContentModal({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Backdrop */}
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-            
+
             {/* Modal */}
             <div className="relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
                 {/* Header */}
@@ -423,7 +426,7 @@ export default function SaveAsContentModal({
                                     <Sparkles className="w-4 h-4 text-amber-500" />
                                     Enhanced Features
                                 </h4>
-                                
+
                                 {/* Generate PDF Option */}
                                 <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
                                     <input
@@ -519,7 +522,7 @@ export default function SaveAsContentModal({
                                 Content Created Successfully!
                             </h4>
                             <p className="text-gray-500 mb-6">
-                                {submitForReview 
+                                {submitForReview
                                     ? 'Your content has been submitted for review. You will be notified once approved.'
                                     : 'Your content has been saved as a draft.'}
                             </p>
