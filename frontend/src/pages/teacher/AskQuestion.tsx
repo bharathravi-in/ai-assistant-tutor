@@ -69,9 +69,33 @@ interface DisplayPrompt {
 }
 
 const queryModes = [
-    { id: 'explain' as QueryMode, icon: Lightbulb, label: 'Explain Topic', description: 'Get clear explanations', color: '#2563EB' },
-    { id: 'assist' as QueryMode, icon: Users, label: 'Classroom Help', description: 'Handle challenges', color: '#059669' },
-    { id: 'plan' as QueryMode, icon: Clock, label: 'Plan Lesson', description: 'Create lesson plans', color: '#7c3aed' },
+    {
+        id: 'explain' as QueryMode,
+        icon: Lightbulb,
+        label: 'Explain Topic',
+        description: 'Get clear explanations',
+        gradient: 'from-[#007AFF] to-[#00C6FF]',
+        shadow: 'shadow-blue-500/20',
+        color: '#007AFF'
+    },
+    {
+        id: 'assist' as QueryMode,
+        icon: Users,
+        label: 'Classroom Help',
+        description: 'Handle challenges',
+        gradient: 'from-[#34C759] to-[#30D158]',
+        shadow: 'shadow-green-500/20',
+        color: '#34C759'
+    },
+    {
+        id: 'plan' as QueryMode,
+        icon: Clock,
+        label: 'Plan Lesson',
+        description: 'Create lesson plans',
+        gradient: 'from-[#5856D6] to-[#AF52DE]',
+        shadow: 'shadow-purple-500/20',
+        color: '#5856D6'
+    },
 ]
 
 const defaultQuickPrompts: DisplayPrompt[] = [
@@ -148,11 +172,11 @@ export default function AskQuestion() {
 
     // Save as Content Modal state
     const [showSaveAsContent, setShowSaveAsContent] = useState(false)
+    const [contentSaved, setContentSaved] = useState(false)
 
     // Voice Assistant state
     const [showVoiceAssistant, setShowVoiceAssistant] = useState(false)
     const [isSpeaking, setIsSpeaking] = useState(false)
-    const [autoSpeak, setAutoSpeak] = useState(false)
 
     // Refs
     const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -289,7 +313,7 @@ export default function AskQuestion() {
     // Text-to-Speech function
     const speakResponse = (text: string) => {
         window.speechSynthesis.cancel()
-        
+
         // Clean up the text - remove markdown and extra formatting
         const cleanText = text
             .replace(/\*\*/g, '')
@@ -305,7 +329,7 @@ export default function AskQuestion() {
         utterance.lang = responseLanguage === 'hi' ? 'hi-IN' : 'en-IN'
 
         const voices = window.speechSynthesis.getVoices()
-        const targetVoice = voices.find(v => 
+        const targetVoice = voices.find(v =>
             v.lang.startsWith(responseLanguage === 'hi' ? 'hi' : 'en')
         )
         if (targetVoice) utterance.voice = targetVoice
@@ -335,13 +359,13 @@ export default function AskQuestion() {
             })
 
             const content = getStringContent(response.content || response)
-            
+
             // Clean for speaking
             return content
                 .replace(/\*\*/g, '')
                 .replace(/\*/g, '')
                 .replace(/#{1,6}\s/g, '')
-                .substring(0, 1000)
+                .substring(0, 5000)
         } catch (err) {
             return "Sorry, I couldn't process that question. Please try again."
         }
@@ -538,31 +562,45 @@ export default function AskQuestion() {
                     </div>
 
                     {/* Mode Selection */}
-                    <div className="grid grid-cols-3 gap-4 mb-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 items-stretch">
                         {queryModes.map((m) => (
                             <button
                                 key={m.id}
                                 onClick={() => !aiResponse && setMode(m.id)}
                                 disabled={!!aiResponse}
-                                className={`relative p-5 rounded-2xl border-2 transition-all duration-300 group ${mode === m.id
-                                    ? 'bg-white dark:bg-gray-800 shadow-xl border-transparent'
-                                    : 'bg-white/50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 hover:bg-white hover:shadow-lg'
+                                className={`relative flex flex-col h-full p-5 rounded-2xl border transition-all duration-300 group ${mode === m.id
+                                    ? 'bg-white/80 dark:bg-gray-800/80 backdrop-blur-md shadow-xl border-white/50 dark:border-white/10'
+                                    : 'bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm border-gray-100 dark:border-gray-700 hover:bg-white/60 hover:shadow-lg'
                                     } ${aiResponse ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                style={mode === m.id ? { boxShadow: `0 8px 32px ${m.color}20` } : {}}
+                                style={mode === m.id ? {
+                                    boxShadow: `0 0 0 2px ${m.color}20, 0 10px 15px -3px rgb(0 0 0 / 0.1)`,
+                                    borderColor: m.color + '40'
+                                } : {}}
                             >
-                                <div
-                                    className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 transition-all ${mode === m.id ? 'text-white scale-110' : 'text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700'
-                                        }`}
-                                    style={mode === m.id ? { background: m.color } : {}}
-                                >
-                                    <m.icon className="w-6 h-6" />
+                                <div className="flex-1">
+                                    <div
+                                        className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 transition-all duration-500 ${mode === m.id
+                                            ? 'text-white scale-110 rotate-[5deg] shadow-lg ' + m.shadow
+                                            : 'text-gray-500 dark:text-gray-400 bg-white/50 dark:bg-gray-700/50 backdrop-blur-sm'
+                                            }`}
+                                        style={mode === m.id ? { background: `linear-gradient(135deg, ${m.color}, ${m.color}dd)` } : {}}
+                                    >
+                                        <m.icon className="w-6 h-6" />
+                                    </div>
+                                    <h3 className={`font-bold text-base mb-1 transition-colors ${mode === m.id ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                                        {m.label}
+                                    </h3>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium leading-tight">{m.description}</p>
                                 </div>
-                                <h3 className={`font-semibold text-lg mb-1 ${mode === m.id ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
-                                    {m.label}
-                                </h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">{m.description}</p>
+
                                 {mode === m.id && (
-                                    <div className="absolute top-3 right-3 w-3 h-3 rounded-full" style={{ background: m.color }} />
+                                    <>
+                                        <div
+                                            className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r opacity-20 blur-sm pointer-events-none transition-all duration-500 group-hover:opacity-30"
+                                            style={{ background: `linear-gradient(to right, ${m.color}, transparent, ${m.color})` }}
+                                        />
+                                        <div className="absolute top-3 right-3 w-2 h-2 rounded-full animate-pulse" style={{ background: m.color }} />
+                                    </>
                                 )}
                             </button>
                         ))}
@@ -576,6 +614,7 @@ export default function AskQuestion() {
                                     ref={textareaRef}
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
+                                    maxLength={10000}
                                     placeholder="Type your question here... e.g., 'How do I explain the water cycle to Class 5 students?'"
                                     className="w-full min-h-[140px] resize-none bg-transparent text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none text-lg leading-relaxed"
                                     disabled={loading || !!aiResponse}
@@ -741,7 +780,7 @@ export default function AskQuestion() {
                                             {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                                         </button>
                                         {isListening && <span className="text-sm text-red-500 font-medium">Listening...</span>}
-                                        <span className="text-xs text-gray-400">{query.length}/1000</span>
+                                        <span className="text-xs text-gray-400">{query.length}/10000</span>
                                     </div>
 
                                     <button
@@ -810,24 +849,25 @@ export default function AskQuestion() {
                                         {/* Voice Controls */}
                                         <button
                                             onClick={() => isSpeaking ? stopSpeaking() : speakResponse(responseContent)}
-                                            className={`p-2 rounded-xl transition-all ${
-                                                isSpeaking 
-                                                    ? 'bg-red-100 text-red-600 animate-pulse' 
-                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-blue-100 hover:text-blue-600'
-                                            }`}
+                                            className={`p-2 rounded-xl transition-all ${isSpeaking
+                                                ? 'bg-red-100 text-red-600 animate-pulse'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-blue-100 hover:text-blue-600'
+                                                }`}
                                             title={isSpeaking ? 'Stop Speaking' : 'Listen to Response'}
                                         >
                                             {isSpeaking ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                                         </button>
-                                        {/* Save as Content Button */}
-                                        <button
-                                            onClick={() => setShowSaveAsContent(true)}
-                                            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-500 text-white text-sm font-medium hover:shadow-lg hover:shadow-green-500/25 transition-all"
-                                            title="Save as Content for CRP Approval"
-                                        >
-                                            <BookPlus className="w-4 h-4" />
-                                            Save as Content
-                                        </button>
+                                        {/* Save as Content Button - only show if not already saved */}
+                                        {!contentSaved && (
+                                            <button
+                                                onClick={() => setShowSaveAsContent(true)}
+                                                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-500 text-white text-sm font-medium hover:shadow-lg hover:shadow-green-500/25 transition-all"
+                                                title="Save as Content for CRP Approval"
+                                            >
+                                                <BookPlus className="w-4 h-4" />
+                                                Save as Content
+                                            </button>
+                                        )}
                                         <ExportToolbar
                                             topic={originalQuery}
                                             content={responseContent}
@@ -1335,6 +1375,7 @@ export default function AskQuestion() {
                 <SaveAsContentModal
                     isOpen={showSaveAsContent}
                     onClose={() => setShowSaveAsContent(false)}
+                    onSuccess={() => setContentSaved(true)}
                     aiResponse={{
                         content: responseContent,
                         structured: aiResponse.structured,

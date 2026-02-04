@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
     AlertCircle,
     CheckCircle,
@@ -19,6 +20,7 @@ import {
 import { crpApi } from '../../services/api'
 import type { Query } from '../../types'
 import VoiceRecorder from '../../components/common/VoiceRecorder'
+import MarkdownRenderer from '../../components/common/MarkdownRenderer'
 
 interface TeacherStatus {
     id: number
@@ -31,6 +33,7 @@ interface TeacherStatus {
 }
 
 export default function CRPDashboard() {
+    const [searchParams] = useSearchParams()
     const [queries, setQueries] = useState<Query[]>([])
     const [loading, setLoading] = useState(true)
     const [selectedQuery, setSelectedQuery] = useState<Query | null>(null)
@@ -45,6 +48,17 @@ export default function CRPDashboard() {
     const [filterMode, setFilterMode] = useState<string>('all')
     const [activeTab, setActiveTab] = useState<'queries' | 'teachers'>('queries')
     const [teachers, setTeachers] = useState<TeacherStatus[]>([])
+    const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(() => {
+        const teacherParam = searchParams.get('teacher')
+        return teacherParam ? parseInt(teacherParam, 10) : null
+    })
+    const [isAiSynthesisExpanded, setIsAiSynthesisExpanded] = useState(false)
+    const [existingCrpResponse, setExistingCrpResponse] = useState<{
+        observation_notes?: string
+        response_text?: string
+        voice_note_transcript?: string
+        voice_note_url?: string
+    } | null>(null)
 
     useEffect(() => {
         loadData()
@@ -64,6 +78,28 @@ export default function CRPDashboard() {
             console.error('Failed to load data:', err)
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleOpenQuery = async (query: Query) => {
+        setSelectedQuery(query)
+        setExistingCrpResponse(null)
+
+        // Fetch query details to check for existing CRP responses
+        try {
+            const detail = await crpApi.getQueryDetail(query.id)
+            if (detail.crp_responses && detail.crp_responses.length > 0) {
+                // Use the most recent CRP response for prefill
+                const latest = detail.crp_responses[detail.crp_responses.length - 1]
+                setExistingCrpResponse({
+                    observation_notes: latest.observation_notes,
+                    response_text: latest.response_text,
+                    voice_note_transcript: latest.voice_note_transcript,
+                    voice_note_url: latest.voice_note_url
+                })
+            }
+        } catch (err) {
+            console.error('Failed to fetch query detail:', err)
         }
     }
 
@@ -121,11 +157,15 @@ export default function CRPDashboard() {
     }
 
     const filteredQueries = queries.filter(q => {
+        // Filter by teacher if selected
+        if (selectedTeacherId && q.user_id !== selectedTeacherId) return false
         if (filterMode === 'all') return true
         if (filterMode === 'pending') return q.requires_crp_review
         if (filterMode === 'resolved') return q.is_resolved
         return q.mode === filterMode
     })
+
+    const selectedTeacher = teachers.find(t => t.id === selectedTeacherId)
 
     const inactiveTeachers = teachers.filter(t => t.status === 'inactive' || t.status === 'at_risk')
     const teachersWithPendingReflections = teachers.filter(t => t.pending_reflections > 0)
@@ -259,13 +299,34 @@ export default function CRPDashboard() {
             {/* Queries Tab */}
             {activeTab === 'queries' && (
                 <div className="card-highlight overflow-hidden">
+                    {/* Teacher Filter Banner */}
+                    {selectedTeacher && (
+                        <div className="px-6 py-4 bg-[#007AFF]/5 border-b border-[#007AFF]/10 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#007AFF] to-[#0051FF] flex items-center justify-center text-white font-bold shadow-lg shadow-[#007AFF]/10">
+                                    {selectedTeacher.name.split(' ').map(n => n[0]).join('')}
+                                </div>
+                                <div>
+                                    <p className="font-bold text-[#1C1C1E] dark:text-white">{selectedTeacher.name}</p>
+                                    <p className="text-[10px] text-[#8E8E93] font-bold uppercase tracking-widest">{filteredQueries.length} queries</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedTeacherId(null)}
+                                className="px-4 py-2 rounded-xl bg-white dark:bg-white/10 border border-[#E5E5EA] dark:border-white/10 text-[#007AFF] text-sm font-bold hover:bg-[#F2F2F7] transition-all flex items-center gap-2"
+                            >
+                                <X className="w-4 h-4" />
+                                Clear Filter
+                            </button>
+                        </div>
+                    )}
                     <div className="p-6 border-b border-[#E5E5EA] dark:border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg bg-[#007AFF]/10 flex items-center justify-center">
                                 <MessageSquare className="w-4 h-4 text-[#007AFF]" />
                             </div>
                             <h2 className="text-sm font-bold text-[#1C1C1E] dark:text-white uppercase tracking-wider">
-                                Active Inquiries ({queries.length})
+                                {selectedTeacher ? 'Teacher Inquiries' : 'Active Inquiries'} ({filteredQueries.length})
                             </h2>
                         </div>
                         <div className="flex items-center gap-1.5 p-1 bg-[#F2F2F7] dark:bg-white/5 rounded-[12px]">
@@ -294,7 +355,7 @@ export default function CRPDashboard() {
                             filteredQueries.map((query) => (
                                 <div
                                     key={query.id}
-                                    onClick={() => setSelectedQuery(query)}
+                                    onClick={() => handleOpenQuery(query)}
                                     className="p-5 hover:bg-[#F2F2F7] dark:hover:bg-white/5 cursor-pointer transition-colors group"
                                 >
                                     <div className="flex items-center justify-between">
@@ -349,7 +410,11 @@ export default function CRPDashboard() {
                         {teachers.map((teacher) => (
                             <div
                                 key={teacher.id}
-                                className="p-5 hover:bg-[#F2F2F7] dark:hover:bg-white/5 transition-colors group"
+                                onClick={() => {
+                                    setSelectedTeacherId(teacher.id)
+                                    setActiveTab('queries')
+                                }}
+                                className="p-5 hover:bg-[#F2F2F7] dark:hover:bg-white/5 transition-colors group cursor-pointer"
                             >
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
@@ -424,105 +489,140 @@ export default function CRPDashboard() {
                             </div>
                         </div>
 
-                        {/* Modal Body */}
-                        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8">
-                            <div className="p-6 bg-[#F2F2F7] dark:bg-white/5 rounded-[24px] border border-transparent dark:border-white/5">
-                                <label className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-widest mb-3 block">Perspective & Inquiry</label>
-                                <p className="text-[#1C1C1E] dark:text-white font-semibold leading-relaxed text-lg italic">
-                                    "{selectedQuery.input_text}"
-                                </p>
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {[
-                                    { label: 'Academic Year', value: selectedQuery.grade ? `Grade ${selectedQuery.grade}` : 'General' },
-                                    { label: 'Focus Subject', value: selectedQuery.subject || 'All Disciplines' },
-                                    { label: 'Environment', value: selectedQuery.is_multigrade ? 'Hybrid' : 'Uniform' },
-                                    { label: 'Cohort Size', value: selectedQuery.class_size || 'Standard' }
-                                ].map(item => (
-                                    <div key={item.label} className="bg-white dark:bg-white/5 rounded-[20px] p-4 border border-[#F2F2F7] dark:border-white/5 shadow-sm">
-                                        <p className="text-[9px] font-bold text-[#8E8E93] uppercase tracking-widest mb-1.5">{item.label}</p>
-                                        <p className="text-sm font-bold text-[#1C1C1E] dark:text-white">{item.value}</p>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2">
-                                    <Sparkles className="w-4 h-4 text-[#007AFF]" />
-                                    <label className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-widest">Intelligent Synthesis (AI)</label>
-                                </div>
-                                <div className="p-6 bg-[#007AFF]/5 dark:bg-[#007AFF]/10 rounded-[24px] border border-[#007AFF]/10">
-                                    <p className="text-[#1C1C1E] dark:text-white/90 text-[15px] leading-relaxed font-medium">
-                                        {selectedQuery.ai_response || 'Synthesizing professional response...'}
+                        {/* Modal Body - 2 Column Layout */}
+                        <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+                            {/* Left Column - Query Context & AI Response */}
+                            <div className="lg:w-1/2 overflow-y-auto p-6 lg:p-8 border-b lg:border-b-0 lg:border-r border-[#E5E5EA] dark:border-white/5 custom-scrollbar space-y-6">
+                                {/* Query Context */}
+                                <div className="p-5 bg-[#F2F2F7] dark:bg-white/5 rounded-[20px]">
+                                    <label className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-widest mb-2 block">Teacher's Inquiry</label>
+                                    <p className="text-[#1C1C1E] dark:text-white font-semibold leading-relaxed italic">
+                                        "{selectedQuery.input_text}"
                                     </p>
                                 </div>
-                            </div>
 
-                            <div className="space-y-4">
-                                <label className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-widest px-1">Contextual Observations</label>
-                                <textarea
-                                    id="obs-notes"
-                                    placeholder="Annotate specific classroom dynamics or observations..."
-                                    className="w-full p-5 text-sm font-medium bg-[#F2F2F7] dark:bg-white/5 border border-transparent focus:border-[#007AFF]/30 dark:focus:border-[#007AFF]/30 rounded-[20px] focus:ring-0 resize-none transition-all h-24"
-                                />
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between px-1">
-                                    <label className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-widest">Professional Guidance</label>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsVoiceMode(!isVoiceMode)}
-                                        className="text-[10px] font-bold uppercase tracking-widest text-[#007AFF] hover:underline flex items-center gap-1.5 bg-[#007AFF]/10 px-3 py-1.5 rounded-full"
-                                    >
-                                        {isVoiceMode ? '✏️ Type Response' : '🎤 Oral Briefing'}
-                                    </button>
+                                {/* Meta Info */}
+                                <div className="grid grid-cols-4 gap-3">
+                                    {[
+                                        { label: 'Grade', value: selectedQuery.grade || 'Gen' },
+                                        { label: 'Subject', value: selectedQuery.subject || 'All' },
+                                        { label: 'Type', value: selectedQuery.is_multigrade ? 'Multi' : 'Single' },
+                                        { label: 'Size', value: selectedQuery.class_size || 'Std' }
+                                    ].map(item => (
+                                        <div key={item.label} className="bg-white dark:bg-white/5 rounded-xl p-3 text-center border border-[#F2F2F7] dark:border-white/5">
+                                            <p className="text-[9px] font-bold text-[#8E8E93] uppercase tracking-wider">{item.label}</p>
+                                            <p className="text-xs font-bold text-[#1C1C1E] dark:text-white mt-1">{item.value}</p>
+                                        </div>
+                                    ))}
                                 </div>
 
-                                {isVoiceMode ? (
-                                    <div className="space-y-4">
-                                        <VoiceRecorder
-                                            purpose="response"
-                                            onUploadComplete={(url, transcript) => {
-                                                setVoiceUrl(url)
-                                                setVoiceTranscript(transcript)
-                                            }}
+                                {/* Collapsible AI Synthesis */}
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => setIsAiSynthesisExpanded(!isAiSynthesisExpanded)}
+                                        className="w-full flex items-center justify-between p-4 bg-[#007AFF]/5 dark:bg-[#007AFF]/10 rounded-[16px] border border-[#007AFF]/10 hover:bg-[#007AFF]/10 transition-all"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Sparkles className="w-4 h-4 text-[#007AFF]" />
+                                            <span className="text-[10px] font-bold text-[#007AFF] uppercase tracking-widest">AI Synthesis</span>
+                                        </div>
+                                        <ChevronRight className={`w-4 h-4 text-[#007AFF] transition-transform ${isAiSynthesisExpanded ? 'rotate-90' : ''}`} />
+                                    </button>
+                                    {isAiSynthesisExpanded && (
+                                        <div className="p-5 bg-[#007AFF]/5 dark:bg-[#007AFF]/10 rounded-[16px] border border-[#007AFF]/10 animate-fade-in">
+                                            {selectedQuery.ai_response ? (
+                                                <MarkdownRenderer
+                                                    content={selectedQuery.ai_response}
+                                                    className="text-[#1C1C1E] dark:text-white/90 text-sm"
+                                                />
+                                            ) : (
+                                                <p className="text-[#8E8E93] text-sm italic">No AI response available yet.</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Right Column - CRP Input (Always Visible) */}
+                            <div className="lg:w-1/2 flex flex-col bg-[#FAFAFA] dark:bg-[#1C1C1E]/50">
+                                <div className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6 custom-scrollbar">
+                                    {/* Contextual Observations */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2 px-1">
+                                            <div className="w-2 h-2 bg-[#FF9500] rounded-full" />
+                                            <label className="text-sm font-bold text-[#1C1C1E] dark:text-white uppercase tracking-wider">Contextual Observations</label>
+                                        </div>
+                                        <textarea
+                                            id="obs-notes"
+                                            placeholder="Share what you observed in the classroom: teaching methods, student engagement, challenges faced, resources used..."
+                                            defaultValue={existingCrpResponse?.observation_notes || ''}
+                                            className="w-full p-5 text-sm font-medium bg-white dark:bg-white/5 border-2 border-[#FF9500]/20 focus:border-[#FF9500]/50 rounded-[20px] focus:ring-0 resize-none transition-all h-36 shadow-sm"
                                         />
-                                        {voiceTranscript && (
-                                            <div className="p-5 bg-[#007AFF]/5 dark:bg-[#007AFF]/10 rounded-[18px] border border-[#007AFF]/10">
-                                                <span className="text-[9px] font-bold uppercase tracking-widest text-[#007AFF]">Transcript</span>
-                                                <p className="text-sm text-[#1C1C1E] dark:text-white mt-2 italic font-medium">"{voiceTranscript}"</p>
+                                    </div>
+
+                                    {/* Professional Guidance */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between px-1">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2 h-2 bg-[#34C759] rounded-full" />
+                                                <label className="text-sm font-bold text-[#1C1C1E] dark:text-white uppercase tracking-wider">Professional Guidance</label>
                                             </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsVoiceMode(!isVoiceMode)}
+                                                className="text-[10px] font-bold uppercase tracking-widest text-[#007AFF] hover:underline flex items-center gap-1.5 bg-[#007AFF]/10 px-3 py-1.5 rounded-full"
+                                            >
+                                                {isVoiceMode ? '✏️ Type' : '🎤 Voice'}
+                                            </button>
+                                        </div>
+
+                                        {isVoiceMode ? (
+                                            <div className="space-y-4">
+                                                <VoiceRecorder
+                                                    purpose="response"
+                                                    onUploadComplete={(url, transcript) => {
+                                                        setVoiceUrl(url)
+                                                        setVoiceTranscript(transcript)
+                                                    }}
+                                                />
+                                                {voiceTranscript && (
+                                                    <div className="p-4 bg-[#34C759]/5 rounded-[16px] border border-[#34C759]/20">
+                                                        <span className="text-[9px] font-bold uppercase tracking-widest text-[#34C759]">Transcript</span>
+                                                        <p className="text-sm text-[#1C1C1E] dark:text-white mt-2 italic">"{voiceTranscript}"</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <textarea
+                                                id="crp-response"
+                                                placeholder="Provide specific, actionable guidance: suggested strategies, resources to try, best practices, follow-up actions..."
+                                                defaultValue={existingCrpResponse?.response_text || ''}
+                                                className="w-full p-5 text-sm font-medium bg-white dark:bg-white/5 border-2 border-[#34C759]/20 focus:border-[#34C759]/50 rounded-[20px] focus:ring-0 resize-none transition-all h-40 shadow-sm"
+                                            />
                                         )}
                                     </div>
-                                ) : (
-                                    <textarea
-                                        id="crp-response"
-                                        placeholder="Deliver high-fidelity guidance and actionable steps..."
-                                        className="w-full p-5 text-sm font-medium bg-[#F2F2F7] dark:bg-white/5 border border-transparent focus:border-[#1C1C1E]/20 dark:focus:border-white/20 rounded-[20px] focus:ring-0 resize-none transition-all h-32"
-                                    />
-                                )}
+                                </div>
+
+                                {/* Action Buttons - Fixed at bottom of right column */}
+                                <div className="p-6 bg-white dark:bg-[#1C1C1E] border-t border-[#E5E5EA] dark:border-white/5 flex gap-3">
+                                    <button
+                                        onClick={() => handleRespond(true)}
+                                        disabled={submitting}
+                                        className="flex-1 py-3.5 px-5 rounded-[16px] bg-[#F2F2F7] dark:bg-white/5 border border-[#E5E5EA] dark:border-white/10 text-[#1C1C1E] dark:text-white font-bold text-sm hover:bg-[#E5E5EA] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Sparkles className="w-4 h-4 text-[#FF9500]" /> Best Practice</>}
+                                    </button>
+                                    <button
+                                        onClick={() => handleRespond(false)}
+                                        disabled={submitting}
+                                        className="flex-1 py-3.5 px-5 rounded-[16px] bg-[#007AFF] text-white font-bold text-sm shadow-lg shadow-[#007AFF]/20 hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center"
+                                    >
+                                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Finalize & Send'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Modal Footer */}
-                        <div className="p-8 bg-[#F2F2F7] dark:bg-white/5 border-t border-[#E5E5EA] dark:border-white/5 flex gap-4">
-                            <button
-                                onClick={() => handleRespond(true)}
-                                disabled={submitting}
-                                className="flex-1 py-4 px-6 rounded-[18px] bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-white/10 text-[#1C1C1E] dark:text-white font-bold text-sm shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                            >
-                                {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Sparkles className="w-4 h-4 text-[#FF9500]" /> Best Practice</>}
-                            </button>
-                            <button
-                                onClick={() => handleRespond(false)}
-                                disabled={submitting}
-                                className="flex-1 py-4 px-6 rounded-[18px] bg-[#007AFF] text-white font-bold text-sm shadow-lg shadow-[#007AFF]/20 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center"
-                            >
-                                {submitting ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Finalize & Send'}
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}

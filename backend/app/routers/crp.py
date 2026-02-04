@@ -122,6 +122,9 @@ async def respond_to_query(
     db: AsyncSession = Depends(get_db)
 ):
     """Submit CRP/ARP response to a teacher query. Supports text and/or voice responses."""
+    from app.routers.notifications import create_notification
+    from app.models.notification import NotificationType
+    
     # Verify query exists
     result = await db.execute(
         select(QueryModel).where(QueryModel.id == response_data.query_id)
@@ -146,11 +149,29 @@ async def respond_to_query(
     
     db.add(crp_response)
     
-    # Update query status
+    # Update query status - mark as resolved and no longer requires review
     query.requires_crp_review = False
+    query.is_resolved = True
     
     await db.commit()
     await db.refresh(crp_response)
+    
+    # Create notification for the teacher
+    try:
+        await create_notification(
+            db=db,
+            user_id=query.user_id,
+            notification_type=NotificationType.MENTOR_FEEDBACK,
+            title="CRP/ARP Response Received",
+            message=f"Your query has received a response from your mentor. Check it out!",
+            action_url=f"/teacher/chat?query={query.id}",
+            action_label="View Response",
+            related_entity_type="query",
+            related_entity_id=query.id
+        )
+    except Exception as e:
+        # Don't fail the whole request if notification fails
+        print(f"Failed to create notification: {e}")
     
     return CRPResponseResponse.model_validate(crp_response)
 

@@ -42,12 +42,13 @@ const providers = [
 ]
 
 const defaultModels: Record<string, string[]> = {
-    openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-    gemini: ['gemini-pro', 'gemini-1.5-flash', 'gemini-1.5-pro'],
-    anthropic: ['claude-3-haiku-20240307', 'claude-3-sonnet-20240229', 'claude-3-opus-20240229'],
-    azure_openai: ['gpt-4', 'gpt-4-turbo', 'gpt-35-turbo'],
+    openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo', 'gpt-4.5-preview'],
+    gemini: ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-pro'],
+    anthropic: ['claude-3-5-sonnet-latest', 'claude-3-5-haiku-latest', 'claude-3-haiku-20240307', 'claude-3-sonnet-20240229', 'claude-3-opus-20240229'],
+    azure_openai: ['gpt-4o', 'gpt-4', 'gpt-4-turbo', 'gpt-35-turbo'],
     litellm: ['gpt-4o-mini', 'gpt-4o', 'claude-3-haiku', 'gemini-pro', 'ollama/llama2'],
 }
+
 
 export default function AISettingsPage() {
     const [settings, setSettings] = useState<AISettings>({
@@ -187,8 +188,8 @@ export default function AISettingsPage() {
                             onClick={testConnection}
                             disabled={testing}
                             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all duration-300 ${testing
-                                    ? 'bg-white/5 opacity-50 cursor-not-allowed'
-                                    : 'bg-white/10 hover:bg-white/20 active:scale-95 border border-white/20 backdrop-blur-md'
+                                ? 'bg-white/5 opacity-50 cursor-not-allowed'
+                                : 'bg-white/10 hover:bg-white/20 active:scale-95 border border-white/20 backdrop-blur-md'
                                 }`}
                         >
                             {testing ? <Activity className="w-5 h-5 animate-pulse" /> : <Zap className="w-5 h-5 text-yellow-400" />}
@@ -198,8 +199,8 @@ export default function AISettingsPage() {
                             onClick={saveSettings}
                             disabled={saving}
                             className={`flex items-center gap-2 px-8 py-3 rounded-xl font-bold transition-all duration-300 shadow-lg ${saved
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:shadow-indigo-500/25 active:scale-95'
+                                ? 'bg-green-500 text-white'
+                                : 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:shadow-indigo-500/25 active:scale-95'
                                 }`}
                         >
                             {saved ? <Check className="w-5 h-5" /> : saving ? <Activity className="w-5 h-5 animate-pulse" /> : <Save className="w-5 h-5" />}
@@ -220,8 +221,8 @@ export default function AISettingsPage() {
                     )}
                     {testResult && (
                         <div className={`flex items-center gap-3 p-4 rounded-2xl border transition-all duration-500 ${testResult.success
-                                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
-                                : 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400'
+                            ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400'
                             }`}>
                             <div className={`p-1.5 rounded-full ${testResult.success ? 'bg-emerald-500' : 'bg-rose-500'}`}>
                                 {testResult.success ? <Check className="w-4 h-4 text-white" /> : <AlertCircle className="w-4 h-4 text-white" />}
@@ -248,8 +249,8 @@ export default function AISettingsPage() {
                                     key={p.id}
                                     onClick={() => setActiveTab(p.id)}
                                     className={`w-full group flex items-center justify-between p-4 rounded-2xl transition-all duration-300 ${activeTab === p.id
-                                            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 shadow-sm'
-                                            : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 text-gray-600 dark:text-gray-400'
+                                        ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 shadow-sm'
+                                        : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 text-gray-600 dark:text-gray-400'
                                         }`}
                                 >
                                     <div className="flex items-center gap-4 text-left">
@@ -303,8 +304,8 @@ export default function AISettingsPage() {
                                 <button
                                     onClick={() => setSettings({ ...settings, ai_provider: activeTab })}
                                     className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${settings.ai_provider === activeTab
-                                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                            : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none'
+                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none'
                                         }`}
                                 >
                                     {settings.ai_provider === activeTab ? 'Set as Default' : 'Enable Globally'}
@@ -467,19 +468,60 @@ function InputGroup({ label, value, onChange, placeholder, type = 'text', onTogg
     )
 }
 
-function SelectGroup({ label, value, options, onChange }: any) {
+function SelectGroup({ label, value, options, onChange }: { label: string, value: string, options: string[], onChange: (v: string) => void }) {
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+    const [inputValue, setInputValue] = useState(value)
+
+    // Sync inputValue with value prop
+    useEffect(() => {
+        setInputValue(value)
+    }, [value])
+
+    const filteredOptions = options.filter(opt =>
+        opt.toLowerCase().includes(inputValue.toLowerCase())
+    )
+
     return (
-        <div className="group space-y-2">
+        <div className="group space-y-2 relative">
             <label className="text-sm font-bold text-gray-700 dark:text-gray-300 transition-colors group-focus-within:text-indigo-600">
                 {label}
             </label>
-            <select
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="w-full h-12 px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition-all font-bold appearance-none cursor-pointer"
-            >
-                {options.map((m: string) => <option key={m} value={m}>{m}</option>)}
-            </select>
+            <div className="relative">
+                <input
+                    type="text"
+                    value={inputValue}
+                    onChange={(e) => {
+                        setInputValue(e.target.value)
+                        onChange(e.target.value)
+                    }}
+                    onFocus={() => setIsDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+                    placeholder="Select or type model name..."
+                    className="w-full h-12 px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 transition-all font-bold placeholder:text-gray-300"
+                />
+                <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 rotate-90" />
+
+                {isDropdownOpen && filteredOptions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl z-50 overflow-hidden">
+                        {filteredOptions.map((opt) => (
+                            <button
+                                key={opt}
+                                type="button"
+                                onClick={() => {
+                                    setInputValue(opt)
+                                    onChange(opt)
+                                    setIsDropdownOpen(false)
+                                }}
+                                className={`w-full px-4 py-3 text-left font-medium transition-colors hover:bg-indigo-50 dark:hover:bg-indigo-900/30 ${opt === value ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-300'
+                                    }`}
+                            >
+                                {opt}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     )
 }
+

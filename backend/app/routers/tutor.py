@@ -131,14 +131,44 @@ async def process_pdf_content(
     orchestrator = AIOrchestrator(system_settings=system_settings)
 
     # 3. Determine PDF path (handle both remote URLs and local paths)
-    # For now, we assume local uploads/ storage. If it's a URL, we might need to download it.
+    import os
+    import httpx
+    import tempfile
+    
     pdf_path = content.pdf_url
-    if pdf_path.startswith("http"):
-        # In a real app, download to temp if not accessible by path
-        # For this demo, we assume the path is relative to the app root or in uploads/
-        pass
-
+    temp_file_path = None
+    
     try:
+        if pdf_path.startswith("http"):
+            # Download the PDF to a temp file
+            print(f"[Tutor] Downloading PDF from URL: {pdf_path}")
+            async with httpx.AsyncClient() as client:
+                response = await client.get(pdf_path)
+                if response.status_code != 200:
+                    raise HTTPException(status_code=500, detail=f"Failed to download PDF: HTTP {response.status_code}")
+                
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                    tmp.write(response.content)
+                    temp_file_path = tmp.name
+                    pdf_path = temp_file_path
+                    print(f"[Tutor] PDF downloaded to: {pdf_path}")
+        else:
+            # Handle relative paths - check common locations
+            if not os.path.isabs(pdf_path):
+                possible_paths = [
+                    os.path.join("uploads", pdf_path.lstrip("/")),
+                    os.path.join("/app/uploads", pdf_path.lstrip("/")),
+                    pdf_path.lstrip("/"),
+                    pdf_path
+                ]
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        pdf_path = path
+                        break
+                        
+            if not os.path.exists(pdf_path):
+                raise HTTPException(status_code=404, detail=f"PDF file not found: {content.pdf_url}")
+
         # 4. Convert PDF to sections using Gemini
         sections = await orchestrator.process_pdf_to_sections(pdf_path)
         
@@ -158,7 +188,17 @@ async def process_pdf_content(
             "sections_count": len(sections),
             "content_id": content_id
         }
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"PDF processing error: {str(e)}")
+    finally:
+        # Clean up temp file if created
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.unlink(temp_file_path)
+            except:
+                pass
+

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
     Users,
     Search,
@@ -35,6 +35,7 @@ export default function TeacherNetwork() {
     const [searchQuery, setSearchQuery] = useState('')
     const [filterStatus, setFilterStatus] = useState<string>('all')
     const [stats, setStats] = useState({ active: 0, at_risk: 0, inactive: 0 })
+    const navigate = useNavigate()
 
     useEffect(() => {
         loadTeachers()
@@ -190,8 +191,11 @@ export default function TeacherNetwork() {
                 ) : (
                     <div className="divide-y divide-gray-100 dark:divide-gray-700">
                         {filteredTeachers.map(teacher => (
-                            <div key={teacher.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                <div className="flex items-center justify-between">
+                            <div
+                                key={teacher.id}
+                                className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
+                                onClick={() => navigate(`/crp?teacher=${teacher.id}`)}
+                            >                                <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
                                         <div className={`w-12 h-12 rounded-full flex items-center justify-center ${teacher.status === 'active' ? 'bg-green-100' :
                                             teacher.status === 'at_risk' ? 'bg-yellow-100' : 'bg-red-100'
