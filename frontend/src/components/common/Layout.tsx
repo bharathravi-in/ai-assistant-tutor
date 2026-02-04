@@ -166,7 +166,7 @@ export default function Layout({ children }: LayoutProps) {
             `}>
                 <div className={`flex flex-col h-full`}>
                     {/* Logo Area */}
-                    <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} p-6 border-b border-slate-800 dark:border-white/5 bg-slate-900/50`}>
+                    <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} px-6 py-2.5 border-b border-slate-800 dark:border-white/5 bg-slate-900/50`}>
                         <Link to="/" className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-600 text-white shadow-lg shadow-blue-500/20">
                                 <Library className="w-5 h-5" />
