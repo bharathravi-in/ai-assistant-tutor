@@ -12,6 +12,7 @@ import {
     Target,
     Lightbulb
 } from 'lucide-react'
+import { analyticsApi } from '../../services/api'
 
 interface GapMetrics {
     total_queries: number
@@ -35,58 +36,14 @@ export default function GapAnalysis() {
 
     const loadMetrics = async () => {
         setLoading(true)
-        // Simulated data - in production this would call a backend API
-        await new Promise(resolve => setTimeout(resolve, 1000))
-
-        setMetrics({
-            total_queries: 1247,
-            unique_teachers: 84,
-            topics_covered: 32,
-            common_challenges: [
-                { topic: 'Fractions and Decimals', count: 156 },
-                { topic: 'English Grammar - Tenses', count: 134 },
-                { topic: 'Photosynthesis', count: 98 },
-                { topic: 'Geometry - Triangles', count: 87 },
-                { topic: 'Hindi - Essay Writing', count: 76 }
-            ],
-            query_by_grade: [
-                { grade: 1, count: 45 },
-                { grade: 2, count: 67 },
-                { grade: 3, count: 89 },
-                { grade: 4, count: 124 },
-                { grade: 5, count: 178 },
-                { grade: 6, count: 201 },
-                { grade: 7, count: 189 },
-                { grade: 8, count: 156 },
-                { grade: 9, count: 98 },
-                { grade: 10, count: 72 },
-                { grade: 11, count: 18 },
-                { grade: 12, count: 10 }
-            ],
-            query_by_subject: [
-                { subject: 'Mathematics', count: 423 },
-                { subject: 'Science', count: 312 },
-                { subject: 'English', count: 234 },
-                { subject: 'Hindi', count: 156 },
-                { subject: 'Social Studies', count: 89 },
-                { subject: 'EVS', count: 33 }
-            ],
-            uncovered_topics: [
-                'Advanced Algebra',
-                'Chemical Equations',
-                'Poetry Analysis',
-                'Map Reading',
-                'Computer Basics'
-            ],
-            recommendations: [
-                'Schedule training session on Fractions for Grade 4-6 teachers',
-                'Create resource pack for English Grammar',
-                'Organize peer learning group for Science teachers',
-                'Develop hands-on activities for Geometry concepts',
-                'Request ARP support for Hindi essay evaluation methods'
-            ]
-        })
-        setLoading(false)
+        try {
+            const response = await analyticsApi.getArpGapAnalysis(timeRange)
+            setMetrics(response)
+        } catch (err) {
+            console.error('Failed to load gap metrics:', err)
+        } finally {
+            setLoading(false)
+        }
     }
 
     const maxQueryCount = metrics?.query_by_grade ? Math.max(...metrics.query_by_grade.map(g => g.count)) : 0

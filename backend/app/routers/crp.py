@@ -164,7 +164,7 @@ async def respond_to_query(
             notification_type=NotificationType.MENTOR_FEEDBACK,
             title="CRP/ARP Response Received",
             message=f"Your query has received a response from your mentor. Check it out!",
-            action_url=f"/teacher/chat?query={query.id}",
+            action_url=f"/teacher/ask-question?historyId={query.id}",
             action_label="View Response",
             related_entity_type="query",
             related_entity_id=query.id

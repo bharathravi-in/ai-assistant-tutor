@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, Loader2, AlertCircle, Sparkles, Languages, Monitor, Mic, Volume2 } from 'lucide-react'
 import { contentApi, tutorApi } from '../../services/api'
@@ -39,6 +39,7 @@ const ContentPlayer: React.FC = () => {
     const [isProcessingPdf, setIsProcessingPdf] = useState(false)
     const [isScormMode, setIsScormMode] = useState(false)
     const [activeSectionIndex, setActiveSectionIndex] = useState(0)
+    const hasTriggeredEnhancement = useRef(false);
 
     const { results, isTesting, runTests } = useSystemTest();
 
@@ -148,26 +149,60 @@ const ContentPlayer: React.FC = () => {
         if (!content) return;
         try {
             setIsProcessingPdf(true);
-            await tutorApi.processPdf(content.id);
-            // Refresh content to get new sections
+            const response = await tutorApi.processPdf(content.id);
+            console.log('PDF processing started:', response);
+
+            // Refresh content immediately to see 'processing' status
             const updated = await contentApi.getById(content.id);
             setContent(updated);
-            setIsSystemTestDone(true);
         } catch (err) {
             console.error('Enhancement failed:', err);
             setError('Failed to process PDF into interactive sections.');
-        } finally {
             setIsProcessingPdf(false);
         }
     };
 
+    // Polling logic for 'processing' status
+    useEffect(() => {
+        let pollInterval: any;
+
+        if (content?.status === 'processing') {
+            setIsProcessingPdf(true);
+            pollInterval = setInterval(async () => {
+                try {
+                    const updated = await contentApi.getById(parseInt(id!));
+                    if (updated.status !== 'processing') {
+                        setContent(updated);
+                        setIsProcessingPdf(false);
+                        setIsSystemTestDone(true);
+                        clearInterval(pollInterval);
+                    }
+                } catch (err) {
+                    console.error('Polling failed:', err);
+                }
+            }, 5000); // Poll every 5 seconds
+        }
+
+        return () => {
+            if (pollInterval) clearInterval(pollInterval);
+        };
+    }, [content?.status, id]);
+
     // Auto-trigger enhancement if in SCORM mode or PDF mode but no sections exist
     const hasPdfUrl = content?.pdf_url && !isScormMode;
     useEffect(() => {
-        if ((isScormMode || hasPdfUrl) && sections.length === 0 && !isProcessingPdf && content && !error && isSystemTestDone) {
+        // Only trigger ONCE per content load, when we have a PDF/SCORM mode, no sections,
+        // not currently processing, AND status is not 'processing' in the database/backend
+        if (!hasTriggeredEnhancement.current &&
+            (isScormMode || hasPdfUrl) &&
+            sections.length === 0 &&
+            !isProcessingPdf &&
+            content?.status !== 'processing' &&
+            content && !error && isSystemTestDone) {
+            hasTriggeredEnhancement.current = true;
             handleEnhanceContent();
         }
-    }, [isScormMode, hasPdfUrl, sections.length, isProcessingPdf, content, error, isSystemTestDone]);
+    }, [isScormMode, hasPdfUrl, sections.length, isProcessingPdf, content?.status, error, isSystemTestDone]);
 
 
     if (loading) {
@@ -201,115 +236,142 @@ const ContentPlayer: React.FC = () => {
     }
 
 
-    // Pathshala Style: System Test Screen
+    // Pathshala Style: Premium System Test Screen
     if (!isSystemTestDone) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-black text-zinc-900 dark:text-white p-6 relative overflow-hidden font-sans transition-colors duration-300">
-                {/* Background Glow */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-yellow-500/5 rounded-full blur-[120px] pointer-events-none" />
+            <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-black text-zinc-900 dark:text-white p-6 relative overflow-hidden font-sans transition-colors duration-500">
+                {/* Immersive Background Elements */}
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-yellow-500/10 rounded-full blur-[120px] pointer-events-none animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-yellow-500/5 rounded-full blur-[120px] pointer-events-none animate-pulse-slow" />
 
-                <div className="max-w-5xl w-full grid grid-cols-1 md:grid-cols-2 gap-12 items-center relative z-10">
-                    <div className="space-y-8 animate-in fade-in slide-in-from-left duration-1000">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-yellow-500 rounded-2xl flex items-center justify-center shadow-gold">
-                                <Sparkles className="w-7 h-7 text-black" />
-                            </div>
-                            <span className="text-2xl font-black uppercase tracking-tight text-zinc-900 dark:text-white">Pathshala Guru</span>
+                <div className="max-w-4xl w-full space-y-12 relative z-10 text-center">
+                    {/* Brand Header */}
+                    <div className="flex flex-col items-center gap-6 animate-in fade-in slide-in-from-top duration-700">
+                        <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-yellow-500/40 transform hover:rotate-12 transition-transform duration-500">
+                            <Sparkles className="w-10 h-10 text-black animate-pulse" />
                         </div>
-
-                        <div className="space-y-4">
-                            <p className="text-yellow-600 dark:text-yellow-500 font-bold text-sm uppercase tracking-[0.3em]">Session Initializing</p>
-                            <h1 className="text-5xl md:text-6xl font-black leading-tight tracking-tighter text-zinc-900 dark:text-white">
-                                Preparing your session on <span className="text-transparent bg-clip-text bg-gradient-to-br from-yellow-500 to-yellow-600">{content.title}</span>
+                        <div className="space-y-2">
+                            <span className="text-yellow-600 dark:text-yellow-500 font-black uppercase tracking-[0.4em] text-[10px]">Session Preparation</span>
+                            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-zinc-900 dark:text-white leading-[1.1]">
+                                Welcome back to <br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-600">
+                                    {content.title}
+                                </span>
                             </h1>
-                            <p className="text-zinc-500 dark:text-zinc-400 text-lg font-medium max-w-lg leading-relaxed">
-                                Ensure your hardware is ready for an interactive AI-guided teaching experience.
-                            </p>
-                        </div>
-
-                        <div className="pt-6 flex flex-col sm:flex-row gap-4">
-                            <button
-                                onClick={() => {
-                                    setIsScormMode(false);
-                                    setIsSystemTestDone(true);
-                                }}
-                                className="group flex items-center justify-center gap-4 px-12 py-5 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black font-black rounded-2xl hover:scale-105 transition-all shadow-gold uppercase tracking-widest text-sm"
-                            >
-                                Enter Classroom
-                                <ChevronLeft className="w-5 h-5 rotate-180 group-hover:translate-x-1 transition-transform" />
-                            </button>
-
-                            <button
-                                onClick={() => {
-                                    setIsScormMode(true);
-                                    setIsSystemTestDone(true);
-                                }}
-                                disabled={isProcessingPdf}
-                                className="flex items-center justify-center gap-3 px-10 py-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-yellow-500/30 text-zinc-800 dark:text-yellow-500 font-black rounded-2xl hover:bg-zinc-50 dark:hover:bg-yellow-500/10 hover:border-yellow-500 transition-all uppercase tracking-widest text-[10px] group shadow-sm"
-                            >
-                                {isProcessingPdf ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Analyzing Structure...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Sparkles className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                                        PDF → Interactive
-                                    </>
-                                )}
-                            </button>
                         </div>
                     </div>
 
-                    <div className="bg-white/40 dark:bg-zinc-900/50 backdrop-blur-2xl border border-zinc-200 dark:border-white/5 rounded-[48px] p-10 space-y-10 shadow-2xl relative overflow-hidden animate-in zoom-in duration-1000">
-                        <div className="text-center">
-                            <div className="inline-block px-4 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-full mb-8">
-                                <p className="text-[10px] font-black uppercase text-yellow-600 dark:text-yellow-500 tracking-[0.2em]">Diagnostic Test</p>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch pt-4">
+                        {/* Info Section */}
+                        <div className="md:col-span-5 flex flex-col justify-center text-left space-y-8 animate-in fade-in slide-in-from-left duration-700 delay-200">
+                            <div className="space-y-4">
+                                <h3 className="text-xl font-bold text-zinc-800 dark:text-zinc-200">Classroom Setup</h3>
+                                <p className="text-zinc-500 dark:text-zinc-400 text-base leading-relaxed">
+                                    Our AI Guru is calibrating the environment for an optimal interactive experience. Please verify your hardware status on the right.
+                                </p>
                             </div>
 
-                            <div className="w-48 h-48 mx-auto bg-gradient-to-br from-zinc-100 to-white dark:from-zinc-800 dark:to-black rounded-full border border-zinc-200 dark:border-white/5 flex items-center justify-center relative mb-10 group cursor-help transition-colors">
-                                <div className="absolute inset-0 rounded-full bg-[url('/home/bharathr/.gemini/antigravity/brain/c3c9c1cb-6a53-47fc-8a14-8ade84fabdf1/ai_avatar_premium_1770058769793.png')] bg-cover bg-center opacity-40 grayscale group-hover:grayscale-0 group-hover:opacity-80 transition-all duration-700" title="AI Assistant" />
-                                <div className="absolute inset-0 rounded-full border-4 border-dashed border-yellow-500/20 animate-[spin_20s_linear_infinite]" />
-                                <div className="absolute inset-0 rounded-full border-2 border-yellow-500/40 animate-pulse" />
-                                {isTesting && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 dark:bg-black/60 rounded-full backdrop-blur-sm z-20">
-                                        <Loader2 className="w-10 h-10 text-yellow-500 animate-spin mb-2" />
-                                        <span className="text-[8px] font-black uppercase tracking-widest text-yellow-600 dark:text-yellow-500">Scanning Hardware</span>
+                            <div className="space-y-4">
+                                <div className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-white/5 flex items-center gap-4 shadow-sm">
+                                    <div className="w-10 h-10 bg-yellow-500/10 rounded-xl flex items-center justify-center text-yellow-600">
+                                        <Languages className="w-5 h-5" />
                                     </div>
-                                )}
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Active Language</p>
+                                        <p className="text-sm font-bold text-zinc-900 dark:text-white">
+                                            {language === 'en' ? 'English' : language === 'hi' ? 'Hindi' : 'Selected Language'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pt-4 flex flex-col gap-4">
+                                <button
+                                    onClick={() => {
+                                        setIsScormMode(false);
+                                        setIsSystemTestDone(true);
+                                    }}
+                                    className="group relative flex items-center justify-center gap-4 px-8 py-5 bg-zinc-900 dark:bg-yellow-500 text-white dark:text-black font-black rounded-[20px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl dark:shadow-yellow-500/20 uppercase tracking-widest text-xs overflow-hidden"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-600 opacity-0 group-hover:opacity-10 dark:opacity-0 transition-opacity" />
+                                    Launch Classroom
+                                    <ChevronLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        setIsScormMode(true);
+                                        setIsSystemTestDone(true);
+                                    }}
+                                    className="flex items-center justify-center gap-3 px-8 py-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 text-zinc-800 dark:text-zinc-400 font-black rounded-[20px] hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:border-yellow-500/50 transition-all uppercase tracking-widest text-[9px] shadow-sm"
+                                >
+                                    <Sparkles className="w-4 h-4 text-yellow-500" />
+                                    Try Interactive Mode
+                                </button>
                             </div>
                         </div>
 
-                        <div className="grid gap-4">
-                            {[
-                                { icon: Monitor, label: 'Browser Info', key: 'browser' },
-                                { icon: Mic, label: 'Microphone', key: 'microphone' },
-                                { icon: Volume2, label: 'Speaker', key: 'speaker' }
-                            ].map((item, idx) => {
-                                const res = results?.[item.key as keyof SystemCheckResult];
-                                return (
-                                    <div key={idx} className={`flex items-center justify-between p-5 rounded-3xl border transition-all duration-500 ${res?.passed ? 'bg-yellow-500/5 border-yellow-500/20' : 'bg-zinc-50 dark:bg-black/40 border-zinc-200 dark:border-white/5'}`}>
-                                        <div className="flex items-center gap-5">
-                                            <div className={`p-3 rounded-2xl ${res?.passed ? 'bg-yellow-500 text-black' : 'bg-white dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 border border-zinc-100 dark:border-transparent'}`}>
-                                                <item.icon className="w-5 h-5" />
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">{item.label}</p>
-                                                <p className={`text-xs font-bold ${res?.passed ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 dark:text-zinc-500'}`}>{res?.details || 'Initializing...'}</p>
-                                            </div>
-                                        </div>
-                                        {res && (
-                                            <div className="flex items-center gap-3">
-                                                <span className={`text-[10px] font-black uppercase tracking-widest ${res.passed ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                    {res.status}
-                                                </span>
-                                                <div className={`w-3 h-3 rounded-full ${res.passed ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-red-500 shadow-red-500/50'} animate-pulse`} />
-                                            </div>
-                                        )}
+                        {/* Diagnostic Card */}
+                        <div className="md:col-span-1" /> {/* Spacer */}
+
+                        <div className="md:col-span-6 animate-in fade-in slide-in-from-right duration-700 delay-300">
+                            <div className="h-full bg-white/40 dark:bg-zinc-900/40 backdrop-blur-3xl border border-white/20 dark:border-white/5 rounded-[40px] p-8 space-y-6 shadow-2xl relative overflow-hidden group">
+                                {/* Header */}
+                                <div className="flex items-center justify-between mb-2">
+                                    <h4 className="text-xs font-black uppercase text-zinc-400 tracking-[0.2em]">Diagnostic Console</h4>
+                                    <div className="flex gap-1.5 font-mono">
+                                        <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                                        <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse [animation-delay:200ms]" />
+                                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse [animation-delay:400ms]" />
                                     </div>
-                                );
-                            })}
+                                </div>
+
+                                {/* Main Diagnostic Circle */}
+                                <div className="relative py-4 flex flex-col items-center">
+                                    <div className="w-32 h-32 rounded-full border border-dashed border-yellow-500/30 animate-[spin_30s_linear_infinite]" />
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="w-24 h-24 bg-gradient-to-br from-yellow-400/10 to-transparent rounded-full border border-yellow-500/20 backdrop-blur-xl flex items-center justify-center shadow-inner">
+                                            <Monitor className={`w-8 h-8 ${isTesting ? 'text-yellow-500 animate-pulse' : 'text-yellow-500/50'}`} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Status Rows */}
+                                <div className="grid gap-3 pt-2">
+                                    {[
+                                        { icon: Monitor, label: 'Environment', key: 'browser' },
+                                        { icon: Mic, label: 'Audio Input', key: 'microphone' },
+                                        { icon: Volume2, label: 'Audio Output', key: 'speaker' }
+                                    ].map((item, idx) => {
+                                        const res = results?.[item.key as keyof SystemCheckResult];
+                                        return (
+                                            <div key={idx} className={`flex items-center justify-between p-4 rounded-2xl border transition-all duration-500 ${res?.passed ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-white/50 dark:bg-black/20 border-white/20 dark:border-white/5'}`}>
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`p-2.5 rounded-xl ${res?.passed ? 'bg-emerald-500 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
+                                                        <item.icon className="w-4 h-4" />
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <p className="text-[9px] font-black uppercase text-zinc-500 tracking-wider mb-0.5">{item.label}</p>
+                                                        <p className={`text-[11px] font-bold ${res?.passed ? 'text-zinc-900 dark:text-zinc-200' : 'text-zinc-400 opacity-60'}`}>
+                                                            {res?.details || 'Locating...'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {res && (
+                                                    <div className={`px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter ${res.passed ? 'bg-emerald-500/20 text-emerald-600' : 'bg-red-500/20 text-red-600'}`}>
+                                                        {res.status}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Footer Note */}
+                                <div className="pt-2 text-center">
+                                    <p className="text-[9px] text-zinc-400 font-medium">Pathshala Diagnostic v1.0.4 • Hardware Encrypted Connection</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -435,7 +497,7 @@ const ContentPlayer: React.FC = () => {
                                     )}
                                 </div>
                             </div>
-                        ) : (
+                        ) : (isScormMode || hasPdfUrl) && (isProcessingPdf || content.status === 'processing' || sections.length === 0) ? (
                             <div className="w-full h-full bg-white dark:bg-black flex flex-col items-center justify-center gap-12 text-center p-20 relative overflow-hidden transition-colors">
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-yellow-500/5 rounded-full blur-[120px] animate-pulse" />
 
@@ -453,7 +515,9 @@ const ContentPlayer: React.FC = () => {
 
                                 <div className="space-y-6 relative z-10">
                                     <div className="flex flex-col gap-2">
-                                        <h3 className="text-4xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter">Constructing Knowledge</h3>
+                                        <h3 className="text-4xl font-black text-zinc-900 dark:text-white uppercase tracking-tighter">
+                                            {content.status === 'processing' ? 'Guru is Extracting' : 'Constructing Knowledge'}
+                                        </h3>
                                         <div className="flex items-center justify-center gap-2">
                                             <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-bounce [animation-delay:0s]" />
                                             <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-bounce [animation-delay:0.2s]" />
@@ -461,7 +525,10 @@ const ContentPlayer: React.FC = () => {
                                         </div>
                                     </div>
                                     <p className="text-xl text-zinc-600 dark:text-zinc-400 max-w-lg mx-auto leading-relaxed font-medium">
-                                        Our AI Guru is distilling the PDF into a <span className="text-yellow-600 dark:text-yellow-500 font-bold">pedagogical sequence</span> for your classroom.
+                                        {content.status === 'processing'
+                                            ? "Our AI Guru is currently analyzing your PDF content in the background. You can wait here or come back later."
+                                            : "Our AI Guru is distilling the PDF into a pedagogical sequence for your classroom."
+                                        }
                                     </p>
 
                                     {error && (
@@ -474,9 +541,13 @@ const ContentPlayer: React.FC = () => {
                                         </div>
                                     )}
                                     <div className="pt-4">
-                                        <p className="text-[10px] text-zinc-400 dark:text-zinc-600 font-black uppercase tracking-[0.3em] animate-pulse">This typically takes 15-20 seconds</p>
+                                        <p className="text-[10px] text-zinc-400 dark:text-zinc-600 font-black uppercase tracking-[0.3em] animate-pulse">This typically takes 30-60 seconds</p>
                                     </div>
                                 </div>
+                            </div>
+                        ) : (
+                            <div className="w-full h-full bg-slate-100 flex items-center justify-center text-zinc-400">
+                                {isScormMode && sections.length === 0 ? "Enhancement required" : "Materializing View..."}
                             </div>
                         )}
                     </div>

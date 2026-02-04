@@ -133,15 +133,18 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
     } = useVoiceRecognition({
         language,
         onResult: (text, isFinal) => {
-            if (isFinal) {
-                handleSendMessage(text)
+            if (isFinal && text.trim()) {
+                // Stop listening immediately after receiving final result
+                stopListening()
                 setIsHandRaised(false)
+                handleSendMessage(text)
             }
         },
         onEnd: () => {
             setIsHandRaised(false)
         }
     })
+
     const scrollRef = useRef<HTMLDivElement>(null)
 
     // Camera Handlers

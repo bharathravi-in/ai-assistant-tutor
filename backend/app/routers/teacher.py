@@ -53,14 +53,15 @@ async def get_my_queries(
         total_pages=(total + page_size - 1) // page_size
     )
 
-
-@router.get("/queries/{query_id}", response_model=QueryResponse)
+@router.get("/queries/{query_id}")
 async def get_query(
     query_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get a specific query by ID."""
+    """Get a specific query by ID, including CRP responses if any."""
+    from app.models.reflection import CRPResponse
+    
     result = await db.execute(
         select(QueryModel).where(
             QueryModel.id == query_id,
@@ -72,7 +73,29 @@ async def get_query(
     if not query:
         raise HTTPException(status_code=404, detail="Query not found")
     
-    return QueryResponse.model_validate(query)
+    # Fetch CRP responses for this query
+    crp_result = await db.execute(
+        select(CRPResponse).where(CRPResponse.query_id == query_id)
+    )
+    crp_responses = crp_result.scalars().all()
+    
+    # Build response with CRP responses included
+    response_data = QueryResponse.model_validate(query).model_dump()
+    response_data["crp_responses"] = [
+        {
+            "id": r.id,
+            "crp_id": r.crp_id,
+            "response_text": r.response_text,
+            "voice_note_url": r.voice_note_url,
+            "voice_note_transcript": r.voice_note_transcript,
+            "tag": r.tag,
+            "observation_notes": r.observation_notes,
+            "created_at": (r.created_at.isoformat() + "Z") if r.created_at else None
+        }
+        for r in crp_responses
+    ]
+    
+    return response_data
 
 
 @router.post("/reflections", response_model=ReflectionResponse)

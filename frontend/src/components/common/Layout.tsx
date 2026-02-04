@@ -90,6 +90,7 @@ export default function Layout({ children }: LayoutProps) {
         if (role === 'admin') {
             return [
                 { icon: Home, label: 'Dashboard', path: '/admin' },
+                { icon: BarChart3, label: 'State Oversight', path: '/admin/state-analytics' },
                 { icon: BarChart3, label: 'Reports', path: '/admin/reports' },
                 { icon: FileText, label: 'Content', path: '/admin/content-list' },
                 { icon: Users, label: 'Users', path: '/admin/users' },
@@ -361,7 +362,7 @@ export default function Layout({ children }: LayoutProps) {
                     )}
                 </header>
 
-                <main className="flex-1 min-h-0 overflow-y-auto relative">
+                <main className="flex-1 min-h-0 overflow-y-auto relative p-6">
                     {children}
                 </main>
             </div>

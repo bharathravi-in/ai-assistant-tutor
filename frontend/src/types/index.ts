@@ -14,6 +14,8 @@ export interface User {
     grades_taught: number[] | null
     subjects_taught: string[] | null
     profile_image?: string | null
+    state_id: number | null
+    district_id: number | null
     is_active: boolean
     created_at: string
 }

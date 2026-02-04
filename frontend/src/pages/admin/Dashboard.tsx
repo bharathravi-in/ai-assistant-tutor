@@ -9,6 +9,7 @@ import {
     School,
     Heart
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { adminApi } from '../../services/api'
 import type { AdminDashboard as AdminDashboardType } from '../../types'
 
@@ -46,6 +47,7 @@ export default function AdminDashboard() {
     const [sentiment, setSentiment] = useState<SentimentAnalytics | null>(null)
     const [trainingGaps, setTrainingGaps] = useState<TrainingGapsData | null>(null)
     const [loading, setLoading] = useState(true)
+    const navigate = useNavigate()
 
     useEffect(() => {
         loadDashboard()
@@ -350,10 +352,13 @@ export default function AdminDashboard() {
                             <p className="font-medium text-gray-800 dark:text-white">Analytics</p>
                             <p className="text-xs text-gray-500">Detailed reports</p>
                         </button>
-                        <button className="card-hover p-4 text-left group">
+                        <button
+                            onClick={() => navigate('/admin/state-analytics')}
+                            className="card-hover p-4 text-left group"
+                        >
                             <TrendingUp className="w-6 h-6 text-orange-500 mb-2 group-hover:scale-110 transition-transform" />
-                            <p className="font-medium text-gray-800 dark:text-white">Effectiveness</p>
-                            <p className="text-xs text-gray-500">Strategy analysis</p>
+                            <p className="font-medium text-gray-800 dark:text-white">State Oversight</p>
+                            <p className="text-xs text-gray-500">Regional trends</p>
                         </button>
                     </div>
                 </div>

@@ -17,6 +17,7 @@ class ContentStatus(str, enum.Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
     PUBLISHED = "published"
+    PROCESSING = "processing"
 
 
 class ContentType(str, enum.Enum):
@@ -73,6 +74,10 @@ class TeacherContent(Base):
     view_count: Mapped[int] = mapped_column(Integer, default=0)
     like_count: Mapped[int] = mapped_column(Integer, default=0)
     
+    # Movement Building (Social)
+    parent_id: Mapped[Optional[int]] = mapped_column(ForeignKey("teacher_content.id"), nullable=True)
+    remix_count: Mapped[int] = mapped_column(Integer, default=0)
+    
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -81,6 +86,7 @@ class TeacherContent(Base):
     # Relationships
     author = relationship("User", foreign_keys=[author_id], backref="created_content")
     reviewer = relationship("User", foreign_keys=[reviewer_id])
+    parent = relationship("TeacherContent", remote_side=[id], backref="children")
     
     def __repr__(self) -> str:
         return f"<TeacherContent {self.id}: {self.title[:30]}>"

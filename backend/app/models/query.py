@@ -31,9 +31,9 @@ class Query(Base):
     voice_input_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     
     # Context
-    grade: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    subject: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    topic: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    grade: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    subject: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
+    topic: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, index=True)
     
     # Theme 1: Classroom Context
     is_multigrade: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -55,7 +55,7 @@ class Query(Base):
     requires_crp_review: Mapped[bool] = mapped_column(default=False)
     
     # Timestamps
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     responded_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     
     # Relationships

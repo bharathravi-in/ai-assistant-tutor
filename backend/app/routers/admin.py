@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, Query, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, Integer, case
+from sqlalchemy import select, func, Integer, case, insert
 
 from app.database import get_db
 from app.models.user import User, UserRole
@@ -945,62 +945,115 @@ async def bulk_import_users(
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db)
 ):
-    """Import users from CSV file."""
+    """Import users from CSV file Optimized for large scale."""
     content = await file.read()
-    text = content.decode('utf-8')
+    try:
+        text = content.decode('utf-8')
+    except UnicodeDecodeError:
+        # Fallback for some non-utf8 CSVs
+        text = content.decode('latin-1')
     
     reader = csv.DictReader(io.StringIO(text))
+    rows = list(reader)
     
+    if not rows:
+        return {"success": 0, "failed": 0, "errors": ["Empty file or invalid format"]}
+
+    # 1. Extract all unique phones from the CSV for pre-checking
+    csv_phones = set()
+    for row in rows:
+        phone = row.get('phone', '').strip()
+        if phone:
+            csv_phones.add(phone)
+    
+    # 2. Batch check existing phones in DB (Chunked to stay safe with IN clause limits)
+    existing_phones = set()
+    phones_list = list(csv_phones)
+    for i in range(0, len(phones_list), 5000):
+        batch = phones_list[i:i+5000]
+        res = await db.execute(select(User.phone).where(User.phone.in_(batch)))
+        existing_phones.update(res.scalars().all())
+
     success_count = 0
     failed_count = 0
     errors = []
+    to_insert = []
+    processed_phones = set()
     
-    for row_num, row in enumerate(reader, start=2):
+    # Track organization_id from current_user
+    org_id = current_user.organization_id
+    
+    for row_num, row in enumerate(rows, start=2):
         try:
             phone = row.get('phone', '').strip()
             name = row.get('name', '').strip()
             role_str = row.get('role', 'TEACHER').strip().upper()
             
-            if not phone or len(phone) < 10:
+            # Validation
+            if not phone:
                 failed_count += 1
-                errors.append(f"Row {row_num}: Invalid phone")
+                errors.append(f"Row {row_num}: Missing phone")
+                continue
+                
+            if len(phone) < 10:
+                failed_count += 1
+                errors.append(f"Row {row_num}: Invalid phone ({phone})")
                 continue
             
-            # Check if user exists
-            existing = await db.execute(select(User).where(User.phone == phone))
-            if existing.scalar_one_or_none():
+            # Skip if already exists in DB
+            if phone in existing_phones:
                 failed_count += 1
-                errors.append(f"Row {row_num}: Phone already exists")
+                if failed_count <= 50: # Limit error list size
+                    errors.append(f"Row {row_num}: Phone {phone} already registered")
                 continue
             
+            # Skip if duplicate in the current CSV
+            if phone in processed_phones:
+                failed_count += 1
+                if failed_count <= 50:
+                    errors.append(f"Row {row_num}: Duplicate phone {phone} in CSV")
+                continue
+
+            # Determine Role
             role = UserRole.TEACHER
             if role_str == 'CRP':
                 role = UserRole.CRP
             elif role_str == 'ARP':
                 role = UserRole.ARP
+            elif role_str == 'ADMIN':
+                role = UserRole.ADMIN
             
-            user = User(
-                phone=phone,
-                name=name or None,
-                role=role,
-                organization_id=current_user.organization_id,
-                school_name=row.get('school_name', '').strip() or None,
-                school_district=row.get('school_district', '').strip() or None,
-                school_state=row.get('school_state', '').strip() or None,
-                is_active=True,
-                is_verified=False
-            )
-            db.add(user)
+            to_insert.append({
+                "phone": phone,
+                "name": name or None,
+                "role": role,
+                "organization_id": org_id,
+                "school_name": row.get('school_name', '').strip() or None,
+                "school_district": row.get('school_district', '').strip() or None,
+                "school_state": row.get('school_state', '').strip() or None,
+                "is_active": True,
+                "is_verified": False
+            })
+            
+            processed_phones.add(phone)
             success_count += 1
             
         except Exception as e:
             failed_count += 1
-            errors.append(f"Row {row_num}: {str(e)}")
+            if failed_count <= 50:
+                errors.append(f"Row {row_num}: {str(e)}")
     
-    await db.commit()
+    # 3. High-Performance Bulk Insert
+    if to_insert:
+        # Using 5000 records per batch for optimal performance-memory balance
+        for i in range(0, len(to_insert), 5000):
+            chunk = to_insert[i:i+5000]
+            await db.execute(insert(User), chunk)
+        
+        await db.commit()
     
     return {
         "success": success_count,
         "failed": failed_count,
-        "errors": errors[:10]  # Return first 10 errors
+        "errors": errors[:20]  # Return more errors but capped
     }

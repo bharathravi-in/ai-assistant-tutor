@@ -24,6 +24,7 @@ class NotificationType(str, enum.Enum):
     CRP_VISIT = "CRP_VISIT"
     SURVEY_ASSIGNED = "SURVEY_ASSIGNED"
     MESSAGE = "MESSAGE"
+    MENTOR_FEEDBACK = "MENTOR_FEEDBACK"  # CRP/ARP feedback on teacher queries
 
 
 class Notification(Base):

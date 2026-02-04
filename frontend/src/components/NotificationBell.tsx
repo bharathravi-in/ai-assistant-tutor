@@ -86,6 +86,8 @@ const NotificationBell: React.FC = () => {
       SYSTEM_UPDATE: '🔔',
       CRP_VISIT: '👤',
       SURVEY_ASSIGNED: '📊',
+      MENTOR_FEEDBACK: '💡',
+      MESSAGE: '✉️',
     };
     return iconMap[type] || 'ℹ️';
   };
@@ -137,7 +139,13 @@ const NotificationBell: React.FC = () => {
                     key={notification.id}
                     className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${!notification.is_read ? 'bg-blue-50' : ''
                       }`}
-                    onClick={() => !notification.is_read && handleMarkRead(notification.id)}
+                    onClick={() => {
+                      if (!notification.is_read) handleMarkRead(notification.id);
+                      // Navigate to action_url if available
+                      if (notification.action_url) {
+                        window.location.href = notification.action_url;
+                      }
+                    }}
                   >
                     <div className="flex gap-3">
                       <div className="flex-shrink-0 text-2xl">
