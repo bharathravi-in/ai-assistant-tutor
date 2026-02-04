@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     MessageSquare,
-    Sparkles,
+    Bot,
     Lightbulb,
     Clock,
     Users,
@@ -63,7 +63,7 @@ const modeConfig = [
         id: 'general',
         title: 'Free Chat',
         description: 'Open-ended conversation about anything on your mind.',
-        icon: Sparkles,
+        icon: Bot,
         color: 'rose',
         gradient: 'from-rose-500 to-pink-600',
         lightBg: 'bg-rose-50 dark:bg-rose-900/20',
@@ -151,7 +151,7 @@ export default function AITutorLanding() {
                     <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
                         <div className="text-center md:text-left">
                             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-6">
-                                <Sparkles className="w-4 h-4 text-amber-400" />
+                                <Bot className="w-4 h-4 text-amber-400" />
                                 <span className="text-xs font-bold text-white uppercase tracking-widest">Next-Gen Teaching Assistant</span>
                             </div>
                             <h1 className="text-4xl lg:text-5xl font-black text-white mb-4 leading-tight">

@@ -6,7 +6,7 @@ import {
     Save,
     Loader2,
     Palette,
-    Sparkles,
+    Bot,
     Cloud,
     Mail,
     CheckCircle,
@@ -210,7 +210,7 @@ export default function AdminSettings() {
                 <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm">
                     <div className="flex items-center gap-3 mb-5">
                         <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                            <Sparkles className="w-5 h-5 text-amber-600" />
+                            <Bot className="w-5 h-5 text-amber-600" />
                         </div>
                         <h3 className="font-semibold text-gray-900 dark:text-white">AI Configuration</h3>
                     </div>

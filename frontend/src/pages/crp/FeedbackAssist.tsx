@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-    Sparkles,
+    Bot,
     FileText,
     Target,
     Users,
@@ -109,7 +109,7 @@ export default function FeedbackAssist() {
         <div className="max-w-6xl mx-auto px-4 py-8">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-3">
-                    <Sparkles className="w-8 h-8 text-primary-600" />
+                    <Bot className="w-8 h-8 text-primary-600" />
                     Feedback Assistant
                 </h1>
                 <p className="text-gray-500 dark:text-gray-400">
@@ -248,7 +248,7 @@ export default function FeedbackAssist() {
                                 <div className="bg-primary-600 p-6 text-white">
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-3">
-                                            <Sparkles className="w-6 h-6" />
+                                            <Bot className="w-6 h-6" />
                                             <h3 className="text-xl font-bold">Generated Feedback</h3>
                                         </div>
                                         <div className="text-xs bg-white/20 px-3 py-1 rounded-full border border-white/20 backdrop-blur-md">
@@ -376,7 +376,7 @@ export default function FeedbackAssist() {
                     ) : (
                         <div className="h-full min-h-[500px] flex flex-col items-center justify-center text-center p-12 bg-gray-50 dark:bg-gray-900/50 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-800">
                             <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
-                                <Sparkles className="w-10 h-10 text-gray-300" />
+                                <Bot className="w-10 h-10 text-gray-300" />
                             </div>
                             <h3 className="text-xl font-bold text-gray-400 mb-2">Waiting for Observation Notes</h3>
                             <p className="text-gray-400 max-w-sm">Fill in the details on the left to generate specific mentorship feedback and growth plans.</p>

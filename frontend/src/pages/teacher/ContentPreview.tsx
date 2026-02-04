@@ -21,7 +21,7 @@ import {
     ChevronUp,
     Play,
     CheckCircle,
-    Sparkles
+    Bot
 } from 'lucide-react'
 import { contentApi } from '../../services/api'
 import MarkdownRenderer from '../../components/common/MarkdownRenderer'
@@ -286,7 +286,7 @@ export default function ContentPreview() {
                         {sections.length > 1 && (
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <Sparkles className="w-4 h-4 text-purple-500" />
+                                    <Bot className="w-4 h-4 text-purple-500" />
                                     <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                                         {sections.length} sections
                                     </span>

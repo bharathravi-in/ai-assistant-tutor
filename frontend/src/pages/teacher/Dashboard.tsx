@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-    Sparkles,
+    Bot,
     MessageSquare,
     History,
     BookOpen,
@@ -139,7 +139,7 @@ export default function TeacherDashboard() {
                     <div className="relative flex flex-col lg:flex-row items-center justify-between gap-8">
                         <div className="flex items-center gap-6">
                             <div className="w-16 h-16 rounded-[22px] bg-white/20 backdrop-blur-md flex items-center justify-center shadow-lg border border-white/20">
-                                <Sparkles className="w-8 h-8 text-white" />
+                                <Bot className="w-8 h-8 text-white" />
                             </div>
                             <div>
                                 <h1 className="text-2xl lg:text-4xl font-black text-white leading-tight">

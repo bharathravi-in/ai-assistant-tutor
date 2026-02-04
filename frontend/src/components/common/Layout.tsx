@@ -11,7 +11,7 @@ import {
     X,
     GraduationCap,
     HelpCircle,
-    Sparkles,
+    Bot,
     Building2,
     CreditCard,
     Settings,
@@ -81,7 +81,7 @@ export default function Layout({ children }: LayoutProps) {
                 { icon: Home, label: 'Dashboard', path: '/superadmin' },
                 { icon: Building2, label: 'Organizations', path: '/superadmin/organizations' },
                 { icon: CreditCard, label: 'Plans', path: '/superadmin/plans' },
-                { icon: Sparkles, label: 'AI Settings', path: '/superadmin/ai-settings' },
+                { icon: Bot, label: 'AI Settings', path: '/superadmin/ai-settings' },
                 // { icon: MessageSquare, label: 'Direct Chat', path: '/messages' },
                 { icon: Settings, label: 'Settings', path: '/superadmin/settings' },
             ]
@@ -131,7 +131,7 @@ export default function Layout({ children }: LayoutProps) {
             { icon: MessageSquare, label: 'Ask AI', path: '/teacher/ask-question' },
             { icon: MessagesSquare, label: 'Chat', path: '/teacher/chat' },
             { icon: History, label: t('nav.history'), path: '/teacher/history' },
-            { icon: BarChart3, label: 'Analytics', path: '/analytics' },
+            // { icon: BarChart3, label: 'Analytics', path: '/analytics' },
             { icon: PenTool, label: 'My Creations', path: '/teacher/my-content' },
             { icon: Library, label: 'Browse Library', path: '/content/browse' },
             { icon: ClipboardList, label: 'Surveys', path: '/teacher/feedback-inbox' },
@@ -333,7 +333,7 @@ export default function Layout({ children }: LayoutProps) {
 
                                     <div>
                                         <h4 className="text-sm font-medium text-[#1C1C1E] dark:text-white mb-4 flex items-center gap-2">
-                                            <Sparkles className="w-4 h-4 text-[#007AFF]" />
+                                            <Bot className="w-4 h-4 text-[#007AFF]" />
                                             Key Features
                                         </h4>
                                         <div className="grid grid-cols-2 gap-3">

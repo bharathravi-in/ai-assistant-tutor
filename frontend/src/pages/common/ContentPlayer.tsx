@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft, Loader2, AlertCircle, Sparkles, Languages, Monitor, Mic, Volume2 } from 'lucide-react'
+import { ChevronLeft, Loader2, AlertCircle, Bot, Languages, Monitor, Mic, Volume2 } from 'lucide-react'
 import { contentApi, tutorApi } from '../../services/api'
 import AITutorPanel from '../../components/tutor/AITutorPanel'
 import { useSystemTest, SystemCheckResult } from '../../hooks/useSystemTest'
@@ -210,7 +210,7 @@ const ContentPlayer: React.FC = () => {
             <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 dark:bg-black gap-6 transition-colors duration-300">
                 <div className="relative">
                     <div className="w-20 h-20 border-4 border-yellow-500/20 border-t-yellow-500 rounded-full animate-spin" />
-                    <Sparkles className="w-8 h-8 text-yellow-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                    <Bot className="w-8 h-8 text-yellow-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
                 </div>
                 <p className="text-yellow-600 dark:text-yellow-500 font-black uppercase tracking-[0.3em] text-xs">Pathshala Guru is arriving...</p>
             </div>
@@ -248,7 +248,7 @@ const ContentPlayer: React.FC = () => {
                     {/* Brand Header */}
                     <div className="flex flex-col items-center gap-6 animate-in fade-in slide-in-from-top duration-700">
                         <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-yellow-500/40 transform hover:rotate-12 transition-transform duration-500">
-                            <Sparkles className="w-10 h-10 text-black animate-pulse" />
+                            <Bot className="w-10 h-10 text-black animate-pulse" />
                         </div>
                         <div className="space-y-2">
                             <span className="text-yellow-600 dark:text-yellow-500 font-black uppercase tracking-[0.4em] text-[10px]">Session Preparation</span>
@@ -305,7 +305,7 @@ const ContentPlayer: React.FC = () => {
                                     }}
                                     className="flex items-center justify-center gap-3 px-8 py-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 text-zinc-800 dark:text-zinc-400 font-black rounded-[20px] hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:border-yellow-500/50 transition-all uppercase tracking-widest text-[9px] shadow-sm"
                                 >
-                                    <Sparkles className="w-4 h-4 text-yellow-500" />
+                                    <Bot className="w-4 h-4 text-yellow-500" />
                                     Try Interactive Mode
                                 </button>
                             </div>
@@ -436,7 +436,7 @@ const ContentPlayer: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-3 px-6 py-3 bg-yellow-500 text-black rounded-2xl shadow-gold animate-in fade-in duration-500">
-                        <Sparkles className="w-4 h-4" />
+                        <Bot className="w-4 h-4" />
                         <span className="text-[11px] font-black uppercase tracking-[0.2em]">PATHSHALA AI</span>
                     </div>
                 </div>
@@ -481,7 +481,7 @@ const ContentPlayer: React.FC = () => {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-3xl p-8 space-y-4">
                                                 <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-black">
-                                                    <Sparkles className="w-6 h-6" />
+                                                    <Bot className="w-6 h-6" />
                                                 </div>
                                                 <h4 className="text-xl font-bold text-emerald-600 dark:text-emerald-400">Interactive Task</h4>
                                                 <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">Follow the instructions above to complete this hands-on activity with your students.</p>
@@ -504,7 +504,7 @@ const ContentPlayer: React.FC = () => {
                                 <div className="relative">
                                     <div className="w-48 h-48 bg-zinc-50 dark:bg-zinc-900 rounded-[56px] flex items-center justify-center border border-zinc-100 dark:border-white/5 shadow-xl dark:shadow-2xl relative z-10 group transition-colors">
                                         <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-[56px]" />
-                                        <Sparkles className="w-16 h-16 text-yellow-500 animate-pulse-slow" />
+                                        <Bot className="w-16 h-16 text-yellow-500 animate-pulse-slow" />
                                         <div className="absolute inset-[-8px] border-2 border-dashed border-yellow-500/20 rounded-[64px] animate-[spin_10s_linear_infinite]" />
                                     </div>
 

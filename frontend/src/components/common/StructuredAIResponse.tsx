@@ -11,7 +11,7 @@ import {
     ChevronDown,
     Wrench,
     ListChecks,
-    Sparkles,
+    Bot,
     Loader2,
     ChevronRight,
     Calculator,
@@ -755,7 +755,7 @@ function QuestionCard({
                             </>
                         ) : (
                             <>
-                                <Sparkles className="w-4 h-4" />
+                                <Bot className="w-4 h-4" />
                                 Get Answer
                             </>
                         )}
@@ -765,7 +765,7 @@ function QuestionCard({
                     {showAnswer && answer && (
                         <div className="mt-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700">
                             <div className="flex items-center gap-2 mb-2">
-                                <Sparkles className="w-4 h-4 text-green-600" />
+                                <Bot className="w-4 h-4 text-green-600" />
                                 <span className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase">AI Answer</span>
                             </div>
                             <div className="text-sm text-gray-700 dark:text-gray-300">

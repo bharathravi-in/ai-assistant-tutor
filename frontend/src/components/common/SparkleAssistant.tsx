@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import {
-    Sparkles,
+    Bot,
     Mic,
     MicOff,
     Volume2,
@@ -219,7 +219,7 @@ export default function SparkleAssistant({
                     onClick={() => setIsMinimized(false)}
                     className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 shadow-2xl flex items-center justify-center animate-pulse hover:scale-110 transition-transform"
                 >
-                    <Sparkles className="w-8 h-8 text-white" />
+                    <Bot className="w-8 h-8 text-white" />
                 </button>
             ) : (
                 // Full assistant panel
@@ -234,7 +234,7 @@ export default function SparkleAssistant({
                                     }`} />
                                 <div className={`absolute inset-0 rounded-full ${avatarState === 'thinking' ? 'animate-spin border-2 border-white/30 border-t-white' : ''
                                     }`} style={{ animationDuration: '1s' }} />
-                                <Sparkles className={`w-6 h-6 text-white relative z-10 ${avatarState === 'speaking' ? 'animate-bounce' : ''
+                                <Bot className={`w-6 h-6 text-white relative z-10 ${avatarState === 'speaking' ? 'animate-bounce' : ''
                                     }`} />
                                 {/* Speaking indicator waves */}
                                 {avatarState === 'speaking' && (
@@ -305,7 +305,7 @@ export default function SparkleAssistant({
                                     : 'bg-gray-200 dark:bg-gray-700'
                                     }`}>
                                     {msg.role === 'assistant'
-                                        ? <Sparkles className="w-4 h-4 text-white" />
+                                        ? <Bot className="w-4 h-4 text-white" />
                                         : <MessageCircle className="w-4 h-4 text-gray-500" />
                                     }
                                 </div>
@@ -330,7 +330,7 @@ export default function SparkleAssistant({
                         {isLoading && (
                             <div className="flex gap-3">
                                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
-                                    <Sparkles className="w-4 h-4 text-white animate-pulse" />
+                                    <Bot className="w-4 h-4 text-white animate-pulse" />
                                 </div>
                                 <div className="bg-white dark:bg-gray-800 shadow-md border border-gray-100 dark:border-gray-700 px-4 py-3 rounded-2xl">
                                     <div className="flex items-center gap-2">

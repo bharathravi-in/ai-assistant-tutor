@@ -13,7 +13,7 @@ import {
     Download,
     Share2,
     Send,
-    Sparkles,
+    Bot,
     MessageSquare,
     Loader2,
     User,
@@ -540,7 +540,7 @@ export default function ResourcePlayer() {
                                     : 'text-gray-500 hover:text-gray-700'
                                     }`}
                             >
-                                <Sparkles className="w-4 h-4" /> Summary
+                                <Bot className="w-4 h-4" /> Summary
                             </button>
                             <button
                                 onClick={() => setActiveTab('chat')}
@@ -597,7 +597,7 @@ export default function ResourcePlayer() {
                                             <div key={idx} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                                 {msg.role === 'assistant' && (
                                                     <div className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center flex-shrink-0">
-                                                        <Sparkles className="w-3 h-3 text-white" />
+                                                        <Bot className="w-3 h-3 text-white" />
                                                     </div>
                                                 )}
                                                 <div className={`max-w-[85%] px-3 py-2 rounded-xl text-sm ${msg.role === 'user'
@@ -616,7 +616,7 @@ export default function ResourcePlayer() {
                                         {loadingChat && (
                                             <div className="flex gap-2 justify-start">
                                                 <div className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center flex-shrink-0">
-                                                    <Sparkles className="w-3 h-3 text-white" />
+                                                    <Bot className="w-3 h-3 text-white" />
                                                 </div>
                                                 <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-xl">
                                                     <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
@@ -664,7 +664,7 @@ export default function ResourcePlayer() {
                     
                     {/* Button */}
                     <div className="relative w-14 h-14 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 rounded-full flex items-center justify-center shadow-xl transform transition-all group-hover:scale-110">
-                        <Sparkles className="w-7 h-7 text-white" />
+                        <Bot className="w-7 h-7 text-white" />
                     </div>
                     
                     {/* Sparkle particles */}

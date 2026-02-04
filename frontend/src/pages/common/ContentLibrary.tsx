@@ -11,7 +11,7 @@ import {
     User,
     Filter,
     Loader2,
-    Sparkles,
+    Bot,
     BookOpen,
     X,
     Download,
@@ -202,7 +202,7 @@ export default function ContentLibrary() {
                     type="submit"
                     className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-colors flex items-center gap-2"
                 >
-                    <Sparkles className="w-5 h-5" />
+                    <Bot className="w-5 h-5" />
                     Search
                 </button>
             </form>

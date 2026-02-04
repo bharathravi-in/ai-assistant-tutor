@@ -8,7 +8,7 @@ import {
     Share2,
     Copy,
     Check,
-    Sparkles,
+    Bot,
     ClipboardList,
     BookOpen,
     Volume2,
@@ -232,7 +232,7 @@ export default function AIResponse() {
                     <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
-                                <Sparkles className="w-4 h-4 text-white" />
+                                <Bot className="w-4 h-4 text-white" />
                             </div>
                             <span className="font-semibold text-gray-900 dark:text-white">AI Assistant</span>
                         </div>
@@ -358,7 +358,7 @@ export default function AIResponse() {
                     {isTopicBased && !isError && (
                         <div className="px-6 pb-6">
                             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-2">
-                                <Sparkles className="w-4 h-4 text-purple-500" />
+                                <Bot className="w-4 h-4 text-purple-500" />
                                 Quick Actions
                             </h3>
 

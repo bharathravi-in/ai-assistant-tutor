@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
     ArrowLeft,
-    Sparkles,
+    Bot,
     Mic,
     MicOff,
     FileText,
@@ -36,7 +36,7 @@ const creationModes = [
         titleHi: 'त्वरित बनाएं',
         description: 'Just tell me what you want to teach',
         descriptionHi: 'बस बताएं कि आप क्या पढ़ाना चाहते हैं',
-        icon: Sparkles,
+        icon: Bot,
         color: 'from-blue-500 to-indigo-600',
         bgColor: 'bg-blue-50 dark:bg-blue-900/20'
     },
@@ -430,7 +430,7 @@ export default function SimpleContentCreator() {
         <div className="max-w-2xl mx-auto">
             <div className="text-center mb-6">
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto mb-4">
-                    <Sparkles className="w-8 h-8 text-white" />
+                    <Bot className="w-8 h-8 text-white" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                     {isHindi ? 'बस बताएं कि आप क्या पढ़ाना चाहते हैं' : 'Just tell me what you want to teach'}

@@ -8,7 +8,7 @@ import {
     Clock,
     MessageSquare,
     ExternalLink,
-    Sparkles,
+    Bot,
     MessageCircle
 } from 'lucide-react'
 import { teacherApi } from '../../services/api'
@@ -175,7 +175,7 @@ export default function TeacherHistory() {
                                     }`}
                             >
                                 <div className="flex items-center justify-center gap-2">
-                                    <Sparkles className="w-4 h-4" />
+                                    <Bot className="w-4 h-4" />
                                     ASK AI
                                 </div>
                             </button>
@@ -338,7 +338,7 @@ function EmptyState({ title, description, actionText, onAction }: { title: strin
     return (
         <div className="text-center py-20 bg-white dark:bg-[#1C1C1E] rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm">
             <div className="w-20 h-20 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mx-auto mb-6">
-                <Sparkles className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+                <Bot className="w-10 h-10 text-blue-600 dark:text-blue-400" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{title}</h3>
             <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">

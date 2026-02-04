@@ -3,7 +3,7 @@ import {
     Mic,
     MicOff,
     VolumeX,
-    Sparkles,
+    Bot,
     Loader2,
     X,
     Settings,
@@ -317,7 +317,7 @@ export function FloatingVoiceAssistant({
                         <div className={`absolute inset-4 rounded-full bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 flex items-center justify-center shadow-2xl ${
                             isSpeaking ? 'animate-pulse' : ''
                         }`}>
-                            <Sparkles className={`w-12 h-12 text-white ${isListening ? 'animate-bounce' : ''}`} />
+                            <Bot className={`w-12 h-12 text-white ${isListening ? 'animate-bounce' : ''}`} />
                         </div>
 
                         {/* Voice waves when speaking */}

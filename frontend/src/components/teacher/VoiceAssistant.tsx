@@ -9,7 +9,7 @@ import {
     Globe,
     ArrowLeft,
     Loader2,
-    Sparkles,
+    Bot,
     Hand,
     BookOpen,
     Zap,
@@ -348,7 +348,7 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
                     <span className="hidden sm:inline">Back</span>
                 </button>
                 <div className="flex items-center gap-2">
-                    <Sparkles className="w-6 h-6 text-purple-300" />
+                    <Bot className="w-6 h-6 text-purple-300" />
                     <h1 className="text-xl font-bold text-white">AI Teaching Assistant</h1>
                 </div>
                 <div className="flex items-center gap-3">
@@ -401,7 +401,7 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
                             ${isSpeaking ? 'ring-4 ring-green-400/50' : ''}
                         `}>
                             <div className="text-5xl lg:text-6xl text-white">
-                                {isProcessing ? (<Loader2 className="w-12 h-12 lg:w-16 lg:h-16 animate-spin" />) : isListening ? (<Mic className="w-12 h-12 lg:w-16 lg:h-16" />) : isSpeaking ? (<Volume2 className="w-12 h-12 lg:w-16 lg:h-16" />) : (<Sparkles className="w-12 h-12 lg:w-16 lg:h-16" />)}
+                                {isProcessing ? (<Loader2 className="w-12 h-12 lg:w-16 lg:h-16 animate-spin" />) : isListening ? (<Mic className="w-12 h-12 lg:w-16 lg:h-16" />) : isSpeaking ? (<Volume2 className="w-12 h-12 lg:w-16 lg:h-16" />) : (<Bot className="w-12 h-12 lg:w-16 lg:h-16" />)}
                             </div>
                         </div>
 

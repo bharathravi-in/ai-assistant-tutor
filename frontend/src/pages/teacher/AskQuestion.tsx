@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
     Send,
     Loader2,
-    Sparkles,
+    Bot,
     ChevronRight,
     Lightbulb,
     Clock,
@@ -569,7 +569,7 @@ export default function AskQuestion() {
                     <div className="mb-8">
                         <div className="flex items-center gap-3 mb-2">
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                                <Sparkles className="w-5 h-5 text-white" />
+                                <Bot className="w-5 h-5 text-white" />
                             </div>
                             <div>
                                 <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Ask AI Assistant</h1>
@@ -899,7 +899,7 @@ export default function AskQuestion() {
                                 <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-700">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                                            <Sparkles className="w-5 h-5 text-white" />
+                                            <Bot className="w-5 h-5 text-white" />
                                         </div>
                                         <div>
                                             <h3 className="font-semibold text-gray-900 dark:text-white">AI Response</h3>
@@ -1456,7 +1456,7 @@ export default function AskQuestion() {
                     className="fixed bottom-6 right-6 w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 shadow-2xl shadow-purple-500/30 flex items-center justify-center hover:scale-110 transition-all z-40 group"
                     title="Voice Assistant"
                 >
-                    <Sparkles className="w-7 h-7 text-white group-hover:animate-pulse" />
+                    <Bot className="w-7 h-7 text-white group-hover:animate-pulse" />
                     <span className="absolute -top-2 -right-2 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
                         <Mic className="w-3 h-3 text-white" />
                     </span>
