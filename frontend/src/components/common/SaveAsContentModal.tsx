@@ -24,6 +24,7 @@ import { contentApi } from '../../services/api'
 interface SaveAsContentModalProps {
     isOpen: boolean
     onClose: () => void
+    onSuccess?: () => void  // Callback when content is saved successfully
     aiResponse: {
         content: string
         structured?: any
@@ -113,6 +114,7 @@ const contentTypeOptions = [
 export default function SaveAsContentModal({
     isOpen,
     onClose,
+    onSuccess,
     aiResponse,
     originalQuery,
     grade,
@@ -252,6 +254,10 @@ export default function SaveAsContentModal({
             }
 
             setStep('success')
+            // Notify parent that content was saved successfully
+            if (onSuccess) {
+                onSuccess()
+            }
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Failed to save content. Please try again.')
             setStep('details')

@@ -6,6 +6,28 @@ import AITutorPanel from '../../components/tutor/AITutorPanel'
 import { useSystemTest, SystemCheckResult } from '../../hooks/useSystemTest'
 import MarkdownRenderer from '../../components/common/MarkdownRenderer'
 
+// Utility to convert inline bullet points to proper markdown list format
+const formatContent = (text: string): string => {
+    if (!text) return ''
+
+    // Split by bullet character and filter empty strings
+    const parts = text.split(/\s*[•●■▪]\s*/)
+
+    // If there are multiple parts, it's an inline bullet list
+    if (parts.length > 1) {
+        const items = parts.filter(p => p.trim().length > 0)
+        // Check if items are actual list items (short phrases)
+        const averageLength = items.reduce((sum, item) => sum + item.length, 0) / items.length
+
+        // Only convert if items are reasonably short (typically list items)
+        if (averageLength < 200 && items.length > 1) {
+            return items.map(item => `- ${item.trim()}`).join('\n')
+        }
+    }
+
+    return text
+}
+
 const ContentPlayer: React.FC = () => {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
@@ -139,12 +161,14 @@ const ContentPlayer: React.FC = () => {
         }
     };
 
-    // Auto-trigger enhancement if in SCORM mode but no sections exist
+    // Auto-trigger enhancement if in SCORM mode or PDF mode but no sections exist
+    const hasPdfUrl = content?.pdf_url && !isScormMode;
     useEffect(() => {
-        if (isScormMode && sections.length === 0 && !isProcessingPdf && content && !error && isSystemTestDone) {
+        if ((isScormMode || hasPdfUrl) && sections.length === 0 && !isProcessingPdf && content && !error && isSystemTestDone) {
             handleEnhanceContent();
         }
-    }, [isScormMode, sections.length, isProcessingPdf, content, error, isSystemTestDone]);
+    }, [isScormMode, hasPdfUrl, sections.length, isProcessingPdf, content, error, isSystemTestDone]);
+
 
     if (loading) {
         return (
@@ -358,7 +382,7 @@ const ContentPlayer: React.FC = () => {
 
             {/* Main Interactive Content */}
             <div className="flex-1 flex overflow-hidden">
-                <div className="flex-1 bg-zinc-100 dark:bg-black relative overflow-hidden flex flex-col items-center justify-center p-12 pb-36 transition-colors duration-300">
+                <div className="flex-1 bg-zinc-100 dark:bg-black relative overflow-hidden flex flex-col items-center justify-center p-6 pb-12 transition-colors duration-300">
                     {/* Immersive View Styling */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-yellow-500/5 rounded-full blur-[150px] pointer-events-none opacity-50" />
 
@@ -370,7 +394,7 @@ const ContentPlayer: React.FC = () => {
                                 title={content.title}
                             />
                         ) : isScormMode && sections.length > 0 ? (
-                            <div className="w-full h-full bg-white dark:bg-black p-12 overflow-y-auto custom-scrollbar flex flex-col pointer-events-auto transition-colors">
+                            <div className="w-full h-full bg-white dark:bg-black p-4 md:p-12 overflow-y-auto custom-scrollbar flex flex-col pointer-events-auto transition-colors">
                                 <div className="max-w-4xl mx-auto w-full space-y-10 py-10">
                                     <div className="space-y-4">
                                         <div className="flex items-center gap-3">
@@ -379,15 +403,15 @@ const ContentPlayer: React.FC = () => {
                                             </span>
                                             <div className="h-[1px] flex-1 bg-gradient-to-r from-yellow-500/30 to-transparent" />
                                         </div>
-                                        <h2 className="text-5xl font-black text-zinc-900 dark:text-white tracking-tighter leading-tight">
+                                        <h2 className="text-3xl md:text-5xl font-black text-zinc-900 dark:text-white tracking-tighter leading-tight">
                                             {sections[activeSectionIndex]?.title}
                                         </h2>
                                     </div>
 
-                                    <div className="bg-white dark:bg-zinc-900 rounded-[40px] p-10 border border-zinc-100 dark:border-white/5 shadow-xl dark:shadow-2xl relative overflow-hidden group/card min-h-[400px] transition-colors">
+                                    <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-6 md:p-10 border border-zinc-100 dark:border-white/5 shadow-xl dark:shadow-2xl relative overflow-hidden group/card min-h-[300px] transition-colors">
                                         <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
-                                        <div className="relative z-10 prose dark:prose-invert prose-xl max-w-none prose-p:text-zinc-600 dark:prose-p:text-zinc-400 prose-headings:text-zinc-900 dark:prose-headings:text-white prose-strong:text-yellow-600 dark:prose-strong:text-yellow-500 tracking-tight transition-colors">
-                                            <MarkdownRenderer content={sections[activeSectionIndex]?.content} />
+                                        <div className="relative z-10 prose dark:prose-invert prose-lg md:prose-xl max-w-none prose-p:text-zinc-600 dark:prose-p:text-zinc-400 prose-headings:text-zinc-900 dark:prose-headings:text-white prose-strong:text-yellow-600 dark:prose-strong:text-yellow-500 tracking-tight transition-colors prose-ul:list-disc prose-li:my-1">
+                                            <MarkdownRenderer content={formatContent(sections[activeSectionIndex]?.content)} />
                                         </div>
                                     </div>
 

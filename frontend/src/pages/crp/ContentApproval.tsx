@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
     CheckCircle,
     XCircle,
@@ -14,18 +15,26 @@ import {
     MessageSquare,
     Filter,
     ChevronDown,
-    ChevronUp
+    ChevronUp,
+    ExternalLink,
+    BookOpen,
+    Zap,
+    BookMarked
 } from 'lucide-react'
 import { contentApi } from '../../services/api'
+import { useAuthStore } from '../../stores/authStore'
 import MarkdownRenderer from '../../components/common/MarkdownRenderer'
 
-// Content type icons
+// Content type icons - expanded to match all 8 types
 const contentTypeIcons: Record<string, any> = {
     lesson_plan: FileText,
+    explanation: BookOpen,
     activity: Activity,
     tlm: Palette,
+    quick_reference: Zap,
     assessment: ClipboardCheck,
     worksheet: FileSpreadsheet,
+    study_guide: BookMarked,
 }
 
 interface Content {
@@ -42,11 +51,16 @@ interface Content {
 }
 
 export default function ContentApproval() {
+    const navigate = useNavigate()
+    const { user } = useAuthStore()
     const [contents, setContents] = useState<Content[]>([])
     const [loading, setLoading] = useState(true)
     const [contentTypeFilter, setContentTypeFilter] = useState('')
     const [totalPages, setTotalPages] = useState(1)
     const [currentPage, setCurrentPage] = useState(1)
+
+    // Determine base path based on user role
+    const basePath = user?.role?.toLowerCase() === 'arp' ? '/arp' : '/crp'
 
     // Review state
     const [reviewingId, setReviewingId] = useState<number | null>(null)
@@ -273,10 +287,17 @@ export default function ContentApproval() {
                                 ) : (
                                     <div className="px-5 pb-5 border-t border-gray-100 dark:border-gray-700 pt-4 flex items-center gap-3">
                                         <button
-                                            onClick={() => setReviewingId(content.id)}
+                                            onClick={() => navigate(`${basePath}/content-review/${content.id}`)}
                                             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700"
                                         >
-                                            Review Content
+                                            <ExternalLink className="w-4 h-4" />
+                                            Open Full Review
+                                        </button>
+                                        <button
+                                            onClick={() => setReviewingId(content.id)}
+                                            className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                                        >
+                                            Quick Review
                                         </button>
                                     </div>
                                 )}
@@ -294,8 +315,8 @@ export default function ContentApproval() {
                             key={page}
                             onClick={() => setCurrentPage(page)}
                             className={`w-10 h-10 rounded-lg font-medium transition-colors ${currentPage === page
-                                    ? 'bg-blue-500 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                 }`}
                         >
                             {page}

@@ -31,21 +31,28 @@ import {
     Calendar,
     MessagesSquare,
     Clipboard,
-    ClipboardList
+    ClipboardList,
+    Globe,
+    Moon,
+    Sun
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
+import { useAppLanguages } from '../../hooks/useAppLanguages'
 
 interface LayoutProps {
     children: React.ReactNode
 }
 
 export default function Layout({ children }: LayoutProps) {
-    const { t } = useTranslation()
+    const { t, i18n } = useTranslation()
     const location = useLocation()
     const { user } = useAuthStore()
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
     const [helpOpen, setHelpOpen] = useState(false)
+
+    const { languages, changeLanguage } = useAppLanguages()
+    const [darkMode, setDarkMode] = useState(document.documentElement.classList.contains('dark'))
 
     // Auto collapse on smaller desktop screens
     useEffect(() => {
@@ -59,6 +66,13 @@ export default function Layout({ children }: LayoutProps) {
         return () => window.removeEventListener('resize', handleResize)
     }, [])
 
+    const toggleDarkMode = () => {
+        const newMode = !darkMode
+        setDarkMode(newMode)
+        document.documentElement.classList.toggle('dark')
+        localStorage.setItem('theme', newMode ? 'dark' : 'light')
+    }
+
     const getNavItems = () => {
         const role = user?.role?.toLowerCase()
 
@@ -68,7 +82,7 @@ export default function Layout({ children }: LayoutProps) {
                 { icon: Building2, label: 'Organizations', path: '/superadmin/organizations' },
                 { icon: CreditCard, label: 'Plans', path: '/superadmin/plans' },
                 { icon: Sparkles, label: 'AI Settings', path: '/superadmin/ai-settings' },
-                { icon: MessageSquare, label: 'Direct Chat', path: '/messages' },
+                // { icon: MessageSquare, label: 'Direct Chat', path: '/messages' },
                 { icon: Settings, label: 'Settings', path: '/superadmin/settings' },
             ]
         }
@@ -81,8 +95,8 @@ export default function Layout({ children }: LayoutProps) {
                 { icon: Users, label: 'Users', path: '/admin/users' },
                 { icon: Building2, label: 'Schools', path: '/admin/schools' },
                 { icon: BookOpen, label: 'Create Resource', path: '/admin/resources/create' },
-                { icon: MessageSquare, label: 'Direct Chat', path: '/messages' },
-                { icon: Settings, label: 'Settings', path: '/admin/settings' },
+                // { icon: MessageSquare, label: 'Direct Chat', path: '/messages' },
+                // { icon: Settings, label: 'Settings', path: '/admin/settings' },
             ]
         }
 
@@ -105,8 +119,8 @@ export default function Layout({ children }: LayoutProps) {
                 )
             }
             navItems.push(
-                { icon: MessageSquare, label: 'Direct Chat', path: '/messages' },
-                { icon: Settings, label: 'Settings', path: `/${basePath}/settings` }
+                { icon: MessageSquare, label: 'Connect', path: '/messages' },
+                // { icon: Settings, label: 'Settings', path: `/${basePath}/settings` }
             )
             return navItems
         }
@@ -121,8 +135,8 @@ export default function Layout({ children }: LayoutProps) {
             { icon: Library, label: 'Browse Library', path: '/content/browse' },
             { icon: ClipboardList, label: 'Surveys', path: '/teacher/feedback-inbox' },
             { icon: Calendar, label: 'CRP Visits', path: '/teacher/my-visits' },
-            { icon: MessageSquare, label: 'Direct Chat', path: '/messages' },
-            { icon: Settings, label: 'Settings', path: '/teacher/settings' }
+            { icon: MessageSquare, label: 'Connect with CRP', path: '/messages' },
+            // { icon: Settings, label: 'Settings', path: '/teacher/settings' }
         ]
     }
 
@@ -230,11 +244,42 @@ export default function Layout({ children }: LayoutProps) {
 
                         {/* Desktop header content */}
                         <div className="hidden lg:flex items-center gap-4">
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#E5E5EA] dark:bg-white/10">
+                            {/* <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#E5E5EA] dark:bg-white/10">
                                 <div className="w-2 h-2 rounded-full bg-[#007AFF] animate-pulse" />
                                 <span className="text-sm text-[#1C1C1E] dark:text-[#8E8E93] font-medium">AI Ready</span>
-                            </div>
+                            </div> */}
 
+                            {/* <div className="w-px h-8 bg-gray-100 dark:bg-white/10 mx-1" /> */}
+
+                            {/* New Header Settings */}
+                            {/* <div className="flex items-center gap-1">
+                                
+                            </div> */}
+
+                            {/* <div className="w-px h-8 bg-gray-100 dark:bg-white/10 mx-1" /> */}
+                            <button
+                                onClick={toggleDarkMode}
+                                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500 transition-colors"
+                                title={darkMode ? 'Light Mode' : 'Dark Mode'}
+                            >
+                                {darkMode ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-indigo-500" />}
+                            </button>
+
+                            <div className="relative group p-2">
+                                <Globe className="w-5 h-5 text-emerald-500 cursor-pointer" />
+                                <select
+                                    value={i18n.language}
+                                    onChange={(e) => changeLanguage(e.target.value)}
+                                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                    title="Change Language"
+                                >
+                                    {languages.map(lang => (
+                                        <option key={lang.code} value={lang.code} className="dark:bg-gray-800">
+                                            {lang.native_name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                             <NotificationBell />
 
                             <button
@@ -245,7 +290,7 @@ export default function Layout({ children }: LayoutProps) {
                                 <HelpCircle className="w-5 h-5" />
                             </button>
 
-                            <div className="w-px h-8 bg-gray-100 dark:bg-white/10 mx-2" />
+                            {/* <div className="w-px h-8 bg-gray-100 dark:bg-white/10 mx-2" /> */}
                             <UserProfileMenu />
                         </div>
                         <div className="w-10 lg:hidden" />

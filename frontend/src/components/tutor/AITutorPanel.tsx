@@ -18,7 +18,8 @@ import {
     History,
     RotateCcw,
     Settings,
-    Languages
+    Languages,
+    Square
 } from 'lucide-react'
 import { useTTS } from '../../hooks/useTTS'
 import { useVoiceRecognition } from '../../hooks/useVoiceRecognition'
@@ -39,6 +40,63 @@ interface AITutorPanelProps {
     onSectionChange?: (sectionId: string) => void
     onLanguageChange?: (lang: string) => void
     language?: string
+}
+
+// Utility to strip markdown formatting for TTS and clean display
+const stripMarkdown = (text: string): string => {
+    if (!text) return ''
+    return text
+        .replace(/<[^>]*>/g, '')             // HTML tags
+        .replace(/[#*_~`]/g, '')             // Basic markdown 
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1') // Links
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '')   // Images
+        .replace(/^[>-]\s+/gm, '')           // Blockquotes/Lists
+        .replace(/\n\s*\n/g, '\n')           // Extra newlines
+        .trim()
+}
+
+// Utility to convert inline bullet points to proper markdown list format
+// Handles: "• item1 • item2 • item3" -> "- item1\n- item2\n- item3"
+const formatContent = (text: string): string => {
+    if (!text) return ''
+
+    // Split by bullet character and filter empty strings
+    const parts = text.split(/\s*[•●■▪]\s*/)
+
+    // If there are multiple parts, it's an inline bullet list
+    if (parts.length > 1) {
+        const items = parts.filter(p => p.trim().length > 0)
+        // Check if items are actual list items (short phrases)
+        const averageLength = items.reduce((sum, item) => sum + item.length, 0) / items.length
+
+        // Only convert if items are reasonably short (typically list items)
+        if (averageLength < 200 && items.length > 1) {
+            return items.map(item => `- ${item.trim()}`).join('\n')
+        }
+    }
+
+    return text
+}
+
+// Sanitize AI response to handle errors and HTML content
+const sanitizeResponse = (text: string): string => {
+    if (!text) return 'No response received.'
+
+    // Check for HTML error pages (502, 503, etc.)
+    if (text.includes('<html') || text.includes('<!DOCTYPE') || text.includes('<head>')) {
+        // Extract error message if possible
+        const titleMatch = text.match(/<title>([^<]+)<\/title>/i)
+        const h1Match = text.match(/<h1>([^<]+)<\/h1>/i)
+        const errorMsg = h1Match?.[1] || titleMatch?.[1] || 'Service unavailable'
+        return `The AI service is temporarily unavailable (${errorMsg}). Please try again in a moment.`
+    }
+
+    // Check for OpenAI exception messages
+    if (text.includes('OpenAIException') || text.includes('Error generating response')) {
+        return 'The AI service encountered an error. Please try again in a moment.'
+    }
+
+    return text
 }
 
 const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSectionChange, onLanguageChange, language = 'en' }) => {
@@ -236,15 +294,29 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
                 return
             }
 
-            const assistantMsg = { role: 'assistant', content: sectionContent }
+            // Sanitize the response to handle HTML errors and format bullets
+            const cleanedContent = sanitizeResponse(sectionContent)
+            const formattedContent = formatContent(cleanedContent)
+
+            // assistantMsg should be cleaned for speech but kept as markdown for chat
+            const assistantMsg = { role: 'assistant', content: formattedContent }
             setChatMessages(prev => [...prev, assistantMsg])
 
             if (!isMuted) {
-                speak(sectionContent)
+                speak(stripMarkdown(formattedContent))
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Tutor chat failed:', error)
-            setChatMessages(prev => [...prev, { role: 'assistant', content: "I'm sorry, I'm having trouble connecting right now. Can we try again?" }])
+            let errorMsg = "I'm sorry, I'm having trouble connecting right now."
+
+            // Handle 502/HTML errors gracefully
+            if (error.response?.data && typeof error.response.data === 'string' && error.response.data.includes('<html')) {
+                errorMsg = "The AI service is temporarily unavailable (Bad Gateway). Please try again in a moment."
+            } else if (error.message?.includes('502')) {
+                errorMsg = "The AI service is temporarily unavailable (Bad Gateway). Please try again in a moment."
+            }
+
+            setChatMessages(prev => [...prev, { role: 'assistant', content: errorMsg }])
         } finally {
             setIsThinking(false)
         }
@@ -262,6 +334,39 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
                 </div>
             )}
 
+            {/* Centered Raise Hand Question Overlay */}
+            {isHandRaised && isListening && (
+                <div className="absolute inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-3xl p-8 shadow-2xl border border-yellow-500/30 max-w-md w-full mx-4 animate-in zoom-in-95 slide-in-from-bottom-4 duration-500">
+                        <div className="flex flex-col items-center gap-6 text-center">
+                            {/* Animated Mic Icon */}
+                            <div className="relative">
+                                <div className="absolute inset-0 bg-red-500/20 rounded-full animate-ping" />
+                                <div className="relative w-20 h-20 bg-red-500 rounded-full flex items-center justify-center shadow-lg shadow-red-500/30">
+                                    <Mic className="w-10 h-10 text-white animate-pulse" />
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 className="text-xl font-black text-zinc-900 dark:text-white mb-2">Listening...</h3>
+                                <p className="text-sm text-zinc-500 dark:text-zinc-400">Ask your question clearly. The AI will respond after you're done.</p>
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    stopListening()
+                                    setIsHandRaised(false)
+                                }}
+                                className="px-6 py-3 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold rounded-2xl transition-all"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
             {/* Progress indicator */}
             <div className="w-full h-1 bg-zinc-100 dark:bg-zinc-900 flex shrink-0">
                 {sections.map((_, i) => (
@@ -271,6 +376,57 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
                     />
                 ))}
             </div>
+
+            {/* Floating User Camera Preview */}
+            {isUserCamera && stream && (
+                <div className="absolute bottom-32 right-4 z-50 animate-in slide-in-from-right-4 fade-in duration-500">
+                    <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-200 dark:border-white/10 overflow-hidden">
+                        <div className="p-2 bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-100 dark:border-white/5 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-[10px] font-black text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">You</span>
+                            </div>
+                            <button
+                                onClick={() => setIsUserCamera(false)}
+                                className="text-zinc-400 hover:text-red-500 transition-colors"
+                                title="Close Camera"
+                            >
+                                <Square className="w-3 h-3 fill-current" />
+                            </button>
+                        </div>
+                        <div className="w-32 h-24 relative">
+                            <video
+                                ref={videoRef}
+                                autoPlay
+                                muted
+                                playsInline
+                                className="w-full h-full object-cover scale-x-[-1]"
+                            />
+                            {isListening && (
+                                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 bg-red-500 text-white px-2 py-0.5 rounded-full text-[8px] font-bold uppercase animate-pulse">
+                                    Listening
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* User Avatar Fallback - when camera is off but listening */}
+            {!isUserCamera && isListening && (
+                <div className="absolute bottom-32 right-4 z-50 animate-in slide-in-from-right-4 fade-in duration-500">
+                    <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-200 dark:border-white/10 overflow-hidden">
+                        <div className="p-2 bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-100 dark:border-white/5 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                            <span className="text-[10px] font-black text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">Listening...</span>
+                        </div>
+                        <div className="w-32 h-24 bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
+                            <div className="text-3xl font-black text-black">You</div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
 
             {/* AI Avatar Section - Ultra Compact Premium */}
             <div className="px-4 py-3 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/50 backdrop-blur-md border-b border-zinc-100 dark:border-white/5 relative shrink-0">
@@ -314,18 +470,36 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <div className="bg-white dark:bg-black border border-zinc-200 dark:border-white/5 p-1.5 rounded-lg flex gap-2 shadow-sm">
-                        <Mic
-                            className={`w-3.5 h-3.5 transition-colors cursor-pointer ${isListening ? 'text-yellow-500' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
+                    {/* Stop Speaking Button - Shows only when AI is actively speaking (not paused) */}
+                    {isSpeaking && !isPaused && (
+                        <button
+                            onClick={() => stop()}
+                            className="p-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-all shadow-lg shadow-red-500/20 animate-in fade-in duration-300"
+                            title="Stop Speaking"
+                        >
+                            <Square className="w-4 h-4 fill-current" />
+                        </button>
+                    )}
+
+                    {/* Larger Mic & Camera Icons */}
+                    <div className="bg-white dark:bg-black border border-zinc-200 dark:border-white/5 p-2 rounded-xl flex gap-3 shadow-sm">
+                        <button
                             onClick={() => {
                                 if (isListening) stopListening();
                                 else startListening();
                             }}
-                        />
-                        <Camera
-                            className={`w-3.5 h-3.5 transition-colors cursor-pointer ${isUserCamera ? 'text-yellow-500' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
+                            className={`p-2 rounded-lg transition-all ${isListening ? 'bg-red-500 text-white shadow-lg shadow-red-500/20' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+                            title={isListening ? 'Stop Listening' : 'Start Listening'}
+                        >
+                            <Mic className={`w-5 h-5 ${isListening ? 'animate-pulse' : 'text-zinc-500 dark:text-zinc-400'}`} />
+                        </button>
+                        <button
                             onClick={() => setIsUserCamera(!isUserCamera)}
-                        />
+                            className={`p-2 rounded-lg transition-all ${isUserCamera ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+                            title={isUserCamera ? 'Disable Camera' : 'Enable Camera'}
+                        >
+                            <Camera className={`w-5 h-5 ${isUserCamera ? '' : 'text-zinc-500 dark:text-zinc-400'}`} />
+                        </button>
                     </div>
                 </div>
             </div>
@@ -350,8 +524,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
                             <h4 className="text-2xl font-black text-zinc-900 dark:text-white leading-tight">
                                 {currentSection?.title}
                             </h4>
-                            <div className="prose dark:prose-invert prose-p:text-zinc-600 dark:prose-p:text-zinc-400 prose-strong:text-yellow-600 dark:prose-strong:text-yellow-500 max-w-none text-base leading-relaxed transition-colors">
-                                <MarkdownRenderer content={currentSection?.content || ''} />
+                            <div className="prose dark:prose-invert prose-p:text-zinc-600 dark:prose-p:text-zinc-400 prose-strong:text-yellow-600 dark:prose-strong:text-yellow-500 max-w-none text-base leading-relaxed transition-colors prose-ul:list-disc prose-li:my-1">
+                                <MarkdownRenderer content={formatContent(currentSection?.content || '')} />
                             </div>
                         </div>
                     ) : (
@@ -380,7 +554,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
                                         ].map(text => (
                                             <button
                                                 key={text}
-                                                onClick={() => { setUserInput(text); handleSendMessage() }}
+                                                type="button"
+                                                onClick={() => { setUserInput(text); handleSendMessage(text) }}
                                                 className="text-[11px] font-bold bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/5 hover:bg-yellow-500 hover:text-black text-zinc-500 dark:text-zinc-400 px-4 py-2 rounded-full transition-all duration-300 shadow-sm hover:shadow-gold"
                                             >
                                                 "{text}"
@@ -393,7 +568,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
                                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2 duration-300`}>
                                     <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
                                         ? 'bg-yellow-500 text-black font-bold shadow-lg shadow-yellow-500/20 rounded-tr-none'
-                                        : 'bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5 text-zinc-700 dark:text-zinc-200 shadow-md dark:shadow-xl rounded-tl-none'
+                                        : 'bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5 text-zinc-700 dark:text-zinc-200 shadow-md dark:shadow-xl rounded-tl-none prose-sm prose-p:my-1 prose-ul:list-disc dark:prose-invert'
                                         } transition-colors`}>
                                         <MarkdownRenderer content={msg.content} />
                                     </div>
@@ -422,102 +597,99 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
                     <div className="absolute inset-0 bg-gradient-to-t from-white dark:from-black to-transparent pointer-events-none" />
                 )}
                 {isChatOpen ? (
-                    <form onSubmit={(e) => { e.preventDefault(); handleSendMessage() }} className="relative flex items-center gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setIsChatOpen(false)}
-                            className="p-2.5 text-zinc-400 hover:text-yellow-600 dark:hover:text-yellow-500 transition-colors bg-zinc-50 dark:bg-black rounded-full border border-zinc-200 dark:border-white/5 shadow-sm active:scale-95"
-                        >
-                            <ChevronDown className="w-5 h-5" />
-                        </button>
-                        {isListening ? (
+                    <form onSubmit={(e) => { e.preventDefault(); handleSendMessage() }} className="relative flex flex-col gap-3">
+                        {/* Chat Context Controls */}
+                        {!isListening && (
+                            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar -mx-1 px-1">
+                                <button
+                                    type="button"
+                                    onClick={() => handleNext()}
+                                    disabled={currentSectionIndex === sections.length - 1}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500 text-black rounded-full font-bold text-[10px] whitespace-nowrap hover:bg-yellow-400 disabled:opacity-30 transition-all shadow-md"
+                                >
+                                    <SkipForward className="w-3 h-3" />
+                                    Next
+                                </button>
+
+                                <div className="w-[1px] h-3 bg-zinc-200 dark:bg-white/10 mx-0.5" />
+
+                                {[
+                                    { label: 'हिन्दी', code: 'hi' },
+                                    { label: 'ಕನ್ನಡ', code: 'kn' },
+                                    { label: 'English', code: 'en' }
+                                ].map(lang => (
+                                    <button
+                                        key={lang.code}
+                                        type="button"
+                                        onClick={() => handleSendMessage(`Speak in ${lang.label}`)}
+                                        className={`px-3 py-1.5 rounded-full font-bold text-[10px] whitespace-nowrap border transition-all ${language === lang.code ? 'bg-yellow-500/10 border-yellow-500/50 text-yellow-600 dark:text-yellow-500' : 'bg-white dark:bg-black border-zinc-100 dark:border-white/5 text-zinc-400 dark:text-zinc-500'}`}
+                                    >
+                                        {lang.label}
+                                    </button>
+                                ))}
+
+                                <div className="w-[1px] h-3 bg-zinc-200 dark:bg-white/10 mx-0.5" />
+
+                                <button
+                                    type="button"
+                                    onClick={() => handleSendMessage("Repeat this section")}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-black text-zinc-500 dark:text-zinc-300 border border-zinc-200 dark:border-white/5 rounded-full font-bold text-[10px] whitespace-nowrap hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
+                                >
+                                    <RotateCcw className="w-3 h-3" />
+                                    Repeat
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="flex items-center gap-2">
                             <button
                                 type="button"
-                                onClick={() => {
-                                    stopListening();
-                                    setIsHandRaised(false);
-                                }}
-                                className="flex items-center gap-2 px-4 py-3 bg-red-500 text-white rounded-full font-black text-[10px] uppercase tracking-widest animate-pulse shadow-lg shadow-red-500/20"
+                                onClick={() => setIsChatOpen(false)}
+                                className="p-2 text-zinc-400 hover:text-yellow-600 dark:hover:text-yellow-500 transition-colors bg-zinc-50 dark:bg-black rounded-lg border border-zinc-200 dark:border-white/5 shadow-sm active:scale-95 flex-shrink-0"
                             >
-                                <Mic className="w-4 h-4" />
-                                Stop
+                                <ChevronDown className="w-5 h-5" />
                             </button>
-                        ) : (
-                            <div className="flex-1 flex flex-col gap-3">
-                                {/* Lesson Controls */}
-                                <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
-                                    <button
-                                        type="button"
-                                        onClick={() => handleNext()}
-                                        disabled={currentSectionIndex === sections.length - 1}
-                                        className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-black rounded-full font-bold text-[11px] whitespace-nowrap hover:bg-yellow-400 disabled:opacity-30 transition-all shadow-md active:scale-95"
-                                    >
-                                        <SkipForward className="w-3 h-3" />
-                                        Next
-                                    </button>
 
-                                    <div className="w-[1px] h-4 bg-zinc-100 dark:bg-white/10 mx-1" />
-
-                                    {[
-                                        { label: 'हिन्दी', code: 'hi' },
-                                        { label: 'ಕನ್ನಡ', code: 'kn' },
-                                        { label: 'English', code: 'en' }
-                                    ].map(lang => (
+                            {isListening ? (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        stopListening();
+                                        setIsHandRaised(false);
+                                    }}
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest animate-pulse shadow-lg"
+                                >
+                                    <Mic className="w-4 h-4" />
+                                    Stop Listening
+                                </button>
+                            ) : (
+                                <>
+                                    <div className="flex-1 relative">
+                                        <input
+                                            type="text"
+                                            value={userInput}
+                                            onChange={(e) => setUserInput(e.target.value)}
+                                            placeholder="Type a question..."
+                                            className="w-full bg-white dark:bg-black border border-zinc-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30 transition-all text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 shadow-inner"
+                                        />
                                         <button
-                                            key={lang.code}
-                                            type="button"
-                                            onClick={() => handleSendMessage(`Speak in ${lang.label}`)}
-                                            className={`px-3 py-1.5 rounded-full font-bold text-[10px] whitespace-nowrap border transition-all ${language === lang.code ? 'bg-yellow-500/10 border-yellow-500/50 text-yellow-600 dark:text-yellow-500 shadow-sm' : 'bg-white dark:bg-black border-zinc-100 dark:border-white/5 text-zinc-400 dark:text-zinc-500 hover:border-zinc-300 dark:hover:border-white/20'}`}
+                                            type="submit"
+                                            disabled={isThinking || !userInput.trim()}
+                                            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 text-yellow-600 dark:text-yellow-500 disabled:opacity-30 transition-all hover:scale-110"
                                         >
-                                            {lang.label}
+                                            <Send className="w-4 h-4 fill-current" />
                                         </button>
-                                    ))}
-
-                                    <div className="w-[1px] h-4 bg-zinc-100 dark:bg-white/10 mx-1" />
-
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSendMessage("Repeat this section")}
-                                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-black text-zinc-500 dark:text-zinc-300 border border-zinc-200 dark:border-white/5 rounded-full font-bold text-[11px] whitespace-nowrap hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all shadow-sm"
-                                    >
-                                        <RotateCcw className="w-3 h-3" />
-                                        Repeat
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSendMessage("Explain this differently")}
-                                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-black text-zinc-500 dark:text-zinc-300 border border-zinc-200 dark:border-white/5 rounded-full font-bold text-[11px] whitespace-nowrap hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all shadow-sm"
-                                    >
-                                        <Sparkles className="w-3 h-3" />
-                                        Explain Again
-                                    </button>
-                                </div>
-
-                                <div className="flex items-center gap-3 w-full">
-                                    <input
-                                        type="text"
-                                        value={userInput}
-                                        onChange={(e) => setUserInput(e.target.value)}
-                                        placeholder="Type your question..."
-                                        className="flex-1 bg-white dark:bg-black border border-zinc-200 dark:border-white/10 rounded-full px-5 py-3 text-sm focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30 transition-all text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-700 shadow-inner"
-                                    />
-                                    <button
-                                        type="submit"
-                                        disabled={isThinking || !userInput.trim()}
-                                        className="p-3 bg-yellow-500 text-black rounded-full hover:bg-yellow-400 disabled:opacity-50 transition-all shadow-lg hover:shadow-yellow-500/20 active:scale-95"
-                                    >
-                                        <Send className="w-5 h-5 fill-current" />
-                                    </button>
+                                    </div>
                                     <button
                                         type="button"
                                         onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-                                        className={`p-2.5 transition-colors rounded-full ${isMoreMenuOpen ? 'text-yellow-600 dark:text-yellow-500 bg-yellow-500/10' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}
+                                        className={`p-2 transition-colors rounded-lg flex-shrink-0 ${isMoreMenuOpen ? 'text-yellow-600 dark:text-yellow-500 bg-yellow-500/10' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white'}`}
                                     >
                                         <MoreHorizontal className="w-5 h-5" />
                                     </button>
-                                </div>
-                            </div>
-                        )}
+                                </>
+                            )}
+                        </div>
 
                         {/* More Menu Dropdown - Fixed Clipping with better positioning and z-index */}
                         {isMoreMenuOpen && (
@@ -602,10 +774,10 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
                                     isPaused ? resume() : isSpeaking ? pause() : speak(currentSection.narration)
                                 }}
                                 disabled={sections.length === 0}
-                                className={`flex items-center gap-3 px-8 py-3.5 rounded-2xl transition-all shadow-2xl hover:scale-105 active:scale-95 disabled:opacity-30 font-black text-[12px] uppercase tracking-[0.1em] ${isSpeaking ? 'bg-red-500 text-white shadow-red-500/20' : 'bg-yellow-500 text-black shadow-gold'}`}
+                                className={`flex items-center gap-2.5 px-6 py-3.5 rounded-2xl transition-all shadow-xl hover:scale-105 active:scale-95 disabled:opacity-30 font-black text-[11px] uppercase tracking-wider ${isSpeaking && !isPaused ? 'bg-red-500 text-white shadow-red-500/20' : 'bg-yellow-500 text-black shadow-gold'}`}
                             >
-                                {isSpeaking ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
-                                <span>{isSpeaking ? 'Pause' : 'Play Lesson'}</span>
+                                {isSpeaking && !isPaused ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+                                <span>{isSpeaking && !isPaused ? 'Pause' : isPaused ? 'Resume' : 'Play Lesson'}</span>
                             </button>
 
                             <button
@@ -620,14 +792,17 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
                                         startListening()
                                     }
                                 }}
-                                className={`flex items-center gap-3 px-8 py-3.5 rounded-2xl transition-all shadow-xl font-black text-[12px] uppercase tracking-[0.1em] border hover:scale-105 active:scale-95 ${isHandRaised || isListening
+                                disabled={sections.length === 0}
+                                className={`p-3.5 rounded-2xl transition-all shadow-lg border hover:scale-105 active:scale-95 disabled:opacity-30 disabled:pointer-events-none ${isHandRaised || isListening
                                     ? 'bg-red-500 text-white border-red-400 shadow-lg shadow-red-500/20'
-                                    : 'bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-zinc-200 dark:border-white/10 text-yellow-600 dark:text-yellow-500 hover:border-yellow-500/50 shadow-sm'
+                                    : 'bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border-zinc-200 dark:border-white/10 text-yellow-600 dark:text-yellow-500 hover:border-yellow-500/50 shadow-sm'
                                     }`}
+                                title={isListening ? 'Listening...' : 'Raise Hand to Ask'}
                             >
-                                <Hand className={`w-4 h-4 ${isHandRaised || isListening ? 'animate-pulse' : ''}`} />
-                                <span>{isListening ? 'Listening...' : 'Raise Hand'}</span>
+                                <Hand className={`w-5 h-5 ${isHandRaised || isListening ? 'animate-pulse' : ''}`} />
                             </button>
+
+
                         </div>
 
                         {/* Utility Group (Right) */}
@@ -716,7 +891,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
                     animation: fade-in 0.5s ease-out;
                 }
             `}} />
-        </div>
+        </div >
     )
 }
 

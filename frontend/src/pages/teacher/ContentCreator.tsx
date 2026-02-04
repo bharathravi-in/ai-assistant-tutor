@@ -41,11 +41,14 @@ import {
     GraduationCap,
     Zap,
     Target,
-    Brain
+    Brain,
+    Blocks,
+    PenLine
 } from 'lucide-react'
 import { contentApi, aiApi } from '../../services/api'
 import { useMasterData } from '../../hooks/useMasterData'
 import MarkdownRenderer from '../../components/common/MarkdownRenderer'
+import { AssessmentBuilder, WorksheetBuilder, LessonPlanBuilder } from '../../components/content-builders'
 
 // Enhanced content type options with more types
 const contentTypes = [
@@ -363,27 +366,27 @@ After studying this guide, you should be able to:
 
 // AI prompt templates for different content types
 const aiPromptTemplates: Record<string, (topic: string, grade: number, subject: string) => string> = {
-    lesson_plan: (topic: string, grade: number, subject: string) => 
+    lesson_plan: (topic: string, grade: number, subject: string) =>
         `Create a detailed 5E lesson plan for teaching "${topic}" to Class ${grade} ${subject} students. Include clear learning objectives, engaging activities, materials list, timing breakdown, differentiation strategies, and assessment methods.`,
-    
+
     explanation: (topic: string, grade: number, subject: string) =>
         `Explain "${topic}" for Class ${grade} ${subject} students. Include clear definitions, real-world examples, visual descriptions, common misconceptions, and check-for-understanding questions.`,
-    
+
     activity: (topic: string, grade: number, subject: string) =>
         `Design an engaging classroom activity for teaching "${topic}" to Class ${grade} ${subject} students. Include materials, step-by-step instructions, grouping strategies, and assessment criteria.`,
-    
+
     tlm: (topic: string, grade: number, subject: string) =>
         `Create a Teaching Learning Material (TLM) design for "${topic}" for Class ${grade} ${subject}. Include materials needed, construction steps, usage instructions, and learning outcomes.`,
-    
+
     quick_reference: (topic: string, grade: number, subject: string) =>
         `Create a quick reference card for "${topic}" for Class ${grade} ${subject}. Include key terms, formulas/rules, tips, and common mistakes to avoid.`,
-    
+
     assessment: (topic: string, grade: number, subject: string) =>
         `Create an assessment/test for "${topic}" for Class ${grade} ${subject} with multiple choice, short answer, and long answer questions. Include answer key and marking rubric.`,
-    
+
     worksheet: (topic: string, grade: number, subject: string) =>
         `Create a practice worksheet for "${topic}" for Class ${grade} ${subject} with fill-in-the-blanks, matching, short questions, and practice problems.`,
-    
+
     study_guide: (topic: string, grade: number, subject: string) =>
         `Create a comprehensive study guide for "${topic}" for Class ${grade} ${subject} with key vocabulary, main concepts, summary, self-test questions, and study tips.`
 }
@@ -416,7 +419,7 @@ export default function ContentCreator() {
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState('')
     const [success, setSuccess] = useState('')
-    
+
     // Enhanced UI state
     const [previewMode, setPreviewMode] = useState<PreviewMode>('split')
     const [isFullscreen, setIsFullscreen] = useState(false)
@@ -429,6 +432,22 @@ export default function ContentCreator() {
     const [characterCount, setCharacterCount] = useState(0)
     const [lastSaved, setLastSaved] = useState<Date | null>(null)
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+
+    // Edit mode: 'builder' shows type-specific UI, 'markdown' shows raw editor
+    const [editMode, setEditMode] = useState<'builder' | 'markdown'>('builder')
+
+    // Builder-specific state
+    const [assessmentQuestions, setAssessmentQuestions] = useState<any[]>([])
+    const [worksheetSections, setWorksheetSections] = useState<any[]>([])
+    const [lessonPlanData, setLessonPlanData] = useState({
+        objectives: [] as string[],
+        materials: [] as string[],
+        duration: 40,
+        sections: [] as any[]
+    })
+
+    // Check if current content type has a builder
+    const hasBuilder = ['assessment', 'worksheet', 'lesson_plan'].includes(contentType)
 
     // Calculate word/char count
     useEffect(() => {
@@ -803,7 +822,7 @@ export default function ContentCreator() {
                         </div>
                     </div>
                 </div>
-                
+
                 {/* Action buttons */}
                 <div className="flex items-center gap-2 flex-wrap">
                     <button
@@ -876,7 +895,7 @@ export default function ContentCreator() {
                     </div>
                     {contentTypeExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </button>
-                
+
                 {contentTypeExpanded && (
                     <div className="p-4 pt-0 grid grid-cols-2 md:grid-cols-4 gap-3">
                         {contentTypes.map((type) => {
@@ -886,11 +905,10 @@ export default function ContentCreator() {
                                 <button
                                     key={type.value}
                                     onClick={() => setContentType(type.value)}
-                                    className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 group ${
-                                        isSelected
+                                    className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 group ${isSelected
                                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md'
                                             : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 hover:shadow-sm'
-                                    }`}
+                                        }`}
                                 >
                                     <Icon className={`w-6 h-6 transition-transform group-hover:scale-110 ${isSelected ? 'text-blue-500' : 'text-gray-400'}`} />
                                     <span className={`text-sm font-medium ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-gray-600 dark:text-gray-300'}`}>
@@ -916,7 +934,7 @@ export default function ContentCreator() {
                             <FileText className="w-5 h-5 text-blue-500" />
                             Content Details
                         </h3>
-                        
+
                         {/* Title */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -1108,194 +1126,270 @@ export default function ContentCreator() {
 
                 {/* Main Editor Area */}
                 <div className="lg:col-span-2 space-y-4">
-                    {/* Editor Toolbar */}
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-4">
-                        <div className="flex items-center justify-between flex-wrap gap-4">
-                            {/* Preview Mode Toggle */}
-                            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-                                <button
-                                    onClick={() => setPreviewMode('edit')}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors ${
-                                        previewMode === 'edit'
-                                            ? 'bg-white dark:bg-gray-600 shadow text-blue-600 dark:text-blue-400'
-                                            : 'text-gray-600 dark:text-gray-300 hover:text-gray-900'
-                                    }`}
-                                >
-                                    <Edit3 className="w-4 h-4" />
-                                    Edit
-                                </button>
-                                <button
-                                    onClick={() => setPreviewMode('split')}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors ${
-                                        previewMode === 'split'
-                                            ? 'bg-white dark:bg-gray-600 shadow text-blue-600 dark:text-blue-400'
-                                            : 'text-gray-600 dark:text-gray-300 hover:text-gray-900'
-                                    }`}
-                                >
-                                    <Split className="w-4 h-4" />
-                                    Split
-                                </button>
-                                <button
-                                    onClick={() => setPreviewMode('preview')}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors ${
-                                        previewMode === 'preview'
-                                            ? 'bg-white dark:bg-gray-600 shadow text-blue-600 dark:text-blue-400'
-                                            : 'text-gray-600 dark:text-gray-300 hover:text-gray-900'
-                                    }`}
-                                >
-                                    <Eye className="w-4 h-4" />
-                                    Preview
-                                </button>
-                            </div>
-
-                            {/* Formatting Tools */}
-                            {(previewMode === 'edit' || previewMode === 'split') && (
-                                <div className="flex items-center gap-1">
+                    {/* Edit Mode Toggle (for types with builders) */}
+                    {hasBuilder && (
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl border border-blue-100 dark:border-blue-800 p-4 mb-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                                        {editMode === 'builder' ? <Blocks className="w-5 h-5 text-white" /> : <PenLine className="w-5 h-5 text-white" />}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                                            {editMode === 'builder' ? 'Builder Mode' : 'Markdown Mode'}
+                                        </h3>
+                                        <p className="text-xs text-gray-500">
+                                            {editMode === 'builder'
+                                                ? 'Use the structured builder to create your content'
+                                                : 'Edit raw markdown directly'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg p-1 shadow-sm">
                                     <button
-                                        onClick={() => insertMarkdown('bold', 'bold text')}
-                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                                        title="Bold"
+                                        onClick={() => setEditMode('builder')}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${editMode === 'builder'
+                                                ? 'bg-blue-500 text-white shadow'
+                                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100'
+                                            }`}
                                     >
-                                        <Bold className="w-4 h-4" />
+                                        <Blocks className="w-4 h-4" />
+                                        Builder
                                     </button>
                                     <button
-                                        onClick={() => insertMarkdown('italic', 'italic text')}
-                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                                        title="Italic"
+                                        onClick={() => setEditMode('markdown')}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${editMode === 'markdown'
+                                                ? 'bg-blue-500 text-white shadow'
+                                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100'
+                                            }`}
                                     >
-                                        <Italic className="w-4 h-4" />
-                                    </button>
-                                    <div className="w-px h-6 bg-gray-200 dark:bg-gray-600 mx-1" />
-                                    <button
-                                        onClick={() => insertMarkdown('h1', 'Heading')}
-                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                                        title="Heading 1"
-                                    >
-                                        <Heading1 className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => insertMarkdown('h2', 'Heading')}
-                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                                        title="Heading 2"
-                                    >
-                                        <Heading2 className="w-4 h-4" />
-                                    </button>
-                                    <div className="w-px h-6 bg-gray-200 dark:bg-gray-600 mx-1" />
-                                    <button
-                                        onClick={() => insertMarkdown('ul', 'List item')}
-                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                                        title="Bullet List"
-                                    >
-                                        <List className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => insertMarkdown('ol', 'List item')}
-                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                                        title="Numbered List"
-                                    >
-                                        <ListOrdered className="w-4 h-4" />
-                                    </button>
-                                    <div className="w-px h-6 bg-gray-200 dark:bg-gray-600 mx-1" />
-                                    <button
-                                        onClick={() => insertMarkdown('code', 'code')}
-                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                                        title="Inline Code"
-                                    >
-                                        <Code className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => insertMarkdown('quote', 'Quote')}
-                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                                        title="Quote"
-                                    >
-                                        <Quote className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => insertMarkdown('link', 'link text')}
-                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                                        title="Link"
-                                    >
-                                        <Link2 className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => insertMarkdown('table')}
-                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                                        title="Table"
-                                    >
-                                        <Table className="w-4 h-4" />
+                                        <PenLine className="w-4 h-4" />
+                                        Markdown
                                     </button>
                                 </div>
-                            )}
-
-                            {/* Copy Button */}
-                            <button
-                                onClick={copyToClipboard}
-                                className="flex items-center gap-2 px-3 py-1.5 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                            >
-                                {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                                {copied ? 'Copied!' : 'Copy'}
-                            </button>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
-                    {/* Editor/Preview Container */}
-                    <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden ${
-                        previewMode === 'split' ? 'grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700' : ''
-                    }`}>
-                        {/* Editor */}
-                        {(previewMode === 'edit' || previewMode === 'split') && (
-                            <div className="p-4">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Content (Markdown supported)
-                                </label>
-                                <textarea
-                                    ref={textareaRef}
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Write your content here... Use Markdown for formatting."
-                                    rows={previewMode === 'split' ? 25 : 30}
-                                    className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm"
-                                    style={{ minHeight: previewMode === 'split' ? '600px' : '700px' }}
+                    {/* Type-Specific Builder or Editor */}
+                    {hasBuilder && editMode === 'builder' ? (
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6">
+                            {contentType === 'assessment' && (
+                                <AssessmentBuilder
+                                    questions={assessmentQuestions}
+                                    onChange={setAssessmentQuestions}
+                                    onGenerateMarkdown={(md) => setDescription(md)}
                                 />
-                            </div>
-                        )}
-
-                        {/* Preview */}
-                        {(previewMode === 'preview' || previewMode === 'split') && (
-                            <div className="p-6 overflow-auto" style={{ maxHeight: previewMode === 'split' ? '700px' : '800px' }}>
-                                {/* Preview Header */}
-                                <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-                                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
-                                        <Eye className="w-4 h-4" />
-                                        Preview
+                            )}
+                            {contentType === 'worksheet' && (
+                                <WorksheetBuilder
+                                    sections={worksheetSections}
+                                    onChange={setWorksheetSections}
+                                    onGenerateMarkdown={(md) => setDescription(md)}
+                                />
+                            )}
+                            {contentType === 'lesson_plan' && (
+                                <LessonPlanBuilder
+                                    objectives={lessonPlanData.objectives}
+                                    materials={lessonPlanData.materials}
+                                    duration={lessonPlanData.duration}
+                                    sections={lessonPlanData.sections}
+                                    onObjectivesChange={(obj) => setLessonPlanData(prev => ({ ...prev, objectives: obj }))}
+                                    onMaterialsChange={(mat) => setLessonPlanData(prev => ({ ...prev, materials: mat }))}
+                                    onDurationChange={(dur) => setLessonPlanData(prev => ({ ...prev, duration: dur }))}
+                                    onSectionsChange={(sec) => setLessonPlanData(prev => ({ ...prev, sections: sec }))}
+                                    onGenerateMarkdown={(md) => setDescription(md)}
+                                />
+                            )}
+                        </div>
+                    ) : (
+                        <>
+                            {/* Editor Toolbar */}
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-4">
+                                <div className="flex items-center justify-between flex-wrap gap-4">
+                                    {/* Preview Mode Toggle */}
+                                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                                        <button
+                                            onClick={() => setPreviewMode('edit')}
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors ${previewMode === 'edit'
+                                                    ? 'bg-white dark:bg-gray-600 shadow text-blue-600 dark:text-blue-400'
+                                                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900'
+                                                }`}
+                                        >
+                                            <Edit3 className="w-4 h-4" />
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => setPreviewMode('split')}
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors ${previewMode === 'split'
+                                                    ? 'bg-white dark:bg-gray-600 shadow text-blue-600 dark:text-blue-400'
+                                                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900'
+                                                }`}
+                                        >
+                                            <Split className="w-4 h-4" />
+                                            Split
+                                        </button>
+                                        <button
+                                            onClick={() => setPreviewMode('preview')}
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors ${previewMode === 'preview'
+                                                    ? 'bg-white dark:bg-gray-600 shadow text-blue-600 dark:text-blue-400'
+                                                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900'
+                                                }`}
+                                        >
+                                            <Eye className="w-4 h-4" />
+                                            Preview
+                                        </button>
                                     </div>
-                                    {title && (
-                                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{title}</h1>
+
+                                    {/* Formatting Tools */}
+                                    {(previewMode === 'edit' || previewMode === 'split') && (
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => insertMarkdown('bold', 'bold text')}
+                                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                                title="Bold"
+                                            >
+                                                <Bold className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => insertMarkdown('italic', 'italic text')}
+                                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                                title="Italic"
+                                            >
+                                                <Italic className="w-4 h-4" />
+                                            </button>
+                                            <div className="w-px h-6 bg-gray-200 dark:bg-gray-600 mx-1" />
+                                            <button
+                                                onClick={() => insertMarkdown('h1', 'Heading')}
+                                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                                title="Heading 1"
+                                            >
+                                                <Heading1 className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => insertMarkdown('h2', 'Heading')}
+                                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                                title="Heading 2"
+                                            >
+                                                <Heading2 className="w-4 h-4" />
+                                            </button>
+                                            <div className="w-px h-6 bg-gray-200 dark:bg-gray-600 mx-1" />
+                                            <button
+                                                onClick={() => insertMarkdown('ul', 'List item')}
+                                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                                title="Bullet List"
+                                            >
+                                                <List className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => insertMarkdown('ol', 'List item')}
+                                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                                title="Numbered List"
+                                            >
+                                                <ListOrdered className="w-4 h-4" />
+                                            </button>
+                                            <div className="w-px h-6 bg-gray-200 dark:bg-gray-600 mx-1" />
+                                            <button
+                                                onClick={() => insertMarkdown('code', 'code')}
+                                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                                title="Inline Code"
+                                            >
+                                                <Code className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => insertMarkdown('quote', 'Quote')}
+                                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                                title="Quote"
+                                            >
+                                                <Quote className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => insertMarkdown('link', 'link text')}
+                                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                                title="Link"
+                                            >
+                                                <Link2 className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => insertMarkdown('table')}
+                                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                                title="Table"
+                                            >
+                                                <Table className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     )}
-                                    <div className="flex flex-wrap gap-2 text-sm">
-                                        {selectedContentType && (
-                                            <span className="px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                                                {selectedContentType.label}
-                                            </span>
-                                        )}
-                                        {grade && <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">Class {grade}</span>}
-                                        {subject && <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">{subject}</span>}
-                                        {topic && <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">{topic}</span>}
-                                    </div>
-                                </div>
 
-                                {/* Rendered Content */}
-                                {description ? (
-                                    <MarkdownRenderer content={description} />
-                                ) : (
-                                    <div className="text-center py-12 text-gray-400">
-                                        <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                                        <p>Start writing to see preview</p>
+                                    {/* Copy Button */}
+                                    <button
+                                        onClick={copyToClipboard}
+                                        className="flex items-center gap-2 px-3 py-1.5 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                                    >
+                                        {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                                        {copied ? 'Copied!' : 'Copy'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Editor/Preview Container */}
+                            <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden ${previewMode === 'split' ? 'grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700' : ''
+                                }`}>
+                                {/* Editor */}
+                                {(previewMode === 'edit' || previewMode === 'split') && (
+                                    <div className="p-4">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Content (Markdown supported)
+                                        </label>
+                                        <textarea
+                                            ref={textareaRef}
+                                            value={description}
+                                            onChange={(e) => setDescription(e.target.value)}
+                                            placeholder="Write your content here... Use Markdown for formatting."
+                                            rows={previewMode === 'split' ? 25 : 30}
+                                            className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm"
+                                            style={{ minHeight: previewMode === 'split' ? '600px' : '700px' }}
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Preview */}
+                                {(previewMode === 'preview' || previewMode === 'split') && (
+                                    <div className="p-6 overflow-auto" style={{ maxHeight: previewMode === 'split' ? '700px' : '800px' }}>
+                                        {/* Preview Header */}
+                                        <div className="mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+                                                <Eye className="w-4 h-4" />
+                                                Preview
+                                            </div>
+                                            {title && (
+                                                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{title}</h1>
+                                            )}
+                                            <div className="flex flex-wrap gap-2 text-sm">
+                                                {selectedContentType && (
+                                                    <span className="px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                                                        {selectedContentType.label}
+                                                    </span>
+                                                )}
+                                                {grade && <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">Class {grade}</span>}
+                                                {subject && <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">{subject}</span>}
+                                                {topic && <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700">{topic}</span>}
+                                            </div>
+                                        </div>
+
+                                        {/* Rendered Content */}
+                                        {description ? (
+                                            <MarkdownRenderer content={description} />
+                                        ) : (
+                                            <div className="text-center py-12 text-gray-400">
+                                                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                                <p>Start writing to see preview</p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
-                        )}
-                    </div>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

@@ -1,25 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import {
-    User as UserIcon,
     LogOut,
-    Moon,
-    Sun,
-    Globe,
     ChevronDown,
-    UserCircle
+    UserCircle,
+    Settings
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
-import { useAppLanguages } from '../../hooks/useAppLanguages';
 
 export default function UserProfileMenu() {
-    const { i18n } = useTranslation();
     const navigate = useNavigate();
     const { user, logout } = useAuthStore();
-    const { languages, changeLanguage } = useAppLanguages();
     const [isOpen, setIsOpen] = useState(false);
-    const [darkMode, setDarkMode] = useState(document.documentElement.classList.contains('dark'));
     const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -37,13 +29,6 @@ export default function UserProfileMenu() {
         navigate('/login');
     };
 
-    const toggleDarkMode = () => {
-        const newMode = !darkMode;
-        setDarkMode(newMode);
-        document.documentElement.classList.toggle('dark');
-        localStorage.setItem('theme', newMode ? 'dark' : 'light');
-    };
-
     const userRole = user?.role?.toUpperCase() || 'USER';
     const userName = user?.name || user?.phone || 'Teacher';
 
@@ -58,7 +43,7 @@ export default function UserProfileMenu() {
                     {user?.profile_image ? (
                         <img src={user.profile_image} alt={userName} className="w-full h-full object-cover" />
                     ) : (
-                        <UserIcon className="w-5 h-5" />
+                        <UserCircle className="w-5 h-5" />
                     )}
                 </div>
                 <div className="hidden sm:flex flex-col items-start pr-1">
@@ -69,66 +54,43 @@ export default function UserProfileMenu() {
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 mt-3 w-72 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-300">
                     {/* User Header */}
-                    <div className="p-4 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-700">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white text-lg font-bold">
+                    <div className="p-5 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-gray-900/50 dark:to-blue-900/20 border-b border-gray-100 dark:border-white/5">
+                        <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-blue-500/20">
                                 {userName.charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0">
-                                <p className="font-bold text-gray-900 dark:text-white truncate">{userName}</p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.phone}</p>
+                                <p className="font-bold text-gray-900 dark:text-white truncate text-lg tracking-tight">{userName}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 truncate font-medium">{user?.phone}</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="p-2 space-y-0.5">
+                    <div className="p-3 space-y-1">
                         <Link
                             to="/teacher/profile"
                             onClick={() => setIsOpen(false)}
-                            className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors text-sm text-gray-700 dark:text-gray-200"
+                            className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white dark:hover:bg-white/5 transition-all text-sm text-gray-700 dark:text-gray-200 hover:shadow-sm"
                         >
-                            <UserCircle className="w-5 h-5 text-gray-400" />
-                            <span>My Profile</span>
+                            <UserCircle className="w-5 h-5 text-blue-500" />
+                            <span className="font-medium">My Profile</span>
                         </Link>
-
-                        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-200">
-                            <Globe className="w-5 h-5 text-gray-400" />
-                            <select
-                                value={i18n.language}
-                                onChange={(e) => {
-                                    changeLanguage(e.target.value);
-                                    setIsOpen(false);
-                                }}
-                                className="flex-1 bg-transparent focus:outline-none cursor-pointer"
-                            >
-                                {languages.map(lang => (
-                                    <option key={lang.code} value={lang.code}>
-                                        {lang.native_name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <button
-                            onClick={toggleDarkMode}
-                            className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors text-sm text-gray-700 dark:text-gray-200"
+                        {(userRole === 'TEACHER' || userRole === 'ADMIN') && <Link
+                            to="/teacher/settings"
+                            onClick={() => setIsOpen(false)}
+                            className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white dark:hover:bg-white/5 transition-all text-sm text-gray-700 dark:text-gray-200 hover:shadow-sm"
                         >
-                            <div className="flex items-center gap-3">
-                                {darkMode ? <Sun className="w-5 h-5 text-gray-400" /> : <Moon className="w-5 h-5 text-gray-400" />}
-                                <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
-                            </div>
-                            <div className={`w-8 h-4 rounded-full relative transition-colors ${darkMode ? 'bg-blue-600' : 'bg-gray-300'}`}>
-                                <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${darkMode ? 'left-4.5' : 'left-0.5'}`} />
-                            </div>
-                        </button>
+                            <Settings className="w-5 h-5 text-blue-500" />
+                            <span className="font-medium">Settings</span>
+                        </Link>}
                     </div>
 
-                    <div className="p-2 border-t border-gray-100 dark:border-gray-700">
+                    <div className="p-3 border-t border-gray-100 dark:border-white/5">
                         <button
                             onClick={handleLogout}
-                            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm text-red-600 dark:text-red-400 font-medium"
+                            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 transition-all text-sm text-red-600 dark:text-red-400 font-bold"
                         >
                             <LogOut className="w-5 h-5" />
                             <span>Sign Out</span>

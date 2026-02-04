@@ -22,6 +22,7 @@ import TeacherSurveys from './pages/teacher/Surveys'
 import ContentCreator from './pages/teacher/ContentCreator'
 import SimpleContentCreator from './pages/teacher/SimpleContentCreator'
 import MyContent from './pages/teacher/MyContent'
+import ContentPreview from './pages/teacher/ContentPreview'
 import MyVisits from './pages/teacher/MyVisits'
 import ContentLibrary from './pages/common/ContentLibrary'
 import ContentBrowse from './pages/common/ContentBrowse'
@@ -32,6 +33,7 @@ import CRPDashboard from './pages/crp/Dashboard'
 import FeedbackAssist from './pages/crp/FeedbackAssist'
 import VisitSchedule from './pages/crp/VisitSchedule'
 import ContentApproval from './pages/crp/ContentApproval'
+import ContentReview from './pages/crp/ContentReview'
 import TeacherNetwork from './pages/crp/TeacherNetwork'
 import CRPReports from './pages/crp/Reports'
 import CreateTeacher from './pages/crp/CreateTeacher'
@@ -248,6 +250,11 @@ function App() {
                     </Layout>
                 </ProtectedRoute>
             } />
+            <Route path="/teacher/content/preview/:id" element={
+                <ProtectedRoute roles={['teacher']}>
+                    <ContentPreview />
+                </ProtectedRoute>
+            } />
             <Route path="/teacher/chat" element={
                 <ProtectedRoute roles={['teacher']}>
                     <Layout>
@@ -433,6 +440,11 @@ function App() {
                     </Layout>
                 </ProtectedRoute>
             } />
+            <Route path="/crp/content-review/:id" element={
+                <ProtectedRoute roles={['crp']}>
+                    <ContentReview />
+                </ProtectedRoute>
+            } />
 
             {/* ARP routes */}
             <Route path="/arp" element={
@@ -559,6 +571,11 @@ function App() {
                     <Layout>
                         <ContentLibrary />
                     </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/arp/content-review/:id" element={
+                <ProtectedRoute roles={['arp']}>
+                    <ContentReview />
                 </ProtectedRoute>
             } />
 
