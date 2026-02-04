@@ -54,16 +54,21 @@ export const useSettingsStore = create<SettingsState>()(
             },
 
             initialize: async () => {
-                if (get().isInitialized) return
+                // Reset initialization flag to allow re-fetching
+                // This ensures API data takes precedence over localStorage
+                if (get().isInitialized) {
+                    // Force re-fetch from API
+                }
 
                 try {
                     const data = await settingsApi.getSettings()
+                    // API returns camelCase keys
                     set({
-                        selectedVoice: data.selectedVoice || 'voice-1',
-                        voiceRate: data.voiceRate || 1,
-                        voicePitch: data.voicePitch || 1,
-                        autoPlayResponse: data.autoPlayResponse || false,
-                        customVoices: data.customVoices || [],
+                        selectedVoice: data.selectedVoice || data.selected_voice || 'voice-1',
+                        voiceRate: data.voiceRate ?? data.voice_rate ?? 1,
+                        voicePitch: data.voicePitch ?? data.voice_pitch ?? 1,
+                        autoPlayResponse: data.autoPlayResponse ?? data.auto_play_response ?? false,
+                        customVoices: data.customVoices || data.custom_voices || [],
                         isInitialized: true
                     })
                 } catch (error) {

@@ -36,15 +36,26 @@ export default function TeacherSettings() {
         setSettings,
         addCustomVoice,
         removeCustomVoice,
-        updateRemote
+        updateRemote,
+        initialize
     } = useSettingsStore()
 
     const { speak, isSpeaking } = useTTS()
 
-    const [loading] = useState(false)
+    const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState(false)
     const [previewVoiceId, setPreviewVoiceId] = useState<string | null>(null)
+
+    // Fetch fresh settings from API on mount
+    useEffect(() => {
+        const loadSettings = async () => {
+            setLoading(true)
+            await initialize()
+            setLoading(false)
+        }
+        loadSettings()
+    }, [initialize])
 
     // Custom voice recording state
     const [showCustomVoiceModal, setShowCustomVoiceModal] = useState(false)
@@ -67,6 +78,7 @@ export default function TeacherSettings() {
         language: 'custom',
         isCustom: true
     }))]
+
 
     const playVoiceSample = (voiceId: string) => {
         setPreviewVoiceId(voiceId)

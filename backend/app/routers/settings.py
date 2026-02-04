@@ -83,7 +83,8 @@ async def get_settings(
                 id=f"custom-{v.id}",
                 name=v.name,
                 gender=v.gender,
-                audioUrl=v.audio_url,
+                # Use proxy endpoint for secure access instead of direct GCS URL
+                audioUrl=f"/api/settings/voices/{v.id}/stream",
                 createdAt=v.created_at.isoformat()
             )
             for v in custom_voices
@@ -155,7 +156,8 @@ async def create_custom_voice(
         id=f"custom-{custom_voice.id}",
         name=custom_voice.name,
         gender=custom_voice.gender,
-        audioUrl=custom_voice.audio_url,
+        # Use proxy endpoint for secure access
+        audioUrl=f"/api/settings/voices/{custom_voice.id}/stream",
         createdAt=custom_voice.created_at.isoformat()
     )
 
@@ -185,3 +187,74 @@ async def delete_custom_voice(
     await db.commit()
     
     return {"message": "Voice deleted successfully"}
+
+
+@router.get("/voices/{voice_id}/stream")
+async def stream_custom_voice(
+    voice_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Stream a custom voice audio file.
+    Only the owner of the voice can access it.
+    """
+    from fastapi.responses import StreamingResponse
+    import httpx
+    
+    # Verify ownership
+    result = await db.execute(
+        select(CustomVoice)
+        .where(CustomVoice.id == voice_id)
+        .where(CustomVoice.user_id == current_user.id)
+    )
+    voice = result.scalar_one_or_none()
+    
+    if not voice:
+        raise HTTPException(status_code=404, detail="Voice not found or access denied")
+    
+    if not voice.audio_url:
+        raise HTTPException(status_code=404, detail="Audio file not found")
+    
+    # Get storage provider to fetch the file
+    storage = get_storage_provider()
+    
+    try:
+        # For GCS, use signed URLs or direct download
+        if hasattr(storage, 'get_signed_url'):
+            # Use signed URL for secure temporary access
+            signed_url = storage.get_signed_url(f"voices/{voice.audio_filename}")
+            async with httpx.AsyncClient() as client:
+                response = await client.get(signed_url)
+                if response.status_code != 200:
+                    raise HTTPException(status_code=500, detail="Failed to fetch audio file")
+                
+                content_type = response.headers.get("content-type", "audio/webm")
+                return StreamingResponse(
+                    iter([response.content]),
+                    media_type=content_type,
+                    headers={
+                        "Content-Disposition": f'inline; filename="{voice.name}.webm"',
+                        "Cache-Control": "private, max-age=3600"
+                    }
+                )
+        else:
+            # Fallback: try to fetch directly from the stored URL
+            async with httpx.AsyncClient() as client:
+                response = await client.get(voice.audio_url)
+                if response.status_code != 200:
+                    raise HTTPException(status_code=500, detail="Failed to fetch audio file")
+                
+                content_type = response.headers.get("content-type", "audio/webm")
+                return StreamingResponse(
+                    iter([response.content]),
+                    media_type=content_type,
+                    headers={
+                        "Content-Disposition": f'inline; filename="{voice.name}.webm"',
+                        "Cache-Control": "private, max-age=3600"
+                    }
+                )
+    except Exception as e:
+        print(f"Error streaming voice file: {e}")
+        raise HTTPException(status_code=500, detail="Failed to stream audio file")
+
