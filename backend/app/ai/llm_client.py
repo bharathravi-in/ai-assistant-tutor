@@ -282,10 +282,10 @@ class LLMClient:
             elif self.provider == "anthropic":
                 return await self._generate_anthropic(prompt, max_tokens, temperature)
             elif self.provider == "litellm":
-                return await self._generate_litellm(prompt, max_tokens, temperature)
+                return await self._generate_litellm(prompt, max_tokens, temperature, media_path)
             else:
                 print(f"[LLM] Unknown provider '{self.provider}', falling back to LiteLLM logic")
-                return await self._generate_litellm(prompt, max_tokens, temperature)
+                return await self._generate_litellm(prompt, max_tokens, temperature, media_path)
         except Exception as e:
             print(f"[LLM] Error in {self.provider} generation: {str(e)}")
             # If standard provider fails, try LiteLLM as a last-resort bridge if it was configured
@@ -600,7 +600,7 @@ class LLMClient:
         except Exception as e:
             return f"Error generating response: {str(e)}"
     
-    async def _generate_litellm(self, prompt: str, max_tokens: int, temperature: float) -> str:
+    async def _generate_litellm(self, prompt: str, max_tokens: int, temperature: float, media_path: Optional[str] = None) -> str:
         """Generate using LiteLLM (provider-agnostic)."""
         try:
             # Determine base URL - check all sources including os.getenv
@@ -620,10 +620,42 @@ class LLMClient:
                 
             # Model name to use - for LiteLLM with custom proxy, use openai/ prefix
             model_to_use = self._model
-            if api_base and not model_to_use.startswith('openai/'):
-                # Force OpenAI-compatible API for custom proxy
+            if api_base and not model_to_use.startswith('openai/') and not model_to_use.startswith('gemini/'):
+                # Force OpenAI-compatible API for custom proxy (most common)
                 model_to_use = f"openai/{model_to_use}"
             
+            # Build messages
+            user_content = [{"type": "text", "text": prompt}]
+            
+            if media_path:
+                print(f"[LLM] LiteLLM request has media: {media_path}")
+                # For LiteLLM, we can pass URL if it's a URL, or we need to encode if local
+                # However, many LiteLLM models support URLs directly
+                if media_path.startswith("http"):
+                    # Detect type
+                    mime_type = "image/jpeg"
+                    if media_path.lower().endswith(".pdf"):
+                         mime_type = "application/pdf"
+                    
+                    if mime_type == "application/pdf":
+                        # Some versions of LiteLLM/OpenAI support PDF directly in content
+                        user_content.append({
+                            "type": "file_url" if "gpt-4o" in model_to_use else "image_url",
+                            "file_url" if "gpt-4o" in model_to_use else "image_url": {"url": media_path}
+                        })
+                    else:
+                        user_content.append({
+                            "type": "image_url",
+                            "image_url": {"url": media_path}
+                        })
+                else:
+                    # In a production app, we'd base64 encode or upload to a bucket
+                    # For now, if it's a local path and we're using a remote proxy, 
+                    # it might fail unless we encode.
+                    # Since this is a hackathon, let's assume URLs for now or 
+                    # use the local path if the proxy is local.
+                    pass
+
             # Log the actual request parameters
             print(f"[LLM] Generating with LiteLLM - model: {model_to_use}, base: {api_base}, key_len: {len(self._api_key) if self._api_key else 0}")
             
@@ -632,7 +664,7 @@ class LLMClient:
                 "model": model_to_use,
                 "messages": [
                     {"role": "system", "content": "You are an expert teaching assistant for government school teachers. Provide practical, actionable advice."},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": user_content}
                 ],
                 "max_tokens": max_tokens,
                 "temperature": temperature,

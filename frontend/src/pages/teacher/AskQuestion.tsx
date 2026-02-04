@@ -178,6 +178,18 @@ export default function AskQuestion() {
     const [showVoiceAssistant, setShowVoiceAssistant] = useState(false)
     const [isSpeaking, setIsSpeaking] = useState(false)
 
+    // CRP/ARP Response state
+    const [crpResponses, setCrpResponses] = useState<Array<{
+        id: number
+        crp_id: number
+        response_text: string
+        voice_note_url?: string
+        voice_note_transcript?: string
+        tag?: string
+        observation_notes?: string
+        created_at?: string
+    }>>([])
+
     // Refs
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const responseRef = useRef<HTMLDivElement>(null)
@@ -240,6 +252,11 @@ export default function AskQuestion() {
                             query_id: parseInt(historyId),
                             mode: queryMode
                         })
+
+                        // Set CRP responses if any
+                        if ((response as any).crp_responses && (response as any).crp_responses.length > 0) {
+                            setCrpResponses((response as any).crp_responses)
+                        }
                     }
                 } catch (error) {
                     console.error('Failed to load history query:', error)
@@ -833,6 +850,50 @@ export default function AskQuestion() {
                     {/* AI Response Section */}
                     {aiResponse && (
                         <div ref={responseRef} className="space-y-6">
+                            {/* CRP/ARP Mentor Feedback Section */}
+                            {crpResponses.length > 0 && (
+                                <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-2xl border-2 border-amber-200 dark:border-amber-700 p-6 shadow-lg">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                                            <Lightbulb className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-amber-900 dark:text-amber-100">Mentor Feedback</h3>
+                                            <p className="text-xs text-amber-700 dark:text-amber-300">Response from your CRP/ARP</p>
+                                        </div>
+                                    </div>
+                                    {crpResponses.map((crpRes, idx) => (
+                                        <div key={crpRes.id} className="space-y-3">
+                                            {crpRes.response_text && (
+                                                <div className="bg-white/60 dark:bg-gray-800/60 rounded-xl p-4">
+                                                    <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{crpRes.response_text}</p>
+                                                </div>
+                                            )}
+                                            {crpRes.observation_notes && (
+                                                <div className="bg-amber-100/50 dark:bg-amber-800/30 rounded-xl p-4">
+                                                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-2">Observation Notes:</p>
+                                                    <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap">{crpRes.observation_notes}</p>
+                                                </div>
+                                            )}
+                                            {crpRes.voice_note_url && (
+                                                <div className="flex items-center gap-3 bg-white/60 dark:bg-gray-800/60 rounded-xl p-3">
+                                                    <Volume2 className="w-4 h-4 text-amber-600" />
+                                                    <audio controls src={crpRes.voice_note_url} className="h-8 flex-1" />
+                                                </div>
+                                            )}
+                                            {crpRes.tag && (
+                                                <span className="inline-block px-3 py-1 bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 text-xs font-medium rounded-full">
+                                                    {crpRes.tag}
+                                                </span>
+                                            )}
+                                            <p className="text-xs text-amber-600 dark:text-amber-400">
+                                                {crpRes.created_at && new Date(crpRes.created_at).toLocaleString()}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
                             <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
                                 {/* Header */}
                                 <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-700">

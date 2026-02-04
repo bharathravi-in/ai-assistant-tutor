@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User } from '../types'
+import { useSettingsStore } from './settingsStore'
 
 interface AuthState {
     user: User | null
@@ -21,6 +22,8 @@ export const useAuthStore = create<AuthState>()(
             setAuth: (user, token) => {
                 localStorage.setItem('token', token)
                 set({ user, token, isAuthenticated: true })
+                // Initialize settings store after login
+                useSettingsStore.getState().initialize()
             },
 
             logout: () => {

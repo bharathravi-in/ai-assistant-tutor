@@ -1006,6 +1006,12 @@ export const contentApi = {
         const response = await api.post(`/content/${id}/regenerate-pdf`)
         return response.data
     },
+
+    // Remix content (clone into a new draft)
+    remix: async (id: number) => {
+        const response = await api.post(`/content/${id}/remix`)
+        return response.data
+    },
 }
 
 // AI Tutor Specific API
@@ -1026,6 +1032,34 @@ export const tutorApi = {
         const response = await api.post(`/tutor/process-pdf/${contentId}`)
         return response.data
     }
+}
+
+// Analytics API
+export const analyticsApi = {
+    getTeacherUsage: async (days: number = 30) => {
+        const response = await api.get('/analytics/teacher/usage', { params: { days } })
+        return response.data
+    },
+    getContentEngagement: async () => {
+        const response = await api.get('/analytics/content/engagement')
+        return response.data
+    },
+    getSystemMetrics: async (days: number = 7) => {
+        const response = await api.get('/analytics/admin/system-metrics', { params: { days } })
+        return response.data
+    },
+    getCrpActivity: async (days: number = 7) => {
+        const response = await api.get('/analytics/admin/crp-activity', { params: { days } })
+        return response.data
+    },
+    getArpGapAnalysis: async (timeRange: 'week' | 'month' | 'quarter' = 'month') => {
+        const response = await api.get('/analytics/arp/gap-analysis', { params: { time_range: timeRange } })
+        return response.data
+    },
+    getStateAnalytics: async (stateId: number, days: number = 30) => {
+        const response = await api.get(`/analytics/admin/state-analytics/${stateId}`, { params: { days } })
+        return response.data
+    },
 }
 
 export default api

@@ -14,9 +14,12 @@ import {
     Sparkles,
     BookOpen,
     X,
-    Download
+    Download,
+    GitFork
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { contentApi } from '../../services/api'
+import { useAuthStore } from '../../stores/authStore'
 import { useMasterData } from '../../hooks/useMasterData'
 import MarkdownRenderer from '../../components/common/MarkdownRenderer'
 import StructuredAIResponse from '../../components/common/StructuredAIResponse'
@@ -59,6 +62,8 @@ interface Content {
     published_at?: string
     tags?: string[]
     pdf_url?: string
+    parent_id?: number
+    remix_count: number
 }
 
 export default function ContentLibrary() {
@@ -76,6 +81,11 @@ export default function ContentLibrary() {
     // Content Viewer modal
     const [selectedContent, setSelectedContent] = useState<Content | null>(null)
     const [loadingContent, setLoadingContent] = useState(false)
+    const [remixing, setRemixing] = useState(false)
+
+    const navigate = useNavigate()
+    const { user } = useAuthStore()
+    const isTeacher = user?.role?.toLowerCase() === 'teacher'
 
     useEffect(() => {
         loadContent()
@@ -144,6 +154,22 @@ export default function ContentLibrary() {
             }
         } catch (err) {
             console.error('Failed to toggle like:', err)
+        }
+    }
+
+    const handleRemix = async (id: number) => {
+        if (!confirm('This will create a new draft in your collection based on this content. Proceed?')) return
+
+        setRemixing(true)
+        try {
+            await contentApi.remix(id)
+            setSelectedContent(null)
+            navigate('/teacher/my-content')
+        } catch (err) {
+            console.error('Failed to remix content:', err)
+            alert('Failed to remix content. Please try again.')
+        } finally {
+            setRemixing(false)
         }
     }
 
@@ -311,6 +337,11 @@ export default function ContentLibrary() {
                                             <span className="flex items-center gap-1">
                                                 <Eye className="w-4 h-4" /> {content.view_count}
                                             </span>
+                                            {content.remix_count > 0 && (
+                                                <span className="flex items-center gap-1">
+                                                    <GitFork className="w-4 h-4" /> {content.remix_count}
+                                                </span>
+                                            )}
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleLike(content.id) }}
                                                 className={`flex items-center gap-1 ${content.is_liked ? 'text-red-500' : ''}`}
@@ -401,6 +432,20 @@ export default function ContentLibrary() {
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3">
+                                        {isTeacher && (
+                                            <button
+                                                onClick={() => handleRemix(selectedContent.id)}
+                                                disabled={remixing}
+                                                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold hover:shadow-lg hover:shadow-blue-500/30 transition-all disabled:opacity-50"
+                                            >
+                                                {remixing ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <GitFork className="w-4 h-4" />
+                                                )}
+                                                Remix & Adapt
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => handleDownloadPdf(selectedContent.id)}
                                             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"

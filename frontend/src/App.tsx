@@ -57,6 +57,7 @@ import SchoolConfig from './pages/admin/SchoolConfig'
 import MasterData from './pages/admin/MasterData'
 import OrgSettings from './pages/admin/OrgSettings'
 import BulkUserImport from './pages/admin/BulkUserImport'
+import StateAnalytics from './pages/admin/StateAnalytics'
 import ContentList from './pages/admin/ContentList'
 import Reports from './pages/admin/Reports'
 import SuperadminDashboard from './pages/superadmin/Dashboard'
@@ -598,6 +599,13 @@ function App() {
                 <ProtectedRoute roles={['admin']}>
                     <Layout>
                         <AdminAnalytics />
+                    </Layout>
+                </ProtectedRoute>
+            } />
+            <Route path="/admin/state-analytics" element={
+                <ProtectedRoute roles={['admin']}>
+                    <Layout>
+                        <StateAnalytics />
                     </Layout>
                 </ProtectedRoute>
             } />

@@ -62,6 +62,10 @@ class ContentResponse(BaseModel):
     reviewed_at: Optional[datetime]
     view_count: int
     like_count: int
+    
+    # Movement Building
+    parent_id: Optional[int] = None
+    remix_count: int = 0
     is_liked: bool = False  # Will be computed based on current user
     created_at: datetime
     updated_at: datetime

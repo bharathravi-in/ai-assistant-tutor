@@ -14,6 +14,7 @@ from app.models.query import Query, QueryMode
 from app.models.reflection import Reflection
 from app.models.teacher_content import TeacherContent, ContentStatus
 from app.models.chat import Conversation, ChatMessage
+from app.models.config import District
 from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
@@ -387,4 +388,191 @@ async def get_crp_activity(
         "pending_approvals": pending_content,
         "teachers_needing_support": teachers_needing_support,
         "recent_activity": recent_activity
+    }
+
+
+@router.get("/arp/gap-analysis")
+async def get_arp_gap_analysis(
+    time_range: str = 'month',
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get detailed gap analysis for ARP teachers.
+    Identifies what teachers are asking vs common curriculum areas.
+    """
+    if current_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.ARP]:
+        raise HTTPException(status_code=403, detail="ARP/Admin access required")
+
+    days = 7 if time_range == 'week' else 30 if time_range == 'month' else 90
+    start_date = datetime.utcnow() - timedelta(days=days)
+
+    # Filter for ARP's assigned teachers
+    user_filter = User.assigned_arp_id == current_user.id if current_user.role == UserRole.ARP else True
+
+    # 1. Basic Counts
+    total_queries_res = await db.execute(
+        select(func.count(Query.id))
+        .join(User, User.id == Query.user_id)
+        .where(user_filter, Query.created_at >= start_date)
+    )
+    total_queries = total_queries_res.scalar() or 0
+
+    unique_teachers_res = await db.execute(
+        select(func.count(func.distinct(Query.user_id)))
+        .join(User, User.id == Query.user_id)
+        .where(user_filter, Query.created_at >= start_date)
+    )
+    unique_teachers = unique_teachers_res.scalar() or 0
+
+    topics_covered_res = await db.execute(
+        select(func.count(func.distinct(Query.topic)))
+        .join(User, User.id == Query.user_id)
+        .where(user_filter, Query.created_at >= start_date, Query.topic.isnot(None))
+    )
+    topics_covered = topics_covered_res.scalar() or 0
+
+    # 2. Common Challenges (Top topics)
+    challenges_res = await db.execute(
+        select(Query.topic, func.count(Query.id))
+        .join(User, User.id == Query.user_id)
+        .where(user_filter, Query.created_at >= start_date, Query.topic.isnot(None))
+        .group_by(Query.topic)
+        .order_by(desc(func.count(Query.id)))
+        .limit(5)
+    )
+    common_challenges = [{"topic": topic, "count": count} for topic, count in challenges_res]
+
+    # 3. Queries by Grade
+    grade_res = await db.execute(
+        select(Query.grade, func.count(Query.id))
+        .join(User, User.id == Query.user_id)
+        .where(user_filter, Query.created_at >= start_date, Query.grade.isnot(None))
+        .group_by(Query.grade)
+        .order_by(Query.grade)
+    )
+    query_by_grade = [{"grade": int(grade), "count": count} for grade, count in grade_res]
+
+    # 4. Queries by Subject
+    subj_res = await db.execute(
+        select(Query.subject, func.count(Query.id))
+        .join(User, User.id == Query.user_id)
+        .where(user_filter, Query.created_at >= start_date, Query.subject.isnot(None))
+        .group_by(Query.subject)
+        .order_by(desc(func.count(Query.id)))
+    )
+    query_by_subject = [{"subject": subj, "count": count} for subj, count in subj_res]
+
+    # 5. Uncovered Topics (Topics asked by others but not this ARP's teachers)
+    # This provides insight into what teachers MIGHT be missing or avoiding
+    others_filter = User.assigned_arp_id != current_user.id if current_user.role == UserRole.ARP else False
+    
+    uncovered_res = await db.execute(
+        select(Query.topic)
+        .join(User, User.id == Query.user_id)
+        .where(others_filter, Query.created_at >= start_date, Query.topic.isnot(None))
+        .where(Query.topic.notin_(
+            select(Query.topic)
+            .join(User, User.id == Query.user_id)
+            .where(user_filter, Query.created_at >= start_date, Query.topic.isnot(None))
+        ))
+        .group_by(Query.topic)
+        .order_by(desc(func.count(Query.id)))
+        .limit(5)
+    )
+    uncovered_topics = [topic for (topic,) in uncovered_res]
+
+    # 6. Recommendations (Generated based on data)
+    recommendations = []
+    if common_challenges:
+        top_challenge = common_challenges[0]['topic']
+        recommendations.append(f"Schedule training session on {top_challenge} for your cluster.")
+    
+    if len(query_by_subject) > 0:
+        least_asked_subj = query_by_subject[-1]['subject']
+        recommendations.append(f"Explore why teachers are reporting fewer challenges in {least_asked_subj}.")
+    
+    if unique_teachers < 10: # Sample threshold
+        recommendations.append("Increase teacher engagement by sharing successful AI-generated lesson plans in your newsletter.")
+
+    return {
+        "total_queries": total_queries,
+        "unique_teachers": unique_teachers,
+        "topics_covered": topics_covered,
+        "common_challenges": common_challenges,
+        "query_by_grade": query_by_grade,
+        "query_by_subject": query_by_subject,
+        "uncovered_topics": uncovered_topics or ["No major gaps detected currently"],
+        "recommendations": recommendations or ["Continue monitoring current teacher engagement levels."]
+    }
+
+
+@router.get("/admin/state-analytics/{state_id}")
+async def get_state_analytics(
+    state_id: int,
+    days: int = 30,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    State-level oversight analytics for Admin/Superadmin.
+    Aggregates performance and engagement across the state.
+    """
+    if current_user.role not in [UserRole.SUPERADMIN, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="State analytics access restricted")
+
+    start_date = datetime.utcnow() - timedelta(days=days)
+
+    # 1. Aggregated Query Volume
+    query_count_res = await db.execute(
+        select(func.count(Query.id))
+        .join(User, User.id == Query.user_id)
+        .where(User.state_id == state_id, Query.created_at >= start_date)
+    )
+    total_queries = query_count_res.scalar() or 0
+
+    # 2. Activity by District (Heatmap data)
+    district_activity_res = await db.execute(
+        select(District.name, func.count(Query.id))
+        .join(User, User.id == Query.user_id)
+        .join(District, District.id == User.district_id)
+        .where(User.state_id == state_id, Query.created_at >= start_date)
+        .group_by(District.name)
+        .order_by(desc(func.count(Query.id)))
+    )
+    district_activity = [{"district": name, "count": count} for name, count in district_activity_res]
+
+    # 3. Success Rate by State (Reflections saying 'worked')
+    success_res = await db.execute(
+        select(
+            func.count(case((Reflection.worked == True, 1))),
+            func.count(Reflection.id)
+        )
+        .join(Query, Query.id == Reflection.query_id)
+        .join(User, User.id == Query.user_id)
+        .where(User.state_id == state_id, Reflection.created_at >= start_date)
+    )
+    res_vals = success_res.one()
+    worked_count = res_vals[0] or 0
+    total_reflections = res_vals[1] or 0
+    success_rate = round((worked_count / (total_reflections or 1) * 100), 1) if total_reflections else 0
+
+    # 4. Top Topics in State
+    topics_res = await db.execute(
+        select(Query.topic, func.count(Query.id))
+        .join(User, User.id == Query.user_id)
+        .where(User.state_id == state_id, Query.created_at >= start_date, Query.topic.isnot(None))
+        .group_by(Query.topic)
+        .order_by(desc(func.count(Query.id)))
+        .limit(5)
+    )
+    top_topics = [{"topic": topic, "count": count} for topic, count in topics_res]
+
+    return {
+        "state_id": state_id,
+        "period_days": days,
+        "total_queries": total_queries,
+        "success_rate": success_rate,
+        "district_activity": district_activity,
+        "top_topics": top_topics
     }

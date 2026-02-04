@@ -86,6 +86,8 @@ def content_to_response(content: TeacherContent, current_user_id: int = None, is
         reviewed_at=content.reviewed_at,
         view_count=content.view_count,
         like_count=content.like_count,
+        parent_id=getattr(content, 'parent_id', None),
+        remix_count=getattr(content, 'remix_count', 0),
         is_liked=is_liked,
         created_at=content.created_at,
         updated_at=content.updated_at,
@@ -430,6 +432,51 @@ async def delete_content(
     await db.commit()
     
     return {"message": "Content deleted successfully"}
+
+
+@router.post("/{content_id}/remix", response_model=ContentResponse)
+async def remix_content(
+    content_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Remix existing content.
+    Creates a new draft for the current user based on an existing piece of content.
+    """
+    # 1. Fetch original content
+    result = await db.execute(
+        select(TeacherContent).where(TeacherContent.id == content_id)
+    )
+    original = result.scalar_one_or_none()
+    
+    if not original:
+        raise HTTPException(status_code=404, detail="Content not found")
+
+    # 2. Create remix
+    remix = TeacherContent(
+        author_id=current_user.id,
+        title=f"Remix of {original.title}",
+        content_type=original.content_type,
+        description=original.description,
+        content_json=original.content_json,
+        grade=original.grade,
+        subject=original.subject,
+        topic=original.topic,
+        tags=original.tags,
+        parent_id=original.id,
+        status=ContentStatus.DRAFT
+    )
+    
+    db.add(remix)
+    
+    # 3. Increment remix count on original
+    original.remix_count += 1
+    
+    await db.commit()
+    await db.refresh(remix)
+    
+    return content_to_response(remix, current_user.id)
 
 
 # ==================== CRP/ARP REVIEW ENDPOINTS ====================

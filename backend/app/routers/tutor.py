@@ -1,7 +1,7 @@
 """
 AI Tutor Interaction Router
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -49,7 +49,7 @@ async def tutor_chat(
     system_settings = await db.scalar(select(SystemSettings).limit(1))
     orchestrator = AIOrchestrator(system_settings=system_settings)
 
-    # 4. Construct Deterministic Lesson Renderer Prompt
+    # 4. Construct STRICT Context-Bound System Prompt
     lang_name = {
         "en": "English",
         "hi": "Hindi",
@@ -59,35 +59,56 @@ async def tutor_chat(
         "mr": "Marathi"
     }.get(request.language, "English")
 
-    system_prompt = f"""You are 'Pathshala Guru'. Professional, encouraging, and instructional.
+    section_title = active_sec.get('title') if active_sec else request.active_section_id.replace('_', ' ').title()
+    section_type = active_sec.get('type') if active_sec else 'explanation'
 
-LANGUAGE RULES:
-1. Always respond in the language provided in the METADATA ({lang_name}).
-2. If the user explicitly asks for another language (e.g., "explain in Hindi"), immediately switch to that language for the response.
-3. Do not ask for confirmation.
-4. Do not mix languages (except for literal keys: SECTION_ID, etc.).
-5. Maintain the selected language for all future responses until the metadata or user says otherwise.
+    system_prompt = f"""You are Pathshala AI Teaching Assistant.
 
-RESPONSE CONTRACT (FORMATTING):
-- These literal keys MUST remain in English/Uppercase: SECTION_ID:, SECTION_TYPE:, SECTION_TITLE:, SECTION_CONTENT:
-- The values for ID and TYPE must match the metadata exactly.
-- ONLY the actual content under SECTION_CONTENT and the greeting (if any) should be in the target language.
+YOU ARE STRICTLY CONTEXT-BOUND.
 
-You MUST respond in this EXACT structured format:
-SECTION_ID: [id provided in metadata]
-SECTION_TYPE: [type provided in metadata]
-SECTION_TITLE: [title provided in metadata]
+HARD RULES (MUST FOLLOW - NON-NEGOTIABLE):
+1. You can ONLY answer questions related to the CURRENT LESSON CONTEXT below.
+2. If a question is OUTSIDE the current lesson or section, you MUST refuse politely using the exact refusal message.
+3. You MUST answer ONLY in {lang_name}. This is NON-NEGOTIABLE.
+4. You MUST NOT switch language unless the user EXPLICITLY asks to change language.
+5. You MUST reference the current section in your answer.
+6. You are NOT a general chatbot. You are a lesson-bound teaching assistant.
 
-SECTION_CONTENT:
-[Your classroom-ready explanation or activity instructions for THIS section only. Keep it 2-4 sentences.]
-Respond ENTIRELY in the target language, except for the literal keys specified above.
-"""
+OFF-TOPIC REFUSAL RULE:
+If the user asks about topics NOT in the CURRENT TEACHING CONTEXT (e.g., Newton's Laws during a Water Cycle lesson), respond EXACTLY with:
+"This question is outside the current lesson. Let's continue with {section_title}."
+(Translate this refusal message to {lang_name} if needed)
+
+LANGUAGE RULE:
+- Selected Language: {lang_name}
+- ALL responses MUST be in {lang_name} ONLY.
+- Do NOT mix languages.
+- Do NOT switch languages unless the user explicitly requests it.
+
+CURRENT TEACHING CONTEXT (AUTHORITATIVE - this is the ONLY topic you may discuss):
+- Class: Grade {content.grade if content.grade else 'N/A'}
+- Subject: {content.subject if content.subject else 'General'}
+- Lesson Title: {content.title}
+- Section Title: {section_title}
+- Section Type: {section_type}
+- Topic: {content.topic if content.topic else section_title}
+
+CURRENT SECTION CONTENT:
+{section_context}
+
+OUTPUT STYLE:
+- Teacher-friendly, classroom-ready language
+- Simple and encouraging tone
+- 4-6 lines maximum
+- Use bullet points if steps are involved
+
+REMEMBER: You are NOT a general AI. You are lesson-bound. Refuse anything outside the current context."""
 
     lesson_metadata = f"""
 CURRENT_SECTION METADATA:
 - id: {active_sec.get('id') if active_sec else request.active_section_id}
-- type: {active_sec.get('type') if active_sec else 'explanation'}
-- title: {active_sec.get('title') if active_sec else request.active_section_id.replace('_', ' ').title()}
+- type: {section_type}
+- title: {section_title}
 - index: {request.section_index}
 """
 
@@ -97,6 +118,7 @@ CONTENT TO RENDER:
 """
 
     prompt = f"{system_prompt}\n{lesson_metadata}\n{section_details}\nUSER MESSAGE: {request.user_message}\n\nResponse:"
+
 
     try:
         answer = await orchestrator.get_simple_answer(prompt, language=request.language)
@@ -109,15 +131,97 @@ CONTENT TO RENDER:
         raise HTTPException(status_code=500, detail=f"Tutor chat error: {str(e)}")
 
 
+async def _process_pdf_background(
+    content_id: int,
+    db_session_factory,
+    pdf_url: str
+):
+    """Background task to process PDF into sections."""
+    from app.services.ai_orchestrator import AIOrchestrator
+    from app.models.system_settings import SystemSettings
+    from app.models.teacher_content import TeacherContent, ContentStatus
+    from sqlalchemy import select
+    import httpx
+    import tempfile
+    import os
+    import traceback
+
+    async with db_session_factory() as db:
+        try:
+            # 1. Fetch content
+            content = await db.get(TeacherContent, content_id)
+            if not content:
+                print(f"[Tutor-BG] Content {content_id} not found")
+                return
+
+            # 2. Fetch system settings
+            system_settings = await db.scalar(select(SystemSettings).limit(1))
+            orchestrator = AIOrchestrator(system_settings=system_settings)
+
+            # 3. Download/Prepare PDF
+            pdf_path = pdf_url
+            temp_file_path = None
+            
+            if pdf_path.startswith("http"):
+                print(f"[Tutor-BG] Downloading PDF: {pdf_path}")
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(pdf_path, timeout=60.0)
+                    if response.status_code == 200:
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                            tmp.write(response.content)
+                            temp_file_path = tmp.name
+                            pdf_path = temp_file_path
+            
+            # 4. Process using AI
+            print(f"[Tutor-BG] Extracting sections via {orchestrator.llm_client.provider}...")
+            sections = await orchestrator.process_pdf_to_sections(pdf_path)
+            
+            if sections:
+                if not content.content_json:
+                    content.content_json = {}
+                content.content_json["sections"] = sections
+                content.status = ContentStatus.PUBLISHED # Re-publish after processing
+                print(f"[Tutor-BG] Success! {len(sections)} sections extracted for content {content_id}")
+            else:
+                print(f"[Tutor-BG] Error: AI provider failed to extract sections")
+                content.status = ContentStatus.PUBLISHED # Re-publish even on failure so it's not stuck
+                if not content.content_json:
+                    content.content_json = {}
+                content.content_json["error"] = "AI failed to extract sections from this PDF."
+
+            db.add(content)
+            await db.commit()
+
+        except Exception as e:
+            print(f"[Tutor-BG] Critical error: {str(e)}")
+            traceback.print_exc()
+            # Try to reset status so it's not stuck in 'processing'
+            try:
+                content = await db.get(TeacherContent, content_id)
+                if content:
+                    content.status = ContentStatus.PUBLISHED
+                    db.add(content)
+                    await db.commit()
+            except: pass
+        finally:
+            if temp_file_path and os.path.exists(temp_file_path):
+                try: os.unlink(temp_file_path)
+                except: pass
+
+
 @router.post("/process-pdf/{content_id}")
 async def process_pdf_content(
     content_id: int,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Process a PDF file and convert it into interactive Guru sections.
+    Process a PDF file and convert it into interactive Guru sections (Background Task).
     """
+    from app.database import async_session_maker
+    from app.models.teacher_content import ContentStatus
+
     # 1. Fetch content
     content = await db.get(TeacherContent, content_id)
     if not content:
@@ -126,79 +230,31 @@ async def process_pdf_content(
     if not content.pdf_url:
         raise HTTPException(status_code=400, detail="This content has no PDF to process")
 
-    # 2. Fetch system settings
-    system_settings = await db.scalar(select(SystemSettings).limit(1))
-    orchestrator = AIOrchestrator(system_settings=system_settings)
-
-    # 3. Determine PDF path (handle both remote URLs and local paths)
-    import os
-    import httpx
-    import tempfile
-    
-    pdf_path = content.pdf_url
-    temp_file_path = None
-    
-    try:
-        if pdf_path.startswith("http"):
-            # Download the PDF to a temp file
-            print(f"[Tutor] Downloading PDF from URL: {pdf_path}")
-            async with httpx.AsyncClient() as client:
-                response = await client.get(pdf_path)
-                if response.status_code != 200:
-                    raise HTTPException(status_code=500, detail=f"Failed to download PDF: HTTP {response.status_code}")
-                
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                    tmp.write(response.content)
-                    temp_file_path = tmp.name
-                    pdf_path = temp_file_path
-                    print(f"[Tutor] PDF downloaded to: {pdf_path}")
-        else:
-            # Handle relative paths - check common locations
-            if not os.path.isabs(pdf_path):
-                possible_paths = [
-                    os.path.join("uploads", pdf_path.lstrip("/")),
-                    os.path.join("/app/uploads", pdf_path.lstrip("/")),
-                    pdf_path.lstrip("/"),
-                    pdf_path
-                ]
-                for path in possible_paths:
-                    if os.path.exists(path):
-                        pdf_path = path
-                        break
-                        
-            if not os.path.exists(pdf_path):
-                raise HTTPException(status_code=404, detail=f"PDF file not found: {content.pdf_url}")
-
-        # 4. Convert PDF to sections using Gemini
-        sections = await orchestrator.process_pdf_to_sections(pdf_path)
-        
-        if not sections:
-             raise HTTPException(status_code=500, detail="Gemini failed to extract sections from PDF")
-
-        # 5. Update content object
-        if not content.content_json:
-            content.content_json = {}
-        
-        content.content_json["sections"] = sections
-        db.add(content)
-        await db.commit()
-
+    # 1.5 Prevent redundant background tasks
+    if content.status == ContentStatus.PROCESSING:
+        print(f"[Tutor] Skipping PDF process request for {content_id} - already in progress")
         return {
-            "message": "PDF processed successfully",
-            "sections_count": len(sections),
+            "message": "PDF processing is already in progress",
+            "status": "processing",
             "content_id": content_id
         }
-    except HTTPException:
-        raise
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"PDF processing error: {str(e)}")
-    finally:
-        # Clean up temp file if created
-        if temp_file_path and os.path.exists(temp_file_path):
-            try:
-                os.unlink(temp_file_path)
-            except:
-                pass
+
+    # 2. Update status to processing
+    content.status = ContentStatus.PROCESSING
+    db.add(content)
+    await db.commit()
+
+    # 3. Queue background task
+    background_tasks.add_task(
+        _process_pdf_background,
+        content_id=content_id,
+        db_session_factory=async_session_maker,
+        pdf_url=content.pdf_url
+    )
+
+    return {
+        "message": "PDF processing started in background",
+        "status": "processing",
+        "content_id": content_id
+    }
 
