@@ -127,27 +127,31 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ userId, userName, onBack }) => 
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
-            <div className="bg-white dark:bg-[#1C1C1E] border-t border-gray-100 dark:border-white/10 p-4 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
-                <div className="flex items-end gap-2 max-w-4xl mx-auto">
-                    <div className="relative flex-1">
+            {/* Input Area */}
+            <div className="bg-white dark:bg-[#1C1C1E] border-t border-gray-200 dark:border-white/10 p-6 shadow-[0_-8px_30px_rgb(0,0,0,0.04)]">
+                <div className="max-w-4xl mx-auto">
+                    <div className="relative flex items-center gap-3 bg-gray-50 dark:bg-white/5 p-2 rounded-[2.5rem] border-2 border-gray-200 dark:border-white/10 focus-within:border-blue-500/50 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all shadow-inner">
                         <textarea
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyPress}
                             placeholder="Type a message..."
                             rows={1}
-                            className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none dark:text-white transition-all text-sm"
-                            style={{ minHeight: '48px', maxHeight: '150px' }}
+                            className="flex-1 px-4 py-3 bg-transparent border-none focus:outline-none focus:ring-0 resize-none dark:text-white text-sm placeholder-gray-400"
+                            style={{ minHeight: '44px', maxHeight: '150px' }}
                         />
+                        <button
+                            onClick={handleSend}
+                            disabled={!input.trim() || sending}
+                            className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 text-white rounded-[1.25rem] hover:shadow-lg hover:shadow-blue-500/30 disabled:opacity-50 disabled:grayscale transition-all active:scale-95 group"
+                        >
+                            {sending ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <Send className="w-5 h-5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                            )}
+                        </button>
                     </div>
-                    <button
-                        onClick={handleSend}
-                        disabled={!input.trim() || sending}
-                        className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-md"
-                    >
-                        {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                    </button>
                 </div>
             </div>
         </div>

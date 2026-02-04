@@ -586,12 +586,12 @@ export default function AskQuestion() {
                                 onClick={() => !aiResponse && setMode(m.id)}
                                 disabled={!!aiResponse}
                                 className={`relative flex flex-col h-full p-5 rounded-2xl border transition-all duration-300 group ${mode === m.id
-                                    ? 'bg-white/80 dark:bg-gray-800/80 backdrop-blur-md shadow-xl border-white/50 dark:border-white/10'
-                                    : 'bg-white/40 dark:bg-gray-800/40 backdrop-blur-sm border-gray-100 dark:border-gray-700 hover:bg-white/60 hover:shadow-lg'
+                                    ? 'bg-white dark:bg-gray-800 shadow-2xl border-transparent'
+                                    : 'bg-white dark:bg-gray-800/40 border-gray-300 dark:border-gray-700 hover:bg-white hover:shadow-xl hover:border-blue-200'
                                     } ${aiResponse ? 'opacity-60 cursor-not-allowed' : ''}`}
                                 style={mode === m.id ? {
-                                    boxShadow: `0 0 0 2px ${m.color}20, 0 10px 15px -3px rgb(0 0 0 / 0.1)`,
-                                    borderColor: m.color + '40'
+
+                                    borderColor: m.color
                                 } : {}}
                             >
                                 <div className="flex-1">
@@ -624,7 +624,7 @@ export default function AskQuestion() {
                     </div>
 
                     {/* Query Input Card */}
-                    <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden mb-8">
+                    <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] shadow-l border-2 border-gray-200 dark:border-white/10 overflow-hidden mb-8 transition-all focus-within:border-blue-500/50 focus-within:ring-8 focus-within:ring-blue-500/5">
                         <form onSubmit={handleSubmit}>
                             <div className="p-6">
                                 <textarea
@@ -789,9 +789,9 @@ export default function AskQuestion() {
                                             type="button"
                                             onClick={isListening ? stopListening : startListening}
                                             disabled={!voiceSupported}
-                                            className={`p-3 rounded-xl transition-all ${isListening
-                                                ? 'bg-red-500 text-white animate-pulse shadow-lg'
-                                                : 'bg-white dark:bg-gray-700 text-gray-500 hover:text-blue-600 shadow-sm'
+                                            className={`p-3.5 rounded-2xl transition-all border shadow-sm ${isListening
+                                                ? 'bg-red-500 text-white animate-pulse shadow-lg border-red-400'
+                                                : 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700 hover:border-blue-700'
                                                 }`}
                                         >
                                             {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
@@ -803,17 +803,17 @@ export default function AskQuestion() {
                                     <button
                                         type="submit"
                                         disabled={!query.trim() || loading}
-                                        className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold flex items-center gap-2 hover:shadow-xl hover:shadow-blue-500/25 hover:-translate-y-0.5 transition-all disabled:opacity-50"
+                                        className="px-10 py-4 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold flex items-center gap-2 hover:shadow-2xl hover:shadow-blue-500/40 hover:-translate-y-1 transition-all active:scale-95 disabled:opacity-50 disabled:grayscale disabled:translate-y-0"
                                     >
                                         {loading ? (
                                             <>
-                                                <Loader2 className="w-5 h-5 animate-spin" />
-                                                Processing...
+                                                <Loader2 className="w-6 h-6 animate-spin" />
+                                                <span>Analyzing...</span>
                                             </>
                                         ) : (
                                             <>
-                                                <Send className="w-5 h-5" />
-                                                Get Answer
+                                                <Send className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                                                <span className="text-lg">Get Answer</span>
                                             </>
                                         )}
                                     </button>
@@ -834,7 +834,7 @@ export default function AskQuestion() {
                                     <button
                                         key={idx}
                                         onClick={() => handleQuickPrompt(prompt)}
-                                        className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 hover:shadow-lg hover:border-blue-200 transition-all text-left group"
+                                        className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-blue-200 transition-all text-left group"
                                     >
                                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 flex items-center justify-center text-blue-500">
                                             <prompt.icon className="w-5 h-5" />
@@ -862,7 +862,7 @@ export default function AskQuestion() {
                                             <p className="text-xs text-amber-700 dark:text-amber-300">Response from your CRP/ARP</p>
                                         </div>
                                     </div>
-                                    {crpResponses.map((crpRes, idx) => (
+                                    {crpResponses.map((crpRes) => (
                                         <div key={crpRes.id} className="space-y-3">
                                             {crpRes.response_text && (
                                                 <div className="bg-white/60 dark:bg-gray-800/60 rounded-xl p-4">
@@ -1450,7 +1450,7 @@ export default function AskQuestion() {
             )}
 
             {/* Floating Voice Assistant Button */}
-            {!showVoiceAssistant && !panelOpen && (
+            {/* {!showVoiceAssistant && !panelOpen && (
                 <button
                     onClick={() => setShowVoiceAssistant(true)}
                     className="fixed bottom-6 right-6 w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 shadow-2xl shadow-purple-500/30 flex items-center justify-center hover:scale-110 transition-all z-40 group"
@@ -1461,7 +1461,7 @@ export default function AskQuestion() {
                         <Mic className="w-3 h-3 text-white" />
                     </span>
                 </button>
-            )}
+            )} */}
 
             {/* Voice Assistant Modal */}
             <FloatingVoiceAssistant

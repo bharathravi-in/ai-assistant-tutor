@@ -36,7 +36,7 @@ export default function UserProfileMenu() {
         <div className="relative" ref={menuRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                className="flex items-center gap-2 p-1.5 rounded-full hover:bg-white/5 transition-colors"
                 aria-label="User profile menu"
             >
                 <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 overflow-hidden border border-blue-200 dark:border-blue-800">
@@ -47,10 +47,10 @@ export default function UserProfileMenu() {
                     )}
                 </div>
                 <div className="hidden sm:flex flex-col items-start pr-1">
-                    <span className="text-sm font-medium text-gray-900 dark:text-white leading-tight">{userName}</span>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">{userRole}</span>
+                    <span className="text-sm font-medium text-white leading-tight">{userName}</span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{userRole}</span>
                 </div>
-                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {isOpen && (

@@ -76,10 +76,10 @@ const MessagesPage: React.FC = () => {
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Messages</h1>
                         <button
                             onClick={handleNewMessage}
-                            className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-md active:scale-95"
+                            className="p-2.5 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg hover:shadow-blue-500/30 transition-all active:scale-95 group"
                             title="New Message"
                         >
-                            <PlusCircle className="w-5 h-5" />
+                            <PlusCircle className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
                         </button>
                     </div>
                     <div className="relative">
@@ -89,7 +89,7 @@ const MessagesPage: React.FC = () => {
                             placeholder="Search people..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-xl focus:ring-2 focus:ring-blue-500/50 text-sm transition-all dark:text-white"
+                            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-white/5 border-2 border-gray-200 dark:border-white/10 rounded-xl focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/5 text-sm transition-all dark:text-white shadow-inner"
                         />
                     </div>
                 </div>
