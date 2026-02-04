@@ -115,7 +115,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
         if (lower.includes('marathi') || lower.includes('मराठी')) return 'mr'
         return null
     }
-    const [autoPlay] = useState(true)
+    const [autoPlay] = useState(false)
     const [isChatOpen, setIsChatOpen] = useState(false)
     const [isMuted, setIsMuted] = useState(false)
     const [isHandRaised, setIsHandRaised] = useState(false)
@@ -126,16 +126,12 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
     const videoRef = useRef<HTMLVideoElement>(null)
 
     const { speak, stop, isSpeaking, isPaused, pause, resume } = useTTS()
-    const {
-        isListening,
-        startListening,
-        stopListening,
-    } = useVoiceRecognition({
+    const recognition = useVoiceRecognition({
         language,
-        onResult: (text, isFinal) => {
+        onResult: (text: string, isFinal: boolean) => {
             if (isFinal && text.trim()) {
-                // Stop listening immediately after receiving final result
-                stopListening()
+                // Use the returned stopListening from the hook
+                recognition.stopListening()
                 setIsHandRaised(false)
                 handleSendMessage(text)
             }
@@ -144,6 +140,12 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
             setIsHandRaised(false)
         }
     })
+
+    const {
+        isListening,
+        startListening,
+        stopListening,
+    } = recognition
 
     const scrollRef = useRef<HTMLDivElement>(null)
 

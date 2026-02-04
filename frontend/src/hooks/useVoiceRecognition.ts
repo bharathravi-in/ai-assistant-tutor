@@ -65,7 +65,8 @@ export function useVoiceRecognition(
     useEffect(() => {
         if (!isSupported) return
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        if (!SpeechRecognition) return
         const recognition = new SpeechRecognition()
         recognitionRef.current = recognition
 
@@ -80,7 +81,7 @@ export function useVoiceRecognition(
             optionsRef.current.onStart?.()
         }
 
-        recognition.onresult = (event: SpeechRecognitionEvent) => {
+        recognition.onresult = (event: any) => {
             let finalTranscript = ''
             let currentInterim = ''
 
@@ -109,7 +110,7 @@ export function useVoiceRecognition(
             }
         }
 
-        recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        recognition.onerror = (event: any) => {
             console.error('❌ Speech recognition error:', event.error)
             const errorMessage = getErrorMessage(event.error)
             setError(errorMessage)
@@ -133,7 +134,8 @@ export function useVoiceRecognition(
         if (recognitionRef.current) {
             const langCode = SPEECH_LANGUAGES[language] || 'en-IN'
             recognitionRef.current.lang = langCode
-            console.log('🌐 Language set to:', langCode)
+            // Removed noisy console log
+            // console.log('🌐 Language set to:', langCode)
         }
     }, [language])
 
@@ -162,7 +164,8 @@ export function useVoiceRecognition(
 
         try {
             recognition.start()
-            console.log('🎤 Starting recognition with lang:', langCode)
+            // Removed noisy console log
+            // console.log('🎤 Starting recognition with lang:', langCode)
         } catch (err) {
             const error = err as Error
             console.error('Start error:', error.message)

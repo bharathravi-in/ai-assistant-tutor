@@ -27,7 +27,7 @@ import MyVisits from './pages/teacher/MyVisits'
 import ContentLibrary from './pages/common/ContentLibrary'
 import ContentBrowse from './pages/common/ContentBrowse'
 import ContentPlayer from './pages/common/ContentPlayer'
-import ConversationList from './components/ConversationList'
+import AITutorLanding from './pages/teacher/AITutorLanding'
 import ChatInterface from './components/ChatInterface'
 import CRPDashboard from './pages/crp/Dashboard'
 import FeedbackAssist from './pages/crp/FeedbackAssist'
@@ -259,7 +259,7 @@ function App() {
             <Route path="/teacher/chat" element={
                 <ProtectedRoute roles={['teacher']}>
                     <Layout>
-                        <ConversationList />
+                        <AITutorLanding />
                     </Layout>
                 </ProtectedRoute>
             } />

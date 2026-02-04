@@ -157,25 +157,26 @@ export default function Layout({ children }: LayoutProps) {
             {/* Sidebar */}
             <aside className={`
                 fixed top-0 left-0 z-50 h-full ${sidebarWidth}
-                bg-[#F8F9FB] dark:bg-[#1C1C1E]
-                border-r border-gray-200 dark:border-white/10
+                bg-[#0F172A] dark:bg-[#1C1C1E]
+                border-r border-slate-800 dark:border-white/10
+                shadow-2xl shadow-black/20
                 transform transition-all duration-300 ease-in-out
                 lg:translate-x-0 no-print
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             `}>
                 <div className={`flex flex-col h-full`}>
-                    {/* Logo */}
-                    <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} p-6 border-b border-gray-100/50 dark:border-white/5`}>
+                    {/* Logo Area */}
+                    <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} p-6 border-b border-slate-800 dark:border-white/5 bg-slate-900/50`}>
                         <Link to="/" className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#007AFF] text-white shadow-sm">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-600 text-white shadow-lg shadow-blue-500/20">
                                 <Library className="w-5 h-5" />
                             </div>
                             {!sidebarCollapsed && (
                                 <div>
-                                    <span className="text-xl font-medium tracking-tight text-[#1C1C1E] dark:text-white">
+                                    <span className="text-xl font-bold tracking-tight text-white">
                                         Pathshala
                                     </span>
-                                    <p className="text-[10px] uppercase tracking-wider text-[#8E8E93] font-semibold">AI Teaching</p>
+                                    <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">AI Teaching</p>
                                 </div>
                             )}
                         </Link>
@@ -198,14 +199,14 @@ export default function Layout({ children }: LayoutProps) {
                                     onClick={() => setSidebarOpen(false)}
                                     className={`
                                         flex items-center gap-3 p-3 transition-all duration-200
-                                        ${sidebarCollapsed ? 'justify-center rounded-full' : 'rounded-[10px]'}
+                                        ${sidebarCollapsed ? 'justify-center rounded-full' : 'rounded-xl'}
                                         ${isActive
-                                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
-                                            : 'text-[#8E8E93] hover:bg-black/5 dark:hover:bg-white/5'}
+                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                                            : 'text-slate-400 hover:bg-white/5 hover:text-white'}
                                     `}
                                     title={sidebarCollapsed ? item.label : undefined}
                                 >
-                                    <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-[#007AFF]' : ''}`} />
+                                    <item.icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-white' : ''}`} />
                                     {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
                                 </Link>
                             )
@@ -215,30 +216,30 @@ export default function Layout({ children }: LayoutProps) {
                     {/* Collapse toggle - Desktop only */}
                     <button
                         onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                        className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-12 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-r-lg items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                        className="hidden lg:flex absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-12 bg-[#0F172A] dark:bg-gray-800 border border-slate-800 dark:border-gray-700 rounded-r-lg items-center justify-center hover:bg-slate-800 dark:hover:bg-gray-700 transition-colors shadow-xl text-slate-400 hover:text-white"
                     >
                         {sidebarCollapsed ? (
-                            <ChevronRight className="w-4 h-4 text-gray-500" />
+                            <ChevronRight className="w-3 h-3" />
                         ) : (
-                            <ChevronLeft className="w-4 h-4 text-gray-500" />
+                            <ChevronLeft className="w-3 h-3" />
                         )}
                     </button>
                 </div>
             </aside>
 
             {/* Main content */}
-            <div className={`${marginLeft} transition-all duration-300 flex flex-col h-screen overflow-hidden bg-slate-50/50 dark:bg-gray-900`}>
-                <header className="sticky top-0 z-30 bg-white/80 dark:bg-[#1C1C1E] backdrop-blur-xl border-b border-gray-200 dark:border-white/10 shadow-sm no-print">
-                    <div className="flex items-center justify-between px-6 py-4">
+            <div className={`${marginLeft} transition-all duration-300 flex flex-col h-screen overflow-hidden bg-slate-50 dark:bg-gray-900`}>
+                <header className="sticky top-0 z-30 bg-[#0F172A] dark:bg-[#1C1C1E] backdrop-blur-2xl border-b border-slate-800 dark:border-white/10 no-print">
+                    <div className="flex items-center justify-between px-6 py-2">
                         <button
                             onClick={() => setSidebarOpen(true)}
-                            className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-[10px] transition-colors"
+                            className="lg:hidden p-2 hover:bg-white/5 rounded-[10px] transition-colors"
                         >
-                            <Menu className="w-5 h-5 text-gray-600 dark:text-white" />
+                            <Menu className="w-5 h-5 text-white" />
                         </button>
 
                         <div className="flex-1 lg:flex-none">
-                            <h1 className="text-lg font-medium text-[#1C1C1E] dark:text-white text-center lg:text-left lg:hidden">
+                            <h1 className="text-lg font-medium text-white text-center lg:text-left lg:hidden">
                                 Pathshala
                             </h1>
                         </div>
@@ -260,7 +261,7 @@ export default function Layout({ children }: LayoutProps) {
                             {/* <div className="w-px h-8 bg-gray-100 dark:bg-white/10 mx-1" /> */}
                             <button
                                 onClick={toggleDarkMode}
-                                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500 transition-colors"
+                                className="p-2 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
                                 title={darkMode ? 'Light Mode' : 'Dark Mode'}
                             >
                                 {darkMode ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-indigo-500" />}
@@ -285,7 +286,7 @@ export default function Layout({ children }: LayoutProps) {
 
                             <button
                                 onClick={() => setHelpOpen(!helpOpen)}
-                                className={`p-2 rounded-lg transition-colors ${helpOpen ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20' : 'hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500'}`}
+                                className={`p-2 rounded-lg transition-colors ${helpOpen ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
                                 title="Support & Help"
                             >
                                 <HelpCircle className="w-5 h-5" />

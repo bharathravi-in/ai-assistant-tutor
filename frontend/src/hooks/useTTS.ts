@@ -222,11 +222,23 @@ export function useTTS(): TTSHook {
         if (window.speechSynthesis.paused) {
             window.speechSynthesis.resume()
             setIsPaused(false)
+
+            // Verification: many browsers fail to update 'paused' state immediately
+            // If it's still paused after a small delay, we try speak() again as fallback
+            setTimeout(() => {
+                if (window.speechSynthesis.paused && isSpeaking) {
+                    console.warn("TTS Resume failed, retrying...")
+                    window.speechSynthesis.resume()
+                }
+            }, 100)
         } else if (audioRef.current && audioRef.current.paused) {
             audioRef.current.play().catch(console.error)
             setIsPaused(false)
+        } else {
+            // If state is inconsistent (isPaused is true but browser says it's not)
+            setIsPaused(false)
         }
-    }, [])
+    }, [isSpeaking])
 
     return {
         speak,
