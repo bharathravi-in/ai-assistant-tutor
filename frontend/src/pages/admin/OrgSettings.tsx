@@ -4,7 +4,7 @@ import {
     Loader2,
     Save,
     Upload,
-    Sparkles,
+    Bot,
     Cloud,
     Mail,
     Shield,
@@ -199,7 +199,7 @@ export default function OrgSettings() {
                 {/* AI Configuration */}
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
                     <div className="flex items-center gap-2 mb-4">
-                        <Sparkles className="w-5 h-5 text-purple-500" />
+                        <Bot className="w-5 h-5 text-purple-500" />
                         <h2 className="font-semibold text-gray-800 dark:text-white">AI Configuration</h2>
                     </div>
 

@@ -20,7 +20,7 @@ import {
     BookOpen,
     Zap,
     BookMarked,
-    Sparkles,
+    Bot,
     TrendingUp,
     Heart,
     Calendar,
@@ -189,7 +189,7 @@ export default function MyContent() {
                 <div>
                     <div className="flex items-center gap-2 mb-1">
                         <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center">
-                            <Sparkles className="w-5 h-5 text-white" />
+                            <Bot className="w-5 h-5 text-white" />
                         </div>
                         <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
                             My Creations

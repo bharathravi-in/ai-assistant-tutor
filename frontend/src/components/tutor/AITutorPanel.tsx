@@ -9,7 +9,7 @@ import {
     Volume2,
     VolumeX,
     MessageCircle,
-    Sparkles,
+    Bot,
     ChevronDown,
     Camera,
     Mic,
@@ -535,7 +535,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({ contentId, sections, onSect
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-center py-20 animate-pulse">
-                            <Sparkles className="w-16 h-16 text-zinc-200 dark:text-zinc-800 mb-6" />
+                            <Bot className="w-16 h-16 text-zinc-200 dark:text-zinc-800 mb-6" />
                             <h4 className="text-xl font-black text-zinc-400 dark:text-white uppercase tracking-wider">Ready to begin</h4>
                             <p className="text-sm text-zinc-400 dark:text-zinc-500 max-w-xs mx-auto mt-2 leading-relaxed">
                                 Click the Play button below to start your personalized guided teaching session.

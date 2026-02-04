@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     MessageSquare,
-    Sparkles,
+    Bot,
     X,
     Mic,
     MicOff,
@@ -173,7 +173,7 @@ export default function FloatingAssistant() {
                     <div className="p-5 bg-gradient-to-r from-indigo-600 to-blue-700 text-white flex items-center justify-between shrink-0">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-md">
-                                <Sparkles className="w-6 h-6" />
+                                <Bot className="w-6 h-6" />
                             </div>
                             <div>
                                 <h3 className="font-bold text-sm">AI Teaching Butler</h3>

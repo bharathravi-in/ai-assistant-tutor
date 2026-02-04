@@ -12,7 +12,7 @@ import {
     Loader2,
     Plus,
     X,
-    Sparkles,
+    Bot,
     Eye,
     Edit3,
     Split,
@@ -1083,7 +1083,7 @@ export default function ContentCreator() {
                                 onClick={() => setShowAIAssist(true)}
                                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
                             >
-                                <Sparkles className="w-4 h-4" />
+                                <Bot className="w-4 h-4" />
                                 Generate with AI
                             </button>
                         )}

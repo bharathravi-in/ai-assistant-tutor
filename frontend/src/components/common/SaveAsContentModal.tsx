@@ -17,7 +17,7 @@ import {
     Lightbulb,
     Download,
     Share2,
-    Sparkles
+    Bot
 } from 'lucide-react'
 import { contentApi } from '../../services/api'
 
@@ -429,7 +429,7 @@ export default function SaveAsContentModal({
                             {/* Enhanced Options */}
                             <div className="space-y-3 pt-2">
                                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                                    <Sparkles className="w-4 h-4 text-amber-500" />
+                                    <Bot className="w-4 h-4 text-amber-500" />
                                     Enhanced Features
                                 </h4>
 
@@ -598,7 +598,7 @@ export default function SaveAsContentModal({
                                 </>
                             ) : (
                                 <>
-                                    <Sparkles className="w-4 h-4" />
+                                    <Bot className="w-4 h-4" />
                                     Create Content
                                 </>
                             )}

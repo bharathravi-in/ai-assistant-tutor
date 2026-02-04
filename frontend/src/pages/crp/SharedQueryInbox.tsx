@@ -9,7 +9,7 @@ import {
     Send,
     Filter,
     ChevronRight,
-    Sparkles
+    Bot
 } from 'lucide-react'
 import { crpApi } from '../../services/api'
 
@@ -263,7 +263,7 @@ export default function SharedQueryInbox() {
 
                             <div>
                                 <label className="text-xs font-bold text-gray-400 uppercase flex items-center gap-2 mb-2">
-                                    <Sparkles className="w-3.5 h-3.5" /> Your Mentor Notes
+                                    <Bot className="w-3.5 h-3.5" /> Your Mentor Notes
                                 </label>
                                 <textarea
                                     value={notes}

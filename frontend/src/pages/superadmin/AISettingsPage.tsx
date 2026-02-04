@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import {
     Settings,
-    Sparkles,
+    Bot,
     Save,
     Check,
     AlertCircle,
@@ -35,7 +35,7 @@ interface AISettings {
 
 const providers = [
     { id: 'openai', name: 'OpenAI', description: 'GPT-4o, GPT-3.5', icon: <Cpu className="w-5 h-5" />, color: 'from-green-500 to-emerald-600' },
-    { id: 'gemini', name: 'Google Gemini', description: 'Pro, Flash 1.5', icon: <Sparkles className="w-5 h-5" />, color: 'from-blue-500 to-indigo-600' },
+    { id: 'gemini', name: 'Google Gemini', description: 'Pro, Flash 1.5', icon: <Bot className="w-5 h-5" />, color: 'from-blue-500 to-indigo-600' },
     { id: 'anthropic', name: 'Anthropic', description: 'Claude 3.5 Sonnet', icon: <Shield className="w-5 h-5" />, color: 'from-orange-500 to-red-600' },
     { id: 'azure_openai', name: 'Azure OpenAI', description: 'Enterprise Grade', icon: <Cloud className="w-5 h-5" />, color: 'from-sky-500 to-blue-600' },
     { id: 'litellm', name: 'LiteLLM', description: 'Unified Gateway', icon: <Globe className="w-5 h-5" />, color: 'from-purple-500 to-violet-600' },
@@ -173,7 +173,7 @@ export default function AISettingsPage() {
                 <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
                     <div className="flex items-center gap-5">
                         <div className="p-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-inner">
-                            <Sparkles className="w-10 h-10 text-indigo-300" />
+                            <Bot className="w-10 h-10 text-indigo-300" />
                         </div>
                         <div>
                             <h1 className="text-3xl font-extrabold tracking-tight">AI Orchestrator</h1>

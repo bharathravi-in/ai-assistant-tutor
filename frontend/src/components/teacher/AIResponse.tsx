@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import {
     Lightbulb,
     MessageSquare,
-    Sparkles,
+    Bot,
     HelpCircle,
     Zap,
     RotateCw,
@@ -149,7 +149,7 @@ export default function AIResponse({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {structured.specific_examples && (
                     <Section
-                        icon={Sparkles}
+                        icon={Bot}
                         title="Local Examples"
                         content={structured.specific_examples}
                         colorClass="text-purple-600 dark:text-purple-400"
@@ -209,7 +209,7 @@ export default function AIResponse({
                 )}
                 {structured.mnemonics_hooks && (
                     <Section
-                        icon={Sparkles}
+                        icon={Bot}
                         title="Quick Hook"
                         content={structured.mnemonics_hooks}
                         colorClass="text-amber-600 dark:text-amber-400"
@@ -275,7 +275,7 @@ export default function AIResponse({
 
             {structured.activities && (
                 <Section
-                    icon={Sparkles}
+                    icon={Bot}
                     title="Lesson Activities"
                     content={structured.activities}
                     colorClass="text-green-600 dark:text-green-400"
@@ -409,7 +409,7 @@ export default function AIResponse({
                                 disabled={isQuizLoading}
                                 className="w-full px-6 py-4 bg-white text-purple-700 rounded-2xl font-bold hover:bg-purple-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/10 disabled:opacity-50"
                             >
-                                {isQuizLoading ? <RotateCw className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                                {isQuizLoading ? <RotateCw className="w-5 h-5 animate-spin" /> : <Bot className="w-5 h-5" />}
                                 Generate Quiz
                             </button>
                         </div>

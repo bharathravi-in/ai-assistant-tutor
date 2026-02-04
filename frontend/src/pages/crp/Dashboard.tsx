@@ -10,7 +10,7 @@ import {
     ChevronRight,
     Loader2,
     X,
-    Sparkles,
+    Bot,
     MapPin,
     Bell,
     UserCheck,
@@ -523,7 +523,7 @@ export default function CRPDashboard() {
                                         className="w-full flex items-center justify-between p-4 bg-[#007AFF]/5 dark:bg-[#007AFF]/10 rounded-[16px] border border-[#007AFF]/10 hover:bg-[#007AFF]/10 transition-all"
                                     >
                                         <div className="flex items-center gap-2">
-                                            <Sparkles className="w-4 h-4 text-[#007AFF]" />
+                                            <Bot className="w-4 h-4 text-[#007AFF]" />
                                             <span className="text-[10px] font-bold text-[#007AFF] uppercase tracking-widest">AI Synthesis</span>
                                         </div>
                                         <ChevronRight className={`w-4 h-4 text-[#007AFF] transition-transform ${isAiSynthesisExpanded ? 'rotate-90' : ''}`} />
@@ -610,7 +610,7 @@ export default function CRPDashboard() {
                                         disabled={submitting}
                                         className="flex-1 py-3.5 px-5 rounded-[16px] bg-[#F2F2F7] dark:bg-white/5 border border-[#E5E5EA] dark:border-white/10 text-[#1C1C1E] dark:text-white font-bold text-sm hover:bg-[#E5E5EA] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                                     >
-                                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Sparkles className="w-4 h-4 text-[#FF9500]" /> Best Practice</>}
+                                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Bot className="w-4 h-4 text-[#FF9500]" /> Best Practice</>}
                                     </button>
                                     <button
                                         onClick={() => handleRespond(false)}

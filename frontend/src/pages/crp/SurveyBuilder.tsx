@@ -5,7 +5,7 @@ import {
     CheckCircle,
     Plus,
     Trash2,
-    Sparkles,
+    Bot,
     Send,
     ChevronLeft,
     Check,
@@ -61,7 +61,7 @@ export default function SurveyBuilder() {
     // Stepper
     const [currentStep, setCurrentStep] = useState(1)
     const steps = [
-        { id: 1, title: 'Generate', icon: Sparkles },
+        { id: 1, title: 'Generate', icon: Bot },
         { id: 2, title: 'Questions', icon: FileText },
         { id: 3, title: 'Assign', icon: Users }
     ]
@@ -453,7 +453,7 @@ export default function SurveyBuilder() {
                             {/* AI Generate - Glassy look */}
                             <div className="bg-[#007AFF]/5 dark:bg-[#007AFF]/10 rounded-[20px] p-8 border border-[#007AFF]/20 backdrop-blur-sm">
                                 <div className="flex items-center gap-3 mb-6">
-                                    <Sparkles className="w-6 h-6 text-[#007AFF]" />
+                                    <Bot className="w-6 h-6 text-[#007AFF]" />
                                     <h2 className="text-xl font-medium text-[#1C1C1E] dark:text-white">AI Assistant</h2>
                                 </div>
                                 <p className="text-[#8E8E93] mb-6">
@@ -471,7 +471,7 @@ export default function SurveyBuilder() {
                                         disabled={generating || !formData.context}
                                         className="w-full py-4 rounded-[12px] bg-[#007AFF] text-white font-medium shadow-lg shadow-[#007AFF]/20 disabled:opacity-50 flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
                                     >
-                                        {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                                        {generating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Bot className="w-5 h-5" />}
                                         {generating ? 'Curating Questions...' : 'Generate Questions'}
                                     </button>
                                 </div>
@@ -737,7 +737,7 @@ export default function SurveyBuilder() {
                             <div className="bg-[#1C1C1E] dark:bg-white/5 text-white rounded-[24px] p-8 shadow-2xl relative overflow-hidden">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#007AFF]/20 blur-3xl rounded-full -mr-10 -mt-10" />
                                 <h3 className="text-lg font-medium mb-6 flex items-center gap-2">
-                                    <Sparkles className="w-5 h-5 text-[#007AFF]" />
+                                    <Bot className="w-5 h-5 text-[#007AFF]" />
                                     Final Summary
                                 </h3>
                                 <div className="grid grid-cols-3 gap-8">
@@ -811,7 +811,7 @@ export default function SurveyBuilder() {
                                                 : 'bg-[#F2F2F7] dark:bg-white/10 text-[#8E8E93]'
                                                 }`}>
                                                 {survey.is_ai_generated ? (
-                                                    <Sparkles className="w-6 h-6" />
+                                                    <Bot className="w-6 h-6" />
                                                 ) : (
                                                     <ClipboardList className="w-6 h-6" />
                                                 )}
