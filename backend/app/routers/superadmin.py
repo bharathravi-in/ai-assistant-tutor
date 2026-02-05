@@ -16,7 +16,7 @@ from app.models.organization_settings import OrganizationSettings, AIProvider, S
 from app.models.subscription import PlanLimits, UsageTracking, AuditLog
 from app.models.system_settings import SystemSettings
 from app.routers.auth import get_current_user
-from app.utils.encryption import encrypt_value, decrypt_value, mask_value
+from app.utils.encryption import encrypt_value, decrypt_value, mask_value, is_mask
 
 router = APIRouter(prefix="/superadmin", tags=["Superadmin"])
 
@@ -496,7 +496,12 @@ async def update_organization_settings(
     
     for key, value in update_data.items():
         if key in encrypted_fields and value:
-            value = encrypt_value(value)
+            # Only encrypt if it's not a UI mask
+            if not is_mask(value):
+                value = encrypt_value(value)
+            else:
+                # If it is a mask, don't update this field to avoid overwriting with dots
+                continue
         setattr(settings, key, value)
     
     await db.commit()
@@ -701,27 +706,27 @@ async def update_global_ai_settings(
     system_settings.ai_provider = data.ai_provider
     
     # Only update non-empty/non-masked values
-    if data.openai_api_key and data.openai_api_key != "••••••••":
+    if data.openai_api_key and not is_mask(data.openai_api_key):
         system_settings.openai_api_key = encrypt_value(data.openai_api_key)
     if data.openai_model:
         system_settings.openai_model = data.openai_model
         
-    if data.gemini_api_key and data.gemini_api_key != "••••••••":
+    if data.gemini_api_key and not is_mask(data.gemini_api_key):
         system_settings.gemini_api_key = encrypt_value(data.gemini_api_key)
     if data.gemini_model:
         system_settings.gemini_model = data.gemini_model
         
-    if data.anthropic_api_key and data.anthropic_api_key != "••••••••":
+    if data.anthropic_api_key and not is_mask(data.anthropic_api_key):
         system_settings.anthropic_api_key = encrypt_value(data.anthropic_api_key)
         
     if data.azure_openai_endpoint:
         system_settings.azure_openai_endpoint = data.azure_openai_endpoint
-    if data.azure_openai_key and data.azure_openai_key != "••••••••":
+    if data.azure_openai_key and not is_mask(data.azure_openai_key):
         system_settings.azure_openai_key = encrypt_value(data.azure_openai_key)
     if data.azure_openai_deployment:
         system_settings.azure_openai_deployment = data.azure_openai_deployment
         
-    if data.litellm_api_key and data.litellm_api_key != "••••••••":
+    if data.litellm_api_key and not is_mask(data.litellm_api_key):
         system_settings.litellm_api_key = encrypt_value(data.litellm_api_key)
     if data.litellm_base_url:
         system_settings.litellm_base_url = data.litellm_base_url
@@ -767,7 +772,7 @@ async def test_ai_connection(
             def _resolve_key(self, input_val: Optional[str], db_val: Optional[str]) -> Optional[str]:
                 if not input_val:
                     return None
-                if input_val == "••••••••":
+                if is_mask(input_val):
                     return db_val # Already encrypted in DB
                 return encrypt_value(input_val)
 
@@ -782,6 +787,9 @@ async def test_ai_connection(
         
         if "demo" in response.lower() or "configure" in response.lower():
             return {"success": False, "message": "No valid API key configured for this provider"}
+        
+        if response.startswith("Error generating response:"):
+            return {"success": False, "message": f"Connection failed: {response}"}
         
         return {"success": True, "message": f"Connection successful! Response: {response[:100]}..."}
 

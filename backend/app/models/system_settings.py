@@ -24,7 +24,7 @@ class SystemSettings(Base):
     openai_model: Mapped[str] = mapped_column(String(50), default="gpt-4o-mini")
     
     gemini_api_key: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Encrypted
-    gemini_model: Mapped[str] = mapped_column(String(50), default="gemini-pro")
+    gemini_model: Mapped[str] = mapped_column(String(50), default="gemini-1.5-flash")
     
     anthropic_api_key: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # Encrypted
     

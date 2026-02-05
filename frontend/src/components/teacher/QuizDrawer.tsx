@@ -64,7 +64,7 @@ const QuizDrawer: React.FC<QuizDrawerProps> = ({
 
         const questionsHtml = quiz.questions.map((q, idx) => {
             const options = q.options?.length ? q.options :
-                q.type === 'TRUE_FALSE' ? ['True', 'False'] :
+                q.type === 'true_false' ? ['True', 'False'] :
                     [];
 
             return `
@@ -110,7 +110,7 @@ const QuizDrawer: React.FC<QuizDrawerProps> = ({
                         line-height: 1.6;
                         background: white;
                     }
-                    .header { border-bottom: 2px solid #6366f1; margin-bottom: 40px; padding-bottom: 20px; }
+                    .header { border-bottom: 2px solid #2563EB; margin-bottom: 40px; padding-bottom: 20px; }
                     .header h1 { margin: 0 0 8px 0; color: #1a1a1a; font-size: 28px; }
                     .header p { margin: 0; color: #666; font-size: 16px; }
                     .question-container { 
@@ -253,8 +253,8 @@ const QuizDrawer: React.FC<QuizDrawerProps> = ({
                         {/* Header */}
                         <div className="px-6 py-4 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between no-print">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-purple-500/10 rounded-xl">
-                                    <BrainCircuit className="w-6 h-6 text-purple-500" />
+                                <div className="p-2 bg-blue-500/10 rounded-xl">
+                                    <BrainCircuit className="w-6 h-6 text-blue-500" />
                                 </div>
                                 <div>
                                     <h2 className="text-xl font-bold text-gray-900 dark:text-white">Assessment Genie</h2>
@@ -263,10 +263,10 @@ const QuizDrawer: React.FC<QuizDrawerProps> = ({
                             </div>
                             <div className="flex items-center gap-4">
                                 <label className="flex items-center gap-2 cursor-pointer group">
-                                    <span className="text-xs font-bold text-gray-500 group-hover:text-purple-600 transition-colors uppercase tracking-wider">Show Answers</span>
+                                    <span className="text-xs font-bold text-gray-500 group-hover:text-blue-600 transition-colors uppercase tracking-wider">Show Answers</span>
                                     <div
                                         onClick={() => setShowAnswers(!showAnswers)}
-                                        className={`relative w-10 h-5 rounded-full transition-colors ${showAnswers ? 'bg-purple-600' : 'bg-gray-200 dark:bg-gray-700'}`}
+                                        className={`relative w-10 h-5 rounded-full transition-colors ${showAnswers ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'}`}
                                     >
                                         <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${showAnswers ? 'translate-x-5' : ''}`} />
                                     </div>
@@ -285,8 +285,8 @@ const QuizDrawer: React.FC<QuizDrawerProps> = ({
                             {isLoading ? (
                                 <div className="h-full flex flex-col items-center justify-center space-y-4">
                                     <div className="relative">
-                                        <div className="w-16 h-16 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin no-print" />
-                                        <BrainCircuit className="absolute inset-0 m-auto w-6 h-6 text-purple-500 animate-pulse no-print" />
+                                        <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin no-print" />
+                                        <BrainCircuit className="absolute inset-0 m-auto w-6 h-6 text-blue-500 animate-pulse no-print" />
                                     </div>
                                     <p className="text-gray-500 dark:text-gray-400 font-medium animate-pulse no-print">
                                         Generating your assessment questions...
@@ -303,13 +303,13 @@ const QuizDrawer: React.FC<QuizDrawerProps> = ({
                                         {quiz.questions.map((q, idx) => {
                                             // Handle missing options for specific types
                                             const options = q.options?.length ? q.options :
-                                                q.type === 'TRUE_FALSE' ? ['True', 'False'] :
+                                                q.type === 'true_false' ? ['True', 'False'] :
                                                     [];
 
                                             return (
                                                 <div
                                                     key={q.id}
-                                                    className={`group bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden hover:border-purple-500/50 transition-all shadow-sm hover:shadow-md print:shadow-none print:border-gray-200 print:break-inside-avoid print:mb-8`}
+                                                    className={`group bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden hover:border-blue-500/50 transition-all shadow-sm hover:shadow-md print:shadow-none print:border-gray-200 print:break-inside-avoid print:mb-8`}
                                                 >
                                                     <div
                                                         className="p-5 cursor-pointer flex items-start gap-4"
@@ -407,7 +407,7 @@ const QuizDrawer: React.FC<QuizDrawerProps> = ({
                             <button
                                 onClick={onRegenerate}
                                 disabled={isLoading}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-4 bg-purple-600 text-white rounded-2xl font-bold hover:bg-purple-700 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-50"
+                                className="w-full flex items-center justify-center gap-2 px-4 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50"
                             >
                                 <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
                                 Regenerate Assessment

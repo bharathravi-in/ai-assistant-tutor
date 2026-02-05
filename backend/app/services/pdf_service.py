@@ -96,9 +96,84 @@ class PDFGenerationService:
         'low_tlm_alternatives': 'Low-Resource Alternatives',
     }
     
+    # Path to system fonts
+    FONT_DIR = "/usr/share/fonts/truetype"
+    
     def __init__(self):
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        import os
+        
+        self.registered_fonts = set()
+        self._register_fonts()
         self.styles = getSampleStyleSheet()
         self._setup_custom_styles()
+
+    def _register_fonts(self):
+        """Register Unicode-compatible fonts for regional languages."""
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        import os
+        
+        # Multiple possible font paths for different environments
+        font_paths = [
+            self.FONT_DIR,
+            "/usr/share/fonts/truetype/noto",
+            "/usr/share/fonts/opentype/noto",
+            "/usr/share/fonts/truetype",
+            "/usr/share/fonts"
+        ]
+        
+        def find_font(name):
+            for path in font_paths:
+                full_path = os.path.join(path, name)
+                if os.path.exists(full_path):
+                    return full_path
+            return None
+
+        try:
+            # Register DejaVuSans as the primary Unicode-capable font
+            dejavu_sans = find_font("dejavu/DejaVuSans.ttf") or find_font("DejaVuSans.ttf")
+            dejavu_sans_bold = find_font("dejavu/DejaVuSans-Bold.ttf") or find_font("DejaVuSans-Bold.ttf")
+            
+            if dejavu_sans:
+                pdfmetrics.registerFont(TTFont('DejaVuSans', dejavu_sans))
+                if dejavu_sans_bold:
+                    pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', dejavu_sans_bold))
+                self.default_font = 'DejaVuSans'
+                self.default_font_bold = 'DejaVuSans-Bold' if dejavu_sans_bold else 'DejaVuSans'
+                self.registered_fonts.add('DejaVuSans')
+                print(f"✅ Registered DejaVuSans font from {dejavu_sans}")
+            else:
+                self.default_font = 'Helvetica'
+                self.default_font_bold = 'Helvetica-Bold'
+                print("⚠️ DejaVuSans not found, falling back to Helvetica")
+
+            # Font mappings for regional languages
+            font_mappings = {
+                'NotoSansDevanagari': ["NotoSansDevanagari-Regular.ttf", "NotoSansDevanagari-Bold.ttf"],
+                'NotoSansTelugu': ["NotoSansTelugu-Regular.ttf", "NotoSansTelugu-Bold.ttf"],
+                'NotoSansTamil': ["NotoSansTamil-Regular.ttf", "NotoSansTamil-Bold.ttf"],
+                'NotoSansKannada': ["NotoSansKannada-Regular.ttf", "NotoSansKannada-Bold.ttf"]
+            }
+
+            for font_name, files in font_mappings.items():
+                reg_file = find_font(files[0]) or find_font(f"noto/{files[0]}")
+                bold_file = find_font(files[1]) or find_font(f"noto/{files[1]}")
+                
+                if reg_file:
+                    pdfmetrics.registerFont(TTFont(font_name, reg_file))
+                    if bold_file:
+                        pdfmetrics.registerFont(TTFont(f"{font_name}-Bold", bold_file))
+                    self.registered_fonts.add(font_name)
+                    print(f"✅ Registered {font_name} from {reg_file}")
+                else:
+                    print(f"❌ Could not find font files for {font_name} in paths: {font_paths}")
+
+        except Exception as e:
+            print(f"❌ Error registering fonts: {e}")
+            self.default_font = 'Helvetica'
+            self.default_font_bold = 'Helvetica-Bold'
     
     def _setup_custom_styles(self):
         """Setup custom paragraph styles."""
@@ -110,7 +185,7 @@ class PDFGenerationService:
             textColor=self.COLORS['dark'],
             spaceAfter=20,
             alignment=TA_CENTER,
-            fontName='Helvetica-Bold'
+            fontName=self.default_font_bold
         ))
         
         # Subtitle style
@@ -120,7 +195,8 @@ class PDFGenerationService:
             fontSize=14,
             textColor=self.COLORS['text'],
             spaceAfter=30,
-            alignment=TA_CENTER
+            alignment=TA_CENTER,
+            fontName=self.default_font
         ))
         
         # Section header style
@@ -131,7 +207,7 @@ class PDFGenerationService:
             textColor=self.COLORS['primary'],
             spaceBefore=20,
             spaceAfter=10,
-            fontName='Helvetica-Bold'
+            fontName=self.default_font_bold
         ))
         
         # Custom body text style (use different name to avoid conflict)
@@ -142,7 +218,8 @@ class PDFGenerationService:
             textColor=self.COLORS['text'],
             spaceAfter=8,
             alignment=TA_JUSTIFY,
-            leading=16
+            leading=16,
+            fontName=self.default_font
         ))
         
         # List item style
@@ -153,10 +230,11 @@ class PDFGenerationService:
             textColor=self.COLORS['text'],
             leftIndent=20,
             spaceAfter=4,
-            leading=14
+            leading=14,
+            fontName=self.default_font
         ))
         
-        # Quote/highlight style
+        # Highlight style
         self.styles.add(ParagraphStyle(
             name='Highlight',
             parent=self.styles['Normal'],
@@ -168,7 +246,8 @@ class PDFGenerationService:
             spaceAfter=10,
             leftIndent=20,
             rightIndent=20,
-            leading=16
+            leading=16,
+            fontName=self.default_font
         ))
         
         # Footer style
@@ -177,21 +256,50 @@ class PDFGenerationService:
             parent=self.styles['Normal'],
             fontSize=9,
             textColor=colors.gray,
-            alignment=TA_CENTER
+            alignment=TA_CENTER,
+            fontName=self.default_font
         ))
     
+    def _wrap_with_unicode_font(self, text: str) -> str:
+        """Wrap text with appropriate font tags if Unicode characters are present."""
+        if not text:
+            return ""
+        
+        # Ranges for Indic scripts (using non-raw strings to ensure Unicode expansion)
+        # Devanagari: 0900-097F
+        # Tamil: 0B80-0BFF
+        # Telugu: 0C00-0C7F
+        # Kannada: 0C80-0CFF
+        
+        has_hi = bool(re.search('[\u0900-\u097F]', text))
+        has_te = bool(re.search('[\u0c00-\u0c7f]', text))
+        has_ta = bool(re.search('[\u0b80-\u0bff]', text))
+        has_kn = bool(re.search('[\u0c80-\u0cff]', text))
+        
+        # Only wrap if the font was successfully registered
+        if has_hi and 'NotoSansDevanagari' in self.registered_fonts:
+            return f'<font face="NotoSansDevanagari">{text}</font>'
+        if has_te and 'NotoSansTelugu' in self.registered_fonts:
+            return f'<font face="NotoSansTelugu">{text}</font>'
+        if has_ta and 'NotoSansTamil' in self.registered_fonts:
+            return f'<font face="NotoSansTamil">{text}</font>'
+        if has_kn and 'NotoSansKannada' in self.registered_fonts:
+            return f'<font face="NotoSansKannada">{text}</font>'
+            
+        return text
+
     def _clean_markdown(self, text: str) -> str:
         """Convert markdown to plain text with basic formatting."""
         if not text:
             return ""
         
         # Convert bold markdown to reportlab bold tags
-        text = re.sub(r'\*\*([^*]+)\*\*', r'<b>\1</b>', text)
-        text = re.sub(r'__([^_]+)__', r'<b>\1</b>', text)
+        text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+        text = re.sub(r'__(.+?)__', r'<b>\1</b>', text)
         
         # Convert italic markdown
-        text = re.sub(r'\*([^*]+)\*', r'<i>\1</i>', text)
-        text = re.sub(r'_([^_]+)_', r'<i>\1</i>', text)
+        text = re.sub(r'\*(.+?)\*', r'<i>\1</i>', text)
+        text = re.sub(r'_(.+?)_', r'<i>\1</i>', text)
         
         # Remove headers markdown (keep text)
         text = re.sub(r'^#{1,6}\s*', '', text, flags=re.MULTILINE)
@@ -200,8 +308,11 @@ class PDFGenerationService:
         text = text.replace('\n\n', '<br/><br/>')
         text = text.replace('\n', '<br/>')
         
+        # Wrap with dynamic font for Unicode support
+        text = self._wrap_with_unicode_font(text)
+        
         return text
-    
+
     def _create_section_header(self, section_key: str) -> Paragraph:
         """Create a styled section header."""
         emoji = self.SECTION_EMOJIS.get(section_key, '📌')
@@ -341,7 +452,7 @@ class PDFGenerationService:
         elements.append(Spacer(1, 10))
         
         # Title
-        elements.append(Paragraph(title, self.styles['CustomTitle']))
+        elements.append(Paragraph(self._wrap_with_unicode_font(title), self.styles['CustomTitle']))
         
         # Metadata subtitle
         meta_parts = []
@@ -351,7 +462,7 @@ class PDFGenerationService:
             meta_parts.append(f"Class {metadata['grade']}")
         meta_parts.append(content_type.replace('_', ' ').title())
         
-        elements.append(Paragraph(" | ".join(meta_parts), self.styles['Subtitle']))
+        elements.append(Paragraph(self._wrap_with_unicode_font(" | ".join(meta_parts)), self.styles['Subtitle']))
         
         # Horizontal line
         elements.append(HRFlowable(

@@ -474,17 +474,17 @@ export default function SaveAsContentModal({
                                 </div>
 
                                 {/* Submit for Review Option */}
-                                <div className="flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
+                                <div className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
                                     <input
                                         type="checkbox"
                                         id="submitForReview"
                                         checked={submitForReview}
                                         onChange={(e) => setSubmitForReview(e.target.checked)}
-                                        className="w-5 h-5 rounded border-gray-300 text-yellow-500 focus:ring-yellow-500"
+                                        className="w-5 h-5 rounded border-gray-300 text-purple-500 focus:ring-purple-500"
                                     />
                                     <label htmlFor="submitForReview" className="flex-1 cursor-pointer">
                                         <span className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
-                                            <Send className="w-4 h-4 text-yellow-600" />
+                                            <Send className="w-4 h-4 text-purple-600" />
                                             Submit for CRP/ARP Approval
                                         </span>
                                         <span className="text-xs text-gray-500">

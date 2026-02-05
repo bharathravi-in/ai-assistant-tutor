@@ -111,8 +111,8 @@ export default function AIResponse({
                     icon={BookOpen}
                     title="Conceptual Briefing"
                     content={structured.conceptual_briefing}
-                    colorClass="text-indigo-600 dark:text-indigo-400"
-                    borderClass="border-l-indigo-500"
+                    colorClass="text-blue-600 dark:text-blue-400"
+                    borderClass="border-l-blue-500"
                 />
             )}
 
@@ -152,8 +152,8 @@ export default function AIResponse({
                         icon={Bot}
                         title="Local Examples"
                         content={structured.specific_examples}
-                        colorClass="text-purple-600 dark:text-purple-400"
-                        borderClass="border-l-purple-500"
+                        colorClass="text-sky-600 dark:text-sky-400"
+                        borderClass="border-l-sky-500"
                     />
                 )}
                 {structured.generic_examples && (
@@ -233,8 +233,8 @@ export default function AIResponse({
                     icon={ArrowRight}
                     title="Bridge back to Lesson"
                     content={structured.bridge_the_gap}
-                    colorClass="text-indigo-600 dark:text-indigo-400"
-                    borderClass="border-l-indigo-500"
+                    colorClass="text-blue-600 dark:text-blue-400"
+                    borderClass="border-l-blue-500"
                 />
             )}
 
@@ -288,8 +288,8 @@ export default function AIResponse({
                     icon={CheckCircle}
                     title="Exit Questions"
                     content={structured.exit_questions}
-                    colorClass="text-purple-600 dark:text-purple-400"
-                    borderClass="border-l-purple-500"
+                    colorClass="text-sky-600 dark:text-sky-400"
+                    borderClass="border-l-sky-500"
                 />
             )}
         </div>
@@ -391,7 +391,7 @@ export default function AIResponse({
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 animate-slide-up">
                     {/* The Quiz Genie */}
                     {onGenerateQuiz && (
-                        <div className="p-6 bg-gradient-to-br from-purple-600 to-indigo-700 rounded-3xl shadow-xl shadow-purple-500/20 text-white flex flex-col justify-between gap-6 group hover:scale-[1.02] transition-all">
+                        <div className="p-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-3xl shadow-xl shadow-blue-500/20 text-white flex flex-col justify-between gap-6 group hover:scale-[1.02] transition-all">
                             <div className="flex items-center gap-4 text-left">
                                 <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
                                     <BrainCircuit className="w-8 h-8 text-white" />
@@ -407,7 +407,7 @@ export default function AIResponse({
                                     onGenerateQuiz(topicName, response.content)
                                 }}
                                 disabled={isQuizLoading}
-                                className="w-full px-6 py-4 bg-white text-purple-700 rounded-2xl font-bold hover:bg-purple-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/10 disabled:opacity-50"
+                                className="w-full px-6 py-4 bg-white text-blue-700 rounded-2xl font-bold hover:bg-blue-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/10 disabled:opacity-50"
                             >
                                 {isQuizLoading ? <RotateCw className="w-5 h-5 animate-spin" /> : <Bot className="w-5 h-5" />}
                                 Generate Quiz
@@ -417,7 +417,7 @@ export default function AIResponse({
 
                     {/* The TLM Designer */}
                     {onGenerateTLM && (
-                        <div className="p-6 bg-gradient-to-br from-indigo-600 to-emerald-600 rounded-3xl shadow-xl shadow-indigo-500/20 text-white flex flex-col justify-between gap-6 group hover:scale-[1.02] transition-all">
+                        <div className="p-6 bg-gradient-to-br from-blue-600 to-emerald-600 rounded-3xl shadow-xl shadow-blue-500/20 text-white flex flex-col justify-between gap-6 group hover:scale-[1.02] transition-all">
                             <div className="flex items-center gap-4 text-left">
                                 <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
                                     <Palette className="w-8 h-8 text-white" />
@@ -443,7 +443,7 @@ export default function AIResponse({
 
                     {/* The NCERT Auditor */}
                     {onAudit && !auditResult && (
-                        <div className="p-6 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl shadow-xl shadow-blue-500/20 text-white flex flex-col justify-between gap-6 group hover:scale-[1.02] transition-all">
+                        <div className="p-6 bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl shadow-xl shadow-blue-500/20 text-white flex flex-col justify-between gap-6 group hover:scale-[1.02] transition-all">
                             <div className="flex items-center gap-4 text-left">
                                 <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
                                     <ShieldCheck className="w-8 h-8 text-white" />
@@ -459,7 +459,7 @@ export default function AIResponse({
                                     onAudit(topicName, response.content)
                                 }}
                                 disabled={isAuditLoading}
-                                className="w-full px-6 py-4 bg-white text-indigo-700 rounded-2xl font-bold hover:bg-blue-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/10 disabled:opacity-50"
+                                className="w-full px-6 py-4 bg-white text-blue-700 rounded-2xl font-bold hover:bg-blue-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-black/10 disabled:opacity-50"
                             >
                                 {isAuditLoading ? <RotateCw className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
                                 Audit Curriculum

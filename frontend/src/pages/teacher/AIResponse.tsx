@@ -462,10 +462,10 @@ export default function AIResponse() {
                                 <ShieldCheck className="w-4 h-4 text-green-500" />
                                 NCERT Compliance Audit
                             </h3>
-                            <div className={`rounded-xl p-4 ${auditResult.is_compliant ? 'bg-green-50 dark:bg-green-900/20' : 'bg-yellow-50 dark:bg-yellow-900/20'}`}>
+                            <div className={`rounded-xl p-4 ${auditResult.is_compliant ? 'bg-green-50 dark:bg-green-900/20' : 'bg-purple-50 dark:bg-purple-900/20'}`}>
                                 <div className="flex items-center gap-2 mb-3">
-                                    <div className={`w-3 h-3 rounded-full ${auditResult.is_compliant ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                                    <span className={`font-semibold ${auditResult.is_compliant ? 'text-green-700 dark:text-green-400' : 'text-yellow-700 dark:text-yellow-400'}`}>
+                                    <div className={`w-3 h-3 rounded-full ${auditResult.is_compliant ? 'bg-green-500' : 'bg-purple-500'}`} />
+                                    <span className={`font-semibold ${auditResult.is_compliant ? 'text-green-700 dark:text-green-400' : 'text-purple-700 dark:text-purple-400'}`}>
                                         {auditResult.is_compliant ? 'NCERT Compliant' : 'Needs Review'}
                                     </span>
                                     {auditResult.compliance_score && (
@@ -483,7 +483,7 @@ export default function AIResponse() {
                                         <ul className="space-y-1">
                                             {auditResult.suggestions.map((s: string, idx: number) => (
                                                 <li key={idx} className="text-sm text-gray-600 dark:text-gray-400 flex items-start gap-2">
-                                                    <span className="text-yellow-500">•</span> {s}
+                                                    <span className="text-purple-500">•</span> {s}
                                                 </li>
                                             ))}
                                         </ul>

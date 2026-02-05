@@ -348,7 +348,7 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
                     <span className="hidden sm:inline">Back</span>
                 </button>
                 <div className="flex items-center gap-2">
-                    <Bot className="w-6 h-6 text-purple-300" />
+                    <Bot className="w-6 h-6 text-blue-300" />
                     <h1 className="text-xl font-bold text-white">AI Teaching Assistant</h1>
                 </div>
                 <div className="flex items-center gap-3">
@@ -360,7 +360,7 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
                         {showLanguages && (
                             <div className="absolute right-0 top-full mt-2 bg-white/10 backdrop-blur-xl rounded-2xl shadow-2xl py-2 min-w-[160px] border border-white/20">
                                 {languages.map((lang) => (
-                                    <button key={lang.code} onClick={() => { handleLanguageChange(lang.code); setShowLanguages(false); }} className={`w-full px-4 py-2.5 text-left hover:bg-white/10 transition-colors flex items-center gap-2 ${i18n.language === lang.code ? 'text-purple-300 font-medium' : 'text-white/80'}`}>
+                                    <button key={lang.code} onClick={() => { handleLanguageChange(lang.code); setShowLanguages(false); }} className={`w-full px-4 py-2.5 text-left hover:bg-white/10 transition-colors flex items-center gap-2 ${i18n.language === lang.code ? 'text-blue-300 font-medium' : 'text-white/80'}`}>
                                         <span>🇮🇳</span>
                                         <span>{lang.native_name}</span>
                                     </button>
@@ -368,7 +368,7 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
                             </div>
                         )}
                     </div>
-                    <button onClick={() => setAutoSpeak(!autoSpeak)} className={`p-2.5 rounded-full transition-all ${autoSpeak ? 'bg-purple-500 text-white' : 'bg-white/10 text-white/50'}`} title={autoSpeak ? 'Voice on' : 'Voice off'}>
+                    <button onClick={() => setAutoSpeak(!autoSpeak)} className={`p-2.5 rounded-full transition-all ${autoSpeak ? 'bg-blue-500 text-white' : 'bg-white/10 text-white/50'}`} title={autoSpeak ? 'Voice on' : 'Voice off'}>
                         {autoSpeak ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
                     </button>
                 </div>
@@ -393,9 +393,9 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
 
                         <div className={`
                             relative w-32 h-32 lg:w-40 lg:h-40 rounded-full
-                            bg-gradient-to-br from-purple-500 via-indigo-500 to-violet-600
+                            bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700
                             flex items-center justify-center
-                            shadow-2xl shadow-purple-500/50
+                            shadow-2xl shadow-blue-500/50
                             transition-all duration-300
                             ${isListening ? 'scale-110 ring-4 ring-red-400/50' : ''}
                             ${isSpeaking ? 'ring-4 ring-green-400/50' : ''}
@@ -446,7 +446,7 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
                                 {hasStructuredContent ? (
                                     <div className="space-y-6">
                                         {structuredData.understanding && (
-                                            <div className="p-3 bg-purple-500/10 rounded-xl border border-purple-500/20 italic text-purple-200 text-sm">
+                                            <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 italic text-blue-200 text-sm">
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <MessageSquare className="w-3 h-3" />
                                                     <span className="text-[10px] font-bold uppercase tracking-widest">AI Understanding</span>
@@ -458,7 +458,7 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
                                         )}
                                         {structuredData.conceptual_briefing && (
                                             <div>
-                                                <div className="flex items-center gap-2 text-indigo-300 mb-2">
+                                                <div className="flex items-center gap-2 text-blue-300 mb-2">
                                                     <BookOpen className="w-4 h-4" />
                                                     <span className="text-xs font-bold uppercase tracking-widest">Lesson Insight</span>
                                                 </div>
@@ -524,8 +524,8 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
                                             </div>
                                         )}
                                         {structuredData.bridge_the_gap && (
-                                            <div className="p-4 bg-indigo-500/20 rounded-2xl border border-indigo-500/30">
-                                                <div className="flex items-center gap-2 text-indigo-300 mb-2">
+                                            <div className="p-4 bg-blue-500/20 rounded-2xl border border-blue-500/30">
+                                                <div className="flex items-center gap-2 text-blue-300 mb-2">
                                                     <Target className="w-4 h-4" />
                                                     <span className="text-xs font-bold uppercase tracking-widest">Bridge to Lesson</span>
                                                 </div>
@@ -647,7 +647,7 @@ export default function VoiceAssistant({ isOpen, onClose }: VoiceAssistantProps)
             <footer className="fixed bottom-0 left-0 right-0 z-20 pb-8 px-6">
                 <div className="max-w-xl mx-auto">
                     <div className="flex items-center gap-3 p-2 pr-4 rounded-full bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl focus-within:bg-white/15 transition-all">
-                        <button type="button" onClick={toggleListening} disabled={!voiceSupported || isProcessing} className={`p-4 rounded-full transition-all duration-500 flex-shrink-0 ${isListening ? 'bg-red-500 text-white scale-110 shadow-[0_0_30px_rgba(239,68,68,0.5)] animate-pulse' : 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg'} disabled:opacity-50`}>
+                        <button type="button" onClick={toggleListening} disabled={!voiceSupported || isProcessing} className={`p-4 rounded-full transition-all duration-500 flex-shrink-0 ${isListening ? 'bg-red-500 text-white scale-110 shadow-[0_0_30px_rgba(239,68,68,0.5)] animate-pulse' : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'} disabled:opacity-50`}>
                             {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
                         </button>
                         <form onSubmit={handleTextSubmit} className="flex-1 flex items-center gap-2">

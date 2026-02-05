@@ -97,7 +97,7 @@ export default function ContentBrowse() {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl flex items-center justify-center text-black shadow-gold">
+                        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-700 rounded-2xl flex items-center justify-center text-white shadow-purple">
                             <Library className="w-6 h-6" />
                         </div>
                         <div>
@@ -108,13 +108,13 @@ export default function ContentBrowse() {
 
                     <div className="flex gap-4">
                         <div className="relative group">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-yellow-500 transition-colors" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-purple-500 transition-colors" />
                             <input
                                 type="text"
                                 placeholder="Search resources..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-xl w-full md:w-[300px] focus:outline-none focus:ring-2 focus:ring-yellow-500/20 focus:border-yellow-500/50 transition-all text-sm text-zinc-900 dark:text-white shadow-sm"
+                                className="pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-xl w-full md:w-[300px] focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500/50 transition-all text-sm text-zinc-900 dark:text-white shadow-sm"
                             />
                         </div>
                     </div>
@@ -124,13 +124,13 @@ export default function ContentBrowse() {
                 <div className="flex items-center gap-2 bg-zinc-200/50 dark:bg-white/5 p-1 rounded-xl mb-8 w-fit border border-zinc-200 dark:border-white/10 backdrop-blur-md">
                     <button
                         onClick={() => setActiveTab('content')}
-                        className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'content' ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
+                        className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'content' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
                     >
                         Library
                     </button>
                     <button
                         onClick={() => setActiveTab('learning')}
-                        className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'learning' ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
+                        className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'learning' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'}`}
                     >
                         Courses
                     </button>
@@ -139,7 +139,7 @@ export default function ContentBrowse() {
                 {/* Grid */}
                 {contentLoading || moduleLoading ? (
                     <div className="flex flex-col items-center justify-center py-24 gap-4">
-                        <Loader2 className="w-10 h-10 text-yellow-500 animate-spin" />
+                        <Loader2 className="w-10 h-10 text-purple-600 animate-spin" />
                         <p className="text-sm font-medium text-zinc-500">Loading library contents...</p>
                     </div>
                 ) : (
@@ -151,9 +151,9 @@ export default function ContentBrowse() {
                                 className="group card-hover overflow-hidden transition-all cursor-pointer flex flex-col h-full bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-white/5 shadow-sm hover:shadow-md"
                             >
                                 <div className="h-32 bg-zinc-50 dark:bg-gradient-to-br dark:from-zinc-800 dark:to-black flex items-center justify-center border-b border-zinc-100 dark:border-white/5 group-hover:bg-zinc-100 dark:group-hover:from-zinc-700 transition-colors relative">
-                                    <BookOpen className="w-10 h-10 text-zinc-300 dark:text-yellow-500/50 group-hover:scale-110 group-hover:text-yellow-500 transition-all dark:group-hover:text-yellow-500" />
+                                    <BookOpen className="w-10 h-10 text-zinc-300 dark:text-purple-500/50 group-hover:scale-110 group-hover:text-purple-600 transition-all dark:group-hover:text-purple-500" />
                                     {item.subject && (
-                                        <div className="absolute top-2 right-2 px-2 py-0.5 bg-yellow-500/10 border border-yellow-500/20 rounded text-[9px] font-bold text-yellow-500 uppercase">
+                                        <div className="absolute top-2 right-2 px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded text-[9px] font-bold text-purple-600 uppercase">
                                             {item.subject}
                                         </div>
                                     )}
@@ -164,12 +164,12 @@ export default function ContentBrowse() {
                                             {item.content_type?.replace('_', ' ') || item.category || 'Article'}
                                         </span>
                                         {item.grade && (
-                                            <span className="text-[10px] font-bold px-2 py-0.5 bg-yellow-500/10 text-yellow-500 rounded uppercase tracking-wider border border-yellow-500/20">
+                                            <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-500/10 text-purple-600 rounded uppercase tracking-wider border border-purple-500/20">
                                                 Class {item.grade}
                                             </span>
                                         )}
                                     </div>
-                                    <h3 className="font-bold text-zinc-900 dark:text-white group-hover:text-yellow-600 dark:group-hover:text-yellow-500 transition-colors line-clamp-2 mb-2">
+                                    <h3 className="font-bold text-zinc-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-500 transition-colors line-clamp-2 mb-2">
                                         {item.title}
                                     </h3>
                                     <p className="text-xs text-zinc-500 line-clamp-2 flex-1">
@@ -186,7 +186,7 @@ export default function ContentBrowse() {
                                                 {item.like_count || 0}
                                             </div>
                                         </div>
-                                        <div className="text-yellow-500 group-hover:translate-x-1 transition-transform">
+                                        <div className="text-purple-600 group-hover:translate-x-1 transition-transform">
                                             <ChevronRight className="w-5 h-5" />
                                         </div>
                                     </div>
@@ -204,7 +204,7 @@ export default function ContentBrowse() {
                             disabled={contentPage === 1}
                             className="p-2 border border-zinc-200 dark:border-white/10 rounded-lg disabled:opacity-20 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-white/5 text-zinc-400 group transition-colors"
                         >
-                            <ChevronRight className="w-5 h-5 rotate-180 group-hover:text-yellow-500" />
+                            <ChevronRight className="w-5 h-5 rotate-180 group-hover:text-purple-600" />
                         </button>
                         <span className="text-sm font-bold text-zinc-900 dark:text-white">Page {contentPage}</span>
                         <button
@@ -212,7 +212,7 @@ export default function ContentBrowse() {
                             disabled={contentPage >= Math.ceil(contentTotal / 12)}
                             className="p-2 border border-zinc-200 dark:border-white/10 rounded-lg disabled:opacity-20 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-white/5 text-zinc-400 group transition-colors"
                         >
-                            <ChevronRight className="w-5 h-5 group-hover:text-yellow-500" />
+                            <ChevronRight className="w-5 h-5 group-hover:text-purple-600" />
                         </button>
                     </div>
                 )}

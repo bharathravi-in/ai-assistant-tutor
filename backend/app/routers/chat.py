@@ -118,11 +118,16 @@ async def generate_ai_response(
     user_message: str,
     profile: TeacherProfile,
     messages: List[ChatMessage],
+    db: AsyncSession,
     language: str = "en"
 ) -> tuple[str, Optional[dict], int]:
     """Generate AI response with context memory."""
     
     start_time = time.time()
+    
+    # Fetch system settings for LLM configuration
+    from app.models.system_settings import SystemSettings
+    system_settings = await db.scalar(select(SystemSettings).limit(1))
     
     # Build context from conversation history + teacher profile
     context = await build_conversation_context(conversation, messages, profile)
@@ -158,7 +163,7 @@ async def generate_ai_response(
     llm_messages.append({"role": "user", "content": user_message})
     
     # Call LLM
-    llm = LLMClient()
+    llm = LLMClient(system_settings=system_settings)
     response_text = await llm.chat(llm_messages, temperature=0.7)
     
     response_time = int((time.time() - start_time) * 1000)
@@ -246,7 +251,7 @@ async def create_conversation(
         
         # Generate AI response
         ai_text, structured, response_time = await generate_ai_response(
-            conversation, input.initial_message, profile, [user_msg], profile.preferred_language or "en"
+            conversation, input.initial_message, profile, [user_msg], db, profile.preferred_language or "en"
         )
         
         ai_msg = ChatMessage(
@@ -426,7 +431,7 @@ async def send_message(
     was_voice = False
     if input.voice_note_url:
         # Transcribe voice note
-        transcription_service = TranscriptionService()
+        transcription_service = TranscriptionService(system_settings=system_settings)
         content = await transcription_service.transcribe_audio(input.voice_note_url)
         if not content:
             content = input.content  # Fallback to provided content
@@ -446,7 +451,7 @@ async def send_message(
     
     # Generate AI response with context
     ai_text, structured, response_time = await generate_ai_response(
-        conversation, content, profile, messages + [user_msg], input.language or "en"
+        conversation, content, profile, messages + [user_msg], db, input.language or "en"
     )
     
     ai_msg = ChatMessage(

@@ -9,8 +9,8 @@ settings = get_settings()
 class TranscriptionService:
     """Service for transcribing audio notes and analyzing pedagogical sentiment."""
     
-    def __init__(self):
-        self.llm_client = LLMClient()
+    def __init__(self, system_settings=None):
+        self.llm_client = LLMClient(system_settings=system_settings)
         
     async def transcribe_audio(self, voice_url: str) -> Optional[str]:
         """

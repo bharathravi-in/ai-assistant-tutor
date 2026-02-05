@@ -1019,6 +1019,7 @@ export const tutorApi = {
     chat: async (data: {
         content_id: number
         active_section_id: string
+        active_section_content?: string
         section_index?: number
         total_sections?: number
         user_message: string

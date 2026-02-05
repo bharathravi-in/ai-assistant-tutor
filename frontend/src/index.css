@@ -5,10 +5,10 @@
 /* Theme Variables */
 :root {
   /* Core Brand Colors - Shared */
-  --color-primary: #EAB308;
-  /* yellow-500 equivalent */
-  --color-primary-light: #FACC15;
-  --color-primary-dark: #A16207;
+  --color-primary: #8B5CF6;
+  /* purple-600 equivalent */
+  --color-primary-light: #A78BFA;
+  --color-primary-dark: #7C3AED;
 
   /* Default Light Theme */
   --color-background: #F8F9FB;
@@ -28,7 +28,7 @@
   --radius-premium: 20px;
   --radius-ios: 14px;
   --shadow-premium: 0 1px 3px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
-  --shadow-gold: 0 10px 25px rgba(234, 179, 8, 0.2);
+  --shadow-purple: 0 10px 25px rgba(139, 92, 246, 0.2);
 }
 
 /* Premium Black/Gold - Dark Theme */
@@ -58,7 +58,7 @@
   }
 
   ::selection {
-    background: rgba(234, 179, 8, 0.3);
+    background: rgba(139, 92, 246, 0.3);
     color: white;
   }
 }
@@ -74,9 +74,9 @@
   }
 
   .btn-primary {
-    @apply btn text-black hover:bg-yellow-400 border-none;
+    @apply btn text-white hover:bg-purple-500 border-none;
     background: var(--color-primary);
-    box-shadow: var(--shadow-gold);
+    box-shadow: var(--shadow-purple);
   }
 
   .btn-success {
@@ -101,12 +101,12 @@
   }
 
   .card-hover {
-    @apply card hover:border-yellow-500/30 hover:shadow-gold;
+    @apply card hover:border-purple-500/30 hover:shadow-purple;
   }
 
   /* Input Fields */
   .input {
-    @apply w-full px-4 py-3 bg-white dark:bg-zinc-950 rounded-xl border border-black/10 dark:border-white/10 text-current placeholder-zinc-500 focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30 transition-all duration-300;
+    @apply w-full px-4 py-3 bg-white dark:bg-zinc-950 rounded-xl border border-black/10 dark:border-white/10 text-current placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-all duration-300;
   }
 
   /* Mode selector cards */
@@ -115,7 +115,7 @@
   }
 
   .mode-card.active {
-    @apply ring-1 ring-yellow-500/30 border-yellow-500/50 bg-yellow-500/5;
+    @apply ring-1 ring-purple-500/30 border-purple-500/50 bg-purple-500/5;
   }
 
   /* Header Gradient - Works in both light and dark modes */
@@ -139,19 +139,19 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #EAB308;
+    background: #8B5CF6;
   }
 
   .mesh-bg {
     background-color: var(--color-background);
     background-image:
-      radial-gradient(at 40% 20%, rgba(234, 179, 8, 0.05) 0px, transparent 50%),
+      radial-gradient(at 40% 20%, rgba(139, 92, 246, 0.05) 0px, transparent 50%),
       radial-gradient(at 80% 0%, rgba(16, 185, 129, 0.03) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, rgba(234, 179, 8, 0.02) 0px, transparent 50%);
+      radial-gradient(at 0% 50%, rgba(139, 92, 246, 0.02) 0px, transparent 50%);
   }
 
-  .shadow-gold {
-    box-shadow: 0 10px 30px -10px rgba(234, 179, 8, 0.3);
+  .shadow-purple {
+    box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.3);
   }
 }
 

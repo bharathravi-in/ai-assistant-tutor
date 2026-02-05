@@ -16,39 +16,138 @@ class LLMClient:
     Can use organization-specific API keys for multi-tenant support.
     """
     
-    def __init__(self, organization_settings=None, system_settings=None):
+    def __init__(
+        self, 
+        provider: Optional[str] = None, 
+        model: Optional[str] = None, 
+        system_settings = None,
+        organization_settings = None
+    ):
         """
-        Initialize LLM client.
+        Initialize LLM Client.
         
         Args:
-            organization_settings: Optional OrganizationSettings object
-            system_settings: Optional SystemSettings object
+            provider: LLM provider (openai, gemini, etc.)
+            model: Model name to use
+            system_settings: Optional SystemSettings model instance
+            organization_settings: Optional OrganizationSettings model instance
         """
-        # Get fresh settings each time
+        from app.config import get_settings
         self._settings = get_settings()
         
-        self.org_settings = organization_settings
         self.system_settings = system_settings
-        self._client = None
+        self.org_settings = organization_settings
         
-        # Determine provider and API key
-        if organization_settings:
-            self.provider = organization_settings.ai_provider.value
-            self._api_key = self._get_org_api_key()
-            self._model = self._get_org_model()
-        elif system_settings:
-            self.provider = system_settings.ai_provider
-            self._api_key = self._get_system_api_key()
-            self._model = self._get_system_model()
-        else:
-            # Use environment settings - check direct env vars as fallback
+        # 1. Determine Provider
+        self.provider = None
+        
+        # A. Try Org Provider ONLY if it has a key configured
+        if self.org_settings and hasattr(self.org_settings, 'ai_provider') and self.org_settings.ai_provider:
+            org_p = self.org_settings.ai_provider.value if hasattr(self.org_settings.ai_provider, "value") else str(self.org_settings.ai_provider).lower()
+            if self._has_org_key(org_p):
+                self.provider = org_p
+                print(f"[LLMClient] Using ORGANIZATION provider: {self.provider}")
+        
+        # B. Try System Provider if no Org provider or Org provider had no key
+        if not self.provider and self.system_settings and hasattr(self.system_settings, 'ai_provider') and self.system_settings.ai_provider:
+            self.provider = self.system_settings.ai_provider.lower()
+            print(f"[LLMClient] Using SYSTEM provider: {self.provider}")
+            
+        # C. Fallback to global config
+        if not self.provider:
             self.provider = self._settings.llm_provider.lower() or os.getenv("LLM_PROVIDER", "openai").lower()
-            self._api_key = self._get_env_api_key()
-            self._model = self._get_env_model()
+            print(f"[LLMClient] Using FALLBACK provider: {self.provider}")
+
+        # 2. Determine API Key (Org -> System -> Env)
+        self._api_key = self._get_effective_api_key()
+        if self._api_key:
+            self._api_key = self._api_key.strip()
+            
+        # 3. Determine Model (Org -> System -> Env)
+        self._model = self._get_effective_model()
         
+        # Priority: If GEMINI_MODEL is in env, respect it specifically for gemini
+        env_gemini = os.getenv("GEMINI_MODEL")
+        if self.provider == "gemini" and env_gemini:
+            self._model = env_gemini
+            print(f"[LLMClient] Explicit GEMINI_MODEL override from env: {self._model}")
+        
+        # 4. Map legacy models to modern versions
+        if self.provider == "gemini":
+            legacy_names = ["gemini-pro", "gemini-1.5-flash-latest", "gemini-1.5-flash"]
+            if self._model in legacy_names or not self._model:
+                # If 1.5-flash (failing) is the model or no model set, default to 2.0
+                print(f"[LLMClient] Mapping model '{self._model}' to 'gemini-2.0-flash' for compatibility")
+                self._model = "gemini-2.0-flash"
+            
         print(f"[LLMClient] Initializing - provider: {self.provider}, model: {self._model}, has_key: {bool(self._api_key)}")
         
+        # Initialize the underlying client
+        self._client = None
         self._init_client()
+
+    def _get_effective_api_key(self) -> Optional[str]:
+        """Get API key using hierarchy: Org -> System -> Env for the selected provider."""
+        # A. Try Organization Settings
+        key = self._get_org_api_key()
+        if key: 
+            preview = f"{key[:4]}...{key[-4:]}" if len(key) > 8 else "***"
+            print(f"[LLMClient] Using API key from ORGANIZATION settings (len: {len(key)}, preview: {preview})")
+            return key
+
+        # B. Try System Settings
+        key = self._get_system_api_key()
+        if key: 
+            preview = f"{key[:4]}...{key[-4:]}" if len(key) > 8 else "***"
+            print(f"[LLMClient] Using API key from SYSTEM settings (len: {len(key)}, preview: {preview})")
+            return key
+
+        # C. Try Env Vars
+        key = self._get_env_api_key()
+        if key:
+            preview = f"{key[:4]}...{key[-4:]}" if len(key) > 8 else "***"
+            print(f"[LLMClient] Using API key from ENVIRONMENT variables (len: {len(key)}, preview: {preview})")
+            return key
+            
+        print("[LLMClient] No API key found in any source!")
+        return None
+
+    def _get_effective_model(self) -> str:
+        """Get model using hierarchy: Org -> System -> Env for the selected provider."""
+        # A. Try Organization Settings
+        model = self._get_org_model_internal()
+        if model: return model
+
+        # B. Try System Settings
+        model = self._get_system_model_internal()
+        if model: return model
+
+        # C. Try Env Vars
+        return self._get_env_model()
+
+    def _has_org_key(self, provider: str) -> bool:
+        """Check if organization has a non-empty key for the provider."""
+        if not self.org_settings:
+            return False
+            
+        key_attr = {
+            "openai": "openai_api_key",
+            "gemini": "gemini_api_key",
+            "azure_openai": "azure_openai_key",
+            "anthropic": "anthropic_api_key",
+            "litellm": "litellm_api_key"
+        }.get(provider)
+        
+        if not key_attr:
+            return False
+            
+        val = getattr(self.org_settings, key_attr, None)
+        if not val:
+            return False
+            
+        # Also check if it's just a mask
+        from app.utils.encryption import is_mask
+        return not is_mask(val)
     
     def _get_org_api_key(self) -> Optional[str]:
         """Get API key from organization settings (decrypted)."""
@@ -70,21 +169,20 @@ class LLMClient:
         
         return decrypt_value(encrypted) if encrypted else None
     
-    def _get_org_model(self) -> str:
-        """Get model name from organization settings."""
+    def _get_org_model_internal(self) -> Optional[str]:
+        """Get model name from organization settings without fallback."""
         if not self.org_settings:
-            return self._get_default_model()
+            return None
         
         if self.provider == "openai":
-            return self.org_settings.openai_model or "gpt-4o-mini"
+            return self.org_settings.openai_model
         elif self.provider == "gemini":
-            return self.org_settings.gemini_model or "gemini-pro"
+            return self.org_settings.gemini_model
         elif self.provider == "azure_openai":
-            return self.org_settings.azure_openai_deployment or "gpt-4"
+            return self.org_settings.azure_openai_deployment
         elif self.provider == "litellm":
-            return self.org_settings.litellm_model or "gpt-4o-mini"
-        else:
-            return "gpt-4o-mini"
+            return self.org_settings.litellm_model
+        return None
 
     def _get_system_api_key(self) -> Optional[str]:
         """Get API key from system settings (decrypted)."""
@@ -106,21 +204,20 @@ class LLMClient:
         
         return decrypt_value(encrypted) if encrypted else None
     
-    def _get_system_model(self) -> str:
-        """Get model name from system settings."""
+    def _get_system_model_internal(self) -> Optional[str]:
+        """Get model name from system settings without fallback."""
         if not self.system_settings:
-            return self._get_default_model()
+            return None
         
         if self.provider == "openai":
-            return self.system_settings.openai_model or "gpt-4o-mini"
+            return self.system_settings.openai_model
         elif self.provider == "gemini":
-            return self.system_settings.gemini_model or "gemini-pro"
+            return self.system_settings.gemini_model
         elif self.provider == "azure_openai":
-            return self.system_settings.azure_openai_deployment or "gpt-4"
+            return self.system_settings.azure_openai_deployment
         elif self.provider == "litellm":
-            return self.system_settings.litellm_model or "gpt-4o-mini"
-        else:
-            return "gpt-4o-mini"
+            return self.system_settings.litellm_model
+        return None
     
     def _get_env_api_key(self) -> Optional[str]:
         """Get API key from environment variables."""
@@ -141,7 +238,7 @@ class LLMClient:
         if self.provider == "openai":
             return os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         elif self.provider == "gemini":
-            return os.getenv("GEMINI_MODEL", "gemini-pro")
+            return os.getenv("GEMINI_MODEL") or os.getenv("GOOGLE_MODEL") or "gemini-1.5-flash"
         elif self.provider == "litellm":
             return self._settings.litellm_model or os.getenv("LITELLM_MODEL", "gpt-4o-mini")
         return self._get_default_model()
@@ -151,7 +248,7 @@ class LLMClient:
         if self.provider == "openai":
             return "gpt-4o-mini"
         elif self.provider == "gemini":
-            return "gemini-1.5-flash"
+            return "gemini-2.0-flash"
         return "gpt-4o-mini"
     
     def _init_client(self):
@@ -164,7 +261,8 @@ class LLMClient:
         
         # Check if we have a valid API key (unless using LiteLLM proxy)
         if not is_litellm_proxy:
-            if not self._api_key or self._api_key.startswith("your-"):
+            from app.utils.encryption import is_mask
+            if not self._api_key or is_mask(self._api_key):
                 # No valid API key, will use demo mode
                 print(f"[LLM] No valid API key for provider '{self.provider}', using demo mode")
                 self._client = None
@@ -183,11 +281,12 @@ class LLMClient:
         
         elif self.provider == "gemini":
             try:
-                import google.generativeai as genai
-                genai.configure(api_key=self._api_key)
-                self._client = genai.GenerativeModel(self._model)
+                from google import genai
+                # Map 'v1beta' issues by forcing 'v1' or letting it default if v1 fails
+                self._client = genai.Client(api_key=self._api_key, http_options={'api_version': 'v1'})
+                print(f"[LLM] Gemini client initialized with new SDK (v1), model: {self._model}")
             except ImportError:
-                raise ImportError("Google AI package not installed. Run: pip install google-generativeai")
+                raise ImportError("google-genai package not installed. Run: pip install google-genai")
         
         elif self.provider == "azure_openai":
             try:
@@ -363,27 +462,25 @@ class LLMClient:
             return f"Error generating response: {str(e)}"
     
     async def _chat_gemini(self, messages: list[dict], max_tokens: int, temperature: float) -> str:
-        """Chat using Google Gemini."""
+        """Chat using Google Gemini (google-genai SDK)."""
         try:
-            # Gemini uses a different message format
-            chat = self._client.start_chat(history=[])
+            from google.genai import types
             
-            # Convert messages to Gemini format
-            for msg in messages[:-1]:  # All except last
-                if msg['role'] == 'user':
-                    chat.send_message(msg['content'])
+            # Convert messages to Gemini format (role: user/model)
+            history = []
+            for msg in messages[:-1]:
+                role = "user" if msg['role'] == 'user' else "model"
+                history.append(types.Content(role=role, parts=[types.Part(text=msg['content'])]))
             
-            # Send final user message
             last_msg = messages[-1]['content'] if messages else ""
-            response = await asyncio.wait_for(
-                chat.send_message_async(
-                    last_msg,
-                    generation_config={
-                        "temperature": temperature,
-                        "max_output_tokens": max_tokens,
-                    }
-                ),
-                timeout=30.0
+            
+            response = await self._client.aio.models.generate_content(
+                model=self._model,
+                contents=history + [types.Content(role="user", parts=[types.Part(text=last_msg)])],
+                config=types.GenerateContentConfig(
+                    temperature=temperature,
+                    max_output_tokens=max_tokens,
+                )
             )
             return response.text
         except Exception as e:
@@ -511,79 +608,90 @@ class LLMClient:
             return f"Error generating response: {str(e)}"
     
     async def _generate_gemini(self, prompt: str, max_tokens: int, temperature: float, media_path: Optional[str] = None) -> str:
-        """Generate using Google Gemini."""
+        """Generate using Google Gemini (google-genai SDK)."""
         try:
-            import google.generativeai as genai
+            from google.genai import types
             import httpx
             import tempfile
+            import os
             
-            content_parts = [prompt]
+            contents = [prompt]
             
             if media_path:
                 print(f"[LLM] Gemini request has media: {media_path}")
-                # Handle URLs vs Local Paths
                 if media_path.startswith("http"):
-                    print(f"[LLM] Downloading media from URL: {media_path}")
-                    try:
-                        async with httpx.AsyncClient() as client:
-                            response = await client.get(media_path)
-                            if response.status_code == 200:
-                                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                                    tmp.write(response.content)
-                                    actual_path = tmp.name
-                                print(f"[LLM] Media downloaded to: {actual_path}")
-                                uploaded_file = genai.upload_file(path=actual_path)
-                                content_parts.append(uploaded_file)
-                                # Note: Ideally delete the temp file after use, but for now we leave it
-                                # as genai.upload_file might need it during the call?
-                                # Actually, upload_file is synchronous and returns.
-                                os.unlink(actual_path)
-                            else:
-                                print(f"[LLM] Failed to download media: {response.status_code}")
-                    except Exception as e:
-                        print(f"[LLM] Error downloading media: {e}")
-                else:
-                    # Existing local path logic
-                    filename = media_path.split("/")[-1]
-                    possible_paths = [
-                        os.path.join("uploads", filename),
-                        os.path.join("uploads", "voice", filename),
-                        os.path.join("uploads", "voices", filename),
-                        os.path.join("/app/uploads", filename),
-                        os.path.join("/app/uploads/voice", filename),
-                        media_path.lstrip("/"),
-                        media_path
-                    ]
-                    
-                    actual_path = None
-                    for path in possible_paths:
-                        if os.path.exists(path) and os.path.isfile(path):
-                            actual_path = path
-                            break
-                    
-                    if actual_path:
-                        uploaded_file = genai.upload_file(path=actual_path)
-                        content_parts.append(uploaded_file)
-                    else:
-                        print(f"Warning: Media file not found for Gemini: {media_path}")
+                    # Use the SDK's ability to handle media if possible, or download
+                    async with httpx.AsyncClient() as client:
+                        resp = await client.get(media_path)
+                        if resp.status_code == 200:
+                            mime_type = "application/pdf" if media_path.lower().endswith(".pdf") else "image/jpeg"
+                            contents.append(types.Part.from_bytes(data=resp.content, mime_type=mime_type))
+                elif os.path.exists(media_path):
+                    mime_type = "application/pdf" if media_path.lower().endswith(".pdf") else "image/jpeg"
+                    with open(media_path, "rb") as f:
+                        contents.append(types.Part.from_bytes(data=f.read(), mime_type=mime_type))
             
-            response = await self._client.generate_content_async(
-                content_parts,
-                generation_config={
-                    "max_output_tokens": max_tokens,
-                    "temperature": temperature,
-                }
+            response = await self._client.aio.models.generate_content(
+                model=self._model,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    max_output_tokens=max_tokens,
+                    temperature=temperature,
+                )
             )
-            if hasattr(response, 'candidates') and response.candidates:
-                # Check if the first candidate has parts
-                if response.candidates[0].content.parts:
-                    return response.text
-                else:
-                    print(f"[LLM] Gemini response blocked or empty. Safety: {response.candidates[0].safety_ratings}")
-                    return "Error: The AI response was blocked by safety filters or is empty."
+            
+            # Log full response details for debugging
+            print(f"[LLM] Gemini response received. Finish reason: {response.candidates[0].finish_reason if response.candidates else 'None'}")
+            
+            if response.candidates and response.candidates[0].finish_reason == types.FinishReason.SAFETY:
+                return "I apologize, but I cannot answer that as it was flagged by my safety filters. Let's try rephrasing or focusing specifically on the lesson content."
+            
+            if not response.text:
+                print(f"[LLM] Warning: Gemini returned empty text. Full response: {response}")
+                return "The AI assistant was unable to generate a response. Please try again."
+
             return response.text
         except Exception as e:
-            return f"Error generating response: {str(e)}"
+            error_str = str(e)
+            print(f"[LLM] Gemini request failed: {error_str}")
+            import traceback
+            traceback.print_exc()
+            
+            # Comprehensive fallback for Gemini 404s
+            if "not found" in error_str.lower() or "not supported" in error_str.lower():
+                # Diagnostic: Try to list available models to logs
+                try:
+                    print("[LLM] Diagnostic: Attempting to list available models for this key...")
+                    available = []
+                    async for m in await self._client.aio.models.list():
+                        available.append(m.name)
+                    print(f"[LLM] Available models: {available}")
+                except Exception as list_err:
+                    print(f"[LLM] Model listing failed: {str(list_err)}")
+
+                fallbacks = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+                # Filter out the model that just failed
+                fallbacks = [m for m in fallbacks if m != self._model]
+                
+                print(f"[LLM] Attempting fallbacks: {fallbacks}")
+                
+                for model_name in fallbacks:
+                    try:
+                        print(f"[LLM] Trying fallback to '{model_name}'...")
+                        response = await self._client.aio.models.generate_content(
+                            model=model_name,
+                            contents=contents,
+                            config=types.GenerateContentConfig(
+                                max_output_tokens=max_tokens,
+                                temperature=temperature,
+                            )
+                        )
+                        return response.text
+                    except Exception as e_inner:
+                        print(f"[LLM] Fallback to '{model_name}' failed: {str(e_inner)}")
+                        continue
+            
+            return f"Error generating response: {error_str}"
     
     async def _generate_anthropic(self, prompt: str, max_tokens: int, temperature: float) -> str:
         """Generate using Anthropic Claude."""
@@ -638,23 +746,38 @@ class LLMClient:
                          mime_type = "application/pdf"
                     
                     if mime_type == "application/pdf":
-                        # Some versions of LiteLLM/OpenAI support PDF directly in content
+                        # PDFs are passed as image_url for vision models (Gemini, GPT-4o)
+                        # Most vision-capable models can process PDF URLs this way
                         user_content.append({
-                            "type": "file_url" if "gpt-4o" in model_to_use else "image_url",
-                            "file_url" if "gpt-4o" in model_to_use else "image_url": {"url": media_path}
+                            "type": "image_url",
+                            "image_url": {"url": media_path}
                         })
+                        print(f"[LLM] Added PDF as image_url for vision processing")
                     else:
                         user_content.append({
                             "type": "image_url",
                             "image_url": {"url": media_path}
                         })
                 else:
-                    # In a production app, we'd base64 encode or upload to a bucket
-                    # For now, if it's a local path and we're using a remote proxy, 
-                    # it might fail unless we encode.
-                    # Since this is a hackathon, let's assume URLs for now or 
-                    # use the local path if the proxy is local.
-                    pass
+                    # Local file path - need to handle for remote proxy
+                    # Try to read and base64 encode the file
+                    import base64
+                    import os
+                    if os.path.exists(media_path):
+                        try:
+                            with open(media_path, "rb") as f:
+                                file_content = base64.b64encode(f.read()).decode("utf-8")
+                            mime_type = "application/pdf" if media_path.lower().endswith(".pdf") else "image/jpeg"
+                            data_url = f"data:{mime_type};base64,{file_content}"
+                            user_content.append({
+                                "type": "image_url",
+                                "image_url": {"url": data_url}
+                            })
+                            print(f"[LLM] Encoded local file as base64 data URL")
+                        except Exception as e:
+                            print(f"[LLM] Failed to encode local file: {e}")
+                    else:
+                        print(f"[LLM] Local file not found: {media_path}")
 
             # Log the actual request parameters
             print(f"[LLM] Generating with LiteLLM - model: {model_to_use}, base: {api_base}, key_len: {len(self._api_key) if self._api_key else 0}")

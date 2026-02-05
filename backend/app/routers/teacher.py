@@ -188,31 +188,34 @@ async def get_my_stats(
     )
     total_queries = total_result.scalar() or 0
     
-    # Queries by mode
-    mode_counts = {}
-    for mode in QueryMode:
-        result = await db.execute(
-            select(func.count(QueryModel.id)).where(
-                QueryModel.user_id == current_user.id,
-                QueryModel.mode == mode
-            )
-        )
-        mode_counts[mode.value] = result.scalar() or 0
+    # Queries by mode (Explain, Plan, Assist)
+    mode_counts = {
+        "explain": 0,
+        "plan": 0,
+        "assist": 0
+    }
     
-    # Reflection stats
-    try:
-        reflection_result = await db.execute(
-            select(func.count(Reflection.id))
-            .join(QueryModel, Reflection.query_id == QueryModel.id)
-            .where(
-                QueryModel.user_id == current_user.id,
-                Reflection.worked == True
-            )
+    # Get counts by mode in one query
+    mode_result = await db.execute(
+        select(QueryModel.mode, func.count(QueryModel.id))
+        .where(QueryModel.user_id == current_user.id)
+        .group_by(QueryModel.mode)
+    )
+    for mode_val, count in mode_result.all():
+        if mode_val:
+            mode_counts[mode_val.value] = count
+    
+    # Success Rate based on resolved queries
+    # A query is resolved if:
+    # 1. Teacher submitted a reflection saying it worked
+    # 2. Mentor (CRP) responded to the query
+    resolved_result = await db.execute(
+        select(func.count(QueryModel.id)).where(
+            QueryModel.user_id == current_user.id,
+            QueryModel.is_resolved == True
         )
-        successful_suggestions = reflection_result.scalar() or 0
-    except Exception as e:
-        print(f"Error fetching reflection stats: {e}")
-        successful_suggestions = 0
+    )
+    successful_suggestions = resolved_result.scalar() or 0
     
     return {
         "total_queries": total_queries,
@@ -276,7 +279,9 @@ async def get_classroom_help(
     )
     
     # Get AI response
-    llm_client = LLMClient()
+    from app.models.system_settings import SystemSettings
+    system_settings = await db.scalar(select(SystemSettings).limit(1))
+    llm_client = LLMClient(system_settings=system_settings)
     response_text = await llm_client.generate(prompt)
     
     # Parse JSON response
@@ -338,7 +343,9 @@ async def get_micro_learning(
     )
     
     # Get AI response
-    llm_client = LLMClient()
+    from app.models.system_settings import SystemSettings
+    system_settings = await db.scalar(select(SystemSettings).limit(1))
+    llm_client = LLMClient(system_settings=system_settings)
     response_text = await llm_client.generate(prompt)
     
     # Parse JSON response

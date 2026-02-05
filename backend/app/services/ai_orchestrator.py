@@ -106,7 +106,8 @@ class AIOrchestrator:
         
         print(f"[Orchestrator] Starting processing - mode: {mode}, text: {input_text[:50]}...")
         # Get response from LLM
-        response = await self.llm_client.generate(prompt, language=language, media_path=media_path)
+        # Use lower temperature for structured requests to improve consistency
+        response = await self.llm_client.generate(prompt, language=language, media_path=media_path, temperature=0.4)
         print(f"[Orchestrator] LLM response received, length: {len(response) if response else 0}")
         
         # Parse structured response
@@ -197,13 +198,44 @@ class AIOrchestrator:
         return sections
 
     def _to_string(self, val: Any) -> str:
-        """Helper to convert various data formats to a clean string."""
+        """Helper to convert various data formats to a clean markdown string."""
         if not val: return ""
         if isinstance(val, str): return val
         if isinstance(val, list):
-            return "\n".join([f"• {str(i)}" if not isinstance(i, dict) else f"• {i.get('title', i.get('name', ''))}: {i.get('description', i.get('content', ''))}" for i in val])
+            lines = []
+            for item in val:
+                if isinstance(item, dict):
+                    # Handle check_for_understanding items (level + question)
+                    if 'level' in item and 'question' in item:
+                        level = item.get('level', 'Question')
+                        question = item.get('question', '')
+                        lines.append(f"**{level}**: {question}")
+                    # Handle example items (title + description)
+                    elif 'title' in item or 'name' in item:
+                        title = item.get('title') or item.get('name', '')
+                        desc = item.get('description') or item.get('content', '')
+                        lines.append(f"**{title}**\n{desc}")
+                    # Handle mnemonic items (type + content)
+                    elif 'type' in item and 'content' in item:
+                        lines.append(f"**{item.get('type', 'Tip')}**: {item.get('content', '')}")
+                    # Handle misconception items (misconception + correction)
+                    elif 'misconception' in item:
+                        lines.append(f"**Misconception**: {item.get('misconception', '')}\n**Correction**: {item.get('correction', '')}")
+                    else:
+                        # Generic dict item
+                        lines.append(" | ".join([f"{k}: {v}" for k, v in item.items() if v]))
+                else:
+                    lines.append(f"- {str(item)}")
+            return "\n\n".join(lines) if lines else ""
         if isinstance(val, dict):
-            return "\n".join([f"**{k.replace('_', ' ').title()}**: {v}" for k, v in val.items()])
+            # Handle visual_aid_idea or similar structured dicts
+            if 'title' in val:
+                parts = [f"**{val.get('title', 'Visual Aid')}**"]
+                if val.get('materials'): parts.append(f"**Materials**: {val['materials']}")
+                if val.get('instructions'): parts.append(f"**Instructions**: {val['instructions']}")
+                if val.get('usage'): parts.append(f"**Usage**: {val['usage']}")
+                return "\n\n".join(parts)
+            return "\n".join([f"**{k.replace('_', ' ').title()}**: {v}" for k, v in val.items() if v])
         return str(val)
     
     async def generate_quiz(
@@ -300,17 +332,24 @@ class AIOrchestrator:
         """
         Process a PDF into interactive sections for the AI Tutor.
         This leverages the active LLM's multi-modal capabilities.
+        Falls back to text extraction if vision-based processing fails.
         """
-        prompt = """
+        vision_prompt = """
         Analyze the attached educational document and convert it into a set of interactive, sequential learning sections suitable for a classroom.
-        Break it down into 3-6 logical parts.
+        Break it down into 4-7 logical parts that cover the entire document content.
+        
+        CRITICAL RULES:
+        - DO NOT SKIP CONTENT. Every important concept in the document must be in one of the sections.
+        - DO NOT use placeholders like "See document" or "Content same as above".
+        - 'content' MUST be at least 150 words of descriptive teaching material in Markdown.
+        - 'narration' MUST be a 1-2 minute conversational script for an AI teacher to speak.
         
         For each part, provide:
         1. id: A unique string id
         2. title: A concise name for the section
         3. type: One of [explanation, activity, mnemonic, assessment, script, example]
-        4. content: Key knowledge points or activity details formatted in markdown.
-        5. narration: A natural, friendly, and encouraging script that an AI Tutor would say to explain this part to a student.
+        4. content: Detailed pedagogical explanation or activity steps in Markdown.
+        5. narration: A natural, friendly, and encouraging script that an AI Tutor would speak to the class.
         
         Respond ONLY with a JSON object in this format:
         {
@@ -322,17 +361,133 @@ class AIOrchestrator:
         """
         print(f"[Orchestrator] Processing PDF to sections: {media_path} (Using provider: {self.llm_client.provider})")
         
-        # Check if provider supports vision/PDF (Gemini and OpenAI GPT-4o/o1 do)
-        # Note: llm_client.generate handles the implementation details per provider
-        response = await self.llm_client.generate(prompt, language=language, media_path=media_path)
+        # Try vision-based processing first
+        response = await self.llm_client.generate(vision_prompt, language=language, media_path=media_path)
         
         data = self._parse_response(response, None)
         sections = data.get("sections", [])
         
-        if not sections and "raw_response" not in data:
-            print(f"[Orchestrator] Warning: No sections found in structured data from {self.llm_client.provider}.")
+        # If vision processing failed, try text extraction fallback
+        if not sections:
+            print(f"[Orchestrator] Vision processing returned no sections, trying text extraction fallback...")
+            sections = await self._process_pdf_via_text_extraction(media_path, language)
+            
+        if not sections:
+            print(f"[Orchestrator] Warning: No sections found even after text extraction fallback.")
             
         return sections
+    
+    async def _process_pdf_via_text_extraction(self, media_path: str, language: str = "en") -> list:
+        """
+        Fallback: Extract text from PDF and use text-only prompting.
+        """
+        import os
+        import tempfile
+        import httpx
+        
+        pdf_text = ""
+        local_path = media_path
+        temp_file = None
+        
+        try:
+            # Download if URL
+            if media_path.startswith("http"):
+                print(f"[Orchestrator] Downloading PDF for text extraction: {media_path}")
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(media_path, timeout=60.0)
+                    if response.status_code == 200:
+                        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+                        temp_file.write(response.content)
+                        temp_file.close()
+                        local_path = temp_file.name
+                    else:
+                        print(f"[Orchestrator] Failed to download PDF: {response.status_code}")
+                        return []
+            
+            # Try pdfplumber first (best for text extraction)
+            try:
+                import pdfplumber
+                with pdfplumber.open(local_path) as pdf:
+                    for page in pdf.pages[:10]:  # Limit to first 10 pages
+                        page_text = page.extract_text()
+                        if page_text:
+                            pdf_text += page_text + "\n\n"
+                print(f"[Orchestrator] Extracted {len(pdf_text)} chars using pdfplumber")
+            except ImportError:
+                print("[Orchestrator] pdfplumber not available, trying pypdf...")
+                try:
+                    from pypdf import PdfReader
+                    reader = PdfReader(local_path)
+                    for page in reader.pages[:10]:
+                        page_text = page.extract_text()
+                        if page_text:
+                            pdf_text += page_text + "\n\n"
+                    print(f"[Orchestrator] Extracted {len(pdf_text)} chars using pypdf")
+                except ImportError:
+                    print("[Orchestrator] No PDF extraction library available (pdfplumber or pypdf)")
+                    return []
+            
+            if not pdf_text.strip():
+                print("[Orchestrator] No text could be extracted from PDF")
+                return []
+            
+            # Truncate if too long (LLM context limits)
+            max_chars = 15000
+            if len(pdf_text) > max_chars:
+                pdf_text = pdf_text[:max_chars] + "\n\n[Content truncated for processing...]"
+            
+            # Text-only prompt
+            text_prompt = f"""
+            Based on the following educational content extracted from a document, create interactive learning sections suitable for a classroom.
+            Break it down into 4-7 logical parts that cover the entire document comprehensively.
+            
+            CRITICAL RULES:
+            - DO NOT SKIP CONTENT. Every important concept in the document must be in one of the sections.
+            - DO NOT use placeholders like "See document" or "Content same as above".
+            - 'content' MUST be a thorough pedagogical explanation in Markdown.
+            - 'narration' MUST be a natural, friendly script for an AI teacher to speak.
+            
+            For each part, provide:
+            1. id: A unique string id
+            2. title: A concise name for the section
+            3. type: One of [explanation, activity, mnemonic, assessment, script, example]
+            4. content: Pedagogical material or activity details formatted in markdown.
+            5. narration: A natural, friendly script that an AI Tutor would say to explain this part to a student.
+            
+            DOCUMENT CONTENT:
+            {pdf_text}
+            
+            Respond ONLY with a JSON object in this format:
+            {{
+              "sections": [
+                {{ "id": "...", "title": "...", "type": "...", "content": "...", "narration": "..." }},
+                ...
+              ]
+            }}
+            """
+            
+            print(f"[Orchestrator] Sending text-only prompt ({len(pdf_text)} chars) to LLM")
+            response = await self.llm_client.generate(text_prompt, language=language)
+            
+            data = self._parse_response(response, None)
+            sections = data.get("sections", [])
+            
+            if sections:
+                print(f"[Orchestrator] Text extraction fallback succeeded: {len(sections)} sections")
+            
+            return sections
+            
+        except Exception as e:
+            print(f"[Orchestrator] Text extraction fallback failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+        finally:
+            if temp_file and os.path.exists(temp_file.name):
+                try:
+                    os.unlink(temp_file.name)
+                except:
+                    pass
     
     def _parse_response(self, response: str, mode: QueryMode) -> Dict[str, Any]:
         """Parse LLM response into structured format with EXTREME robust JSON extraction."""
@@ -361,17 +516,31 @@ class AIOrchestrator:
                 # Use repair utility for code block content
                 try:
                     data = extract_and_repair_json(json_str)
-                    if data: return data
+                    if data: 
+                        return self._flatten_response(data)
                 except: continue
         
         # Last ditch: try repair on the entire cleaned response
         try:
             data = extract_and_repair_json(cleaned_response)
-            if data: return data
+            if data: 
+                return self._flatten_response(data)
         except: pass
         
         # Fallback: return raw response
         return {"raw_response": response}
+
+    def _flatten_response(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Flatten response if it's wrapped in a single redundant key."""
+        if not isinstance(data, dict):
+            return data
+            
+        wrapper_keys = ["sections", "response", "data", "structured_response", "structured", "result"]
+        for key in wrapper_keys:
+            if key in data and len(data) == 1 and isinstance(data[key], dict):
+                print(f"[Orchestrator] Flattening nested response from key: {key}")
+                return data[key]
+        return data
     
     def _format_response(self, structured: Dict[str, Any], mode: QueryMode, language: str) -> str:
         """Format structured response for display."""
@@ -387,60 +556,72 @@ class AIOrchestrator:
         
         return json.dumps(structured, indent=2, ensure_ascii=False)
     
+    def _to_markdown_list(self, items: Any, indent: int = 0) -> str:
+        """Recursively format items into a markdown bulleted list."""
+        if not items:
+            return ""
+        
+        prefix = "  " * indent
+        if isinstance(items, list):
+            formatted_items = []
+            for item in items:
+                if isinstance(item, (dict, list)):
+                    formatted_items.append(self._to_markdown_list(item, indent))
+                else:
+                    formatted_items.append(f"{prefix}• {item}")
+            return "\n".join(formatted_items)
+        
+        if isinstance(items, dict):
+            formatted_pairs = []
+            for key, val in items.items():
+                clean_key = key.replace("_", " ").title()
+                if isinstance(val, (dict, list)):
+                    formatted_pairs.append(f"{prefix}**{clean_key}**:\n{self._to_markdown_list(val, indent + 1)}")
+                else:
+                    formatted_pairs.append(f"{prefix}**{clean_key}**: {val}")
+            return "\n".join(formatted_pairs)
+        
+        return f"{prefix}{items}"
+
     def _format_explain(self, data: Dict[str, Any]) -> str:
-        """Format explain mode response using Phase 6 keys."""
+        """Format explain mode response using Phase 6 keys with robust list handling."""
         parts = []
         
-        # Phase 6 keys
-        if "conceptual_briefing" in data:
-            parts.append(f"📖 **Conceptual Briefing**\n{data['conceptual_briefing']}")
+        # Mapping of keys to titles and emojis
+        explain_sections = [
+            ("conceptual_briefing", "📖 **Conceptual Briefing**"),
+            ("simple_explanation", "💡 **Simple Explanation**"),
+            ("mnemonics_hooks", "🔗 **Mnemonics & Hooks**"),
+            ("what_to_say", "🗣️ **What to Say**"),
+            ("specific_examples", "🌳 **Contextual Examples**"),
+            ("generic_examples", "🌐 **Generic Examples**"),
+            ("visual_aid_idea", "🎨 **Visual Aid / TLM Idea**"),
+            ("common_misconceptions", "⚠️ **Common Misconceptions**"),
+            ("oral_questions", "💬 **Oral Questions**"),
+            ("check_for_understanding", "❓ **Check for Understanding**")
+        ]
         
-        if "simple_explanation" in data:
-            parts.append(f"💡 **Simple Explanation**\n{data['simple_explanation']}")
-        
-        if "mnemonics_hooks" in data:
-            val = data["mnemonics_hooks"]
-            if isinstance(val, list):
-                parts.append("🔗 **Mnemonics & Hooks**\n" + "\n".join([f"• {v}" for v in val]))
-            else:
-                parts.append(f"🔗 **Mnemonics & Hooks**\n{val}")
-            
-        if "what_to_say" in data:
-            parts.append(f"🗣️ **What to Say**\n{data['what_to_say']}")
-            
-        if "specific_examples" in data:
-            examples = data["specific_examples"]
-            if isinstance(examples, list):
-                parts.append("🌳 **Contextual Examples**\n" + "\n".join([f"• {e}" for e in examples]))
-            else:
-                parts.append(f"🌳 **Contextual Examples**\n{examples}")
-
-        if "generic_examples" in data:
-            examples = data["generic_examples"]
-            if isinstance(examples, list):
-                parts.append("🌐 **Generic Examples**\n" + "\n".join([f"• {e}" for e in examples]))
-            else:
-                parts.append(f"🌐 **Generic Examples**\n{examples}")
-                
-        if "visual_aid_idea" in data:
-            parts.append(f"🎨 **Visual Aid / TLM Idea**\n{data['visual_aid_idea']}")
-
-        if "check_for_understanding" in data:
-            check = data["check_for_understanding"]
-            if isinstance(check, dict):
-                check_parts = []
-                for level, q in check.items():
-                    check_parts.append(f"**{level.title()}**: {q}")
-                parts.append("❓ **Check for Understanding**\n" + "\n".join(check_parts))
-            else:
-                parts.append(f"❓ **Check for Understanding**\n{check}")
+        for key, title in explain_sections:
+            if key in data and data[key]:
+                val = data[key]
+                if isinstance(val, (list, dict)):
+                    parts.append(f"{title}\n{self._to_markdown_list(val)}")
+                else:
+                    parts.append(f"{title}\n{val}")
         
         # Legacy key support
         if not parts:
             if "example_or_analogy" in data:
                 parts.append(f"💡 **Example/Analogy**\n{data['example_or_analogy']}")
         
-        return "\n\n".join(parts) if parts else json.dumps(data, indent=2, ensure_ascii=False)
+        # Final fallback: if no known keys matched but we have content, or if we need to show everything
+        if not parts and data:
+            # Avoid showing just the raw JSON if possible
+            for k, v in data.items():
+                if k not in ["mode", "raw_response"]:
+                    parts.append(f"**{k.replace('_', ' ').title()}**\n{self._to_markdown_list(v)}")
+        
+        return "\n\n".join(parts) if parts else str(data.get("raw_response", ""))
     
     def _format_assist(self, data: Dict[str, Any]) -> str:
         """Format assist mode response using Phase 6 keys."""

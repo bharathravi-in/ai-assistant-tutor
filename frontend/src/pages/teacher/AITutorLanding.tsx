@@ -25,7 +25,7 @@ const modeConfig = [
         description: 'Get simplified explanations and analogies for complex topics.',
         icon: Lightbulb,
         color: 'blue',
-        gradient: 'from-blue-500 to-indigo-600',
+        gradient: 'from-blue-500 to-blue-600',
         lightBg: 'bg-blue-50 dark:bg-blue-900/20',
         textColor: 'text-blue-600 dark:text-blue-400',
     },
@@ -54,10 +54,10 @@ const modeConfig = [
         title: 'Direct Q&A',
         description: 'Quick answers to pedagogy and subject matter questions.',
         icon: MessageSquare,
-        color: 'purple',
-        gradient: 'from-purple-500 to-violet-600',
-        lightBg: 'bg-purple-50 dark:bg-purple-900/20',
-        textColor: 'text-purple-600 dark:text-purple-400',
+        color: 'sky',
+        gradient: 'from-sky-500 to-blue-600',
+        lightBg: 'bg-sky-50 dark:bg-sky-900/20',
+        textColor: 'text-sky-600 dark:text-sky-400',
     },
     {
         id: 'general',
@@ -141,7 +141,7 @@ export default function AITutorLanding() {
         <div className="min-h-[calc(100vh-80px)] p-4 lg:p-8 bg-[#F8F9FB] dark:bg-gray-900">
             <div className="max-w-6xl mx-auto">
                 {/* Hero / Header */}
-                <div className="relative mb-12 rounded-[2.5rem] overflow-hidden bg-gradient-to-br from-indigo-900 to-blue-800 p-8 lg:p-12 shadow-2xl shadow-indigo-500/20">
+                <div className="relative mb-12 rounded-[2.5rem] overflow-hidden bg-gradient-to-br from-blue-900 to-blue-800 p-8 lg:p-12 shadow-2xl shadow-blue-500/20">
                     <div className="absolute top-0 right-0 w-full h-full opacity-10 pointer-events-none">
                         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
                             <path d="M0 0 L100 0 L100 100 Z" fill="white" />
@@ -157,13 +157,13 @@ export default function AITutorLanding() {
                             <h1 className="text-4xl lg:text-5xl font-black text-white mb-4 leading-tight">
                                 Your Personal <br /> <span className="text-blue-400">AI Tutor</span>
                             </h1>
-                            <p className="text-indigo-100 text-lg max-w-xl mb-8 leading-relaxed opacity-90">
+                            <p className="text-blue-100 text-lg max-w-xl mb-8 leading-relaxed opacity-90">
                                 Collaborate with AI to explain concepts, plan lessons, and get instant pedagogical support tailored to your classroom.
                             </p>
                             <div className="flex flex-wrap justify-center md:justify-start gap-4">
                                 <button
                                     onClick={() => handleOpenCreate('general')}
-                                    className="px-8 py-3.5 bg-white text-indigo-900 font-bold rounded-2xl hover:bg-indigo-50 transition-all flex items-center gap-2 active:scale-95 shadow-xl"
+                                    className="px-8 py-3.5 bg-white text-blue-900 font-bold rounded-2xl hover:bg-blue-50 transition-all flex items-center gap-2 active:scale-95 shadow-xl"
                                 >
                                     <Plus className="w-5 h-5" />
                                     New Conversation
@@ -182,7 +182,7 @@ export default function AITutorLanding() {
                             <div className="w-72 h-72 rounded-full bg-blue-500/20 animate-pulse absolute -z-10 blur-3xl" />
                             <div className="w-64 h-64 rounded-[3rem] bg-white/5 backdrop-blur-xl border border-white/10 rotate-12 flex items-center justify-center p-8 relative overflow-hidden group hover:rotate-6 transition-transform duration-500">
                                 <BrainCircuit className="w-32 h-32 text-blue-400 group-hover:scale-110 transition-transform duration-500" />
-                                <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-indigo-500/30 blur-2xl rounded-full" />
+                                <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-blue-500/30 blur-2xl rounded-full" />
                                 <div className="absolute -top-4 -right-4 w-24 h-24 bg-blue-500/30 blur-2xl rounded-full" />
                             </div>
                         </div>
@@ -365,7 +365,7 @@ export default function AITutorLanding() {
                                     <button
                                         onClick={handleCreateChat}
                                         disabled={isCreating}
-                                        className="flex-[2] py-4 px-6 rounded-2xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                        className="flex-[2] py-4 px-6 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                                     >
                                         {isCreating ? (
                                             <Loader2 className="w-5 h-5 animate-spin" />

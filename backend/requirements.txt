@@ -26,7 +26,7 @@ cryptography==42.0.0  # For encrypting sensitive configuration
 
 # AI/LLM
 openai==1.12.0
-google-generativeai==0.3.2
+google-genai
 google-cloud-aiplatform==1.38.0
 google-cloud-storage==2.14.0
 litellm==1.23.0
@@ -38,13 +38,13 @@ httpx==0.26.0
 # Testing
 pytest==7.4.4
 pytest-asyncio==0.23.3
-httpx==0.26.0
 psutil
 
 # PDF
 pypdf==4.0.0
+pdfplumber==0.10.3
 reportlab==4.0.8
 
 # Vector Database
 qdrant-client==1.7.0
-sentence-transformers==2.2.2
+sentence-transformers>=3.0.0

@@ -7,6 +7,9 @@ interface TTSOptions {
     rate?: number
     pitch?: number
     volume?: number
+    onStart?: () => void
+    onEnd?: () => void
+    onError?: (error: any) => void
 }
 
 interface TTSHook {
@@ -20,8 +23,6 @@ interface TTSHook {
     voices: SpeechSynthesisVoice[]
     currentLanguage: string
 }
-
-// Unused cache variables removed
 
 const detectLanguage = (text: string): string => {
     // Check for Devanagari script (Hindi/Marathi)
@@ -48,6 +49,9 @@ export function useTTS(): TTSHook {
     const [isPaused, setIsPaused] = useState(false)
     const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
     const [currentLanguage, setCurrentLanguage] = useState<string>('en')
+
+    // Track active callbacks to avoid stale closures
+    const callbacksRef = useRef<{ onStart?: () => void, onEnd?: () => void, onError?: (error: any) => void }>({})
 
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
     const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -85,6 +89,13 @@ export function useTTS(): TTSHook {
 
         stop()
 
+        // Update callbacks ref
+        callbacksRef.current = {
+            onStart: options.onStart,
+            onEnd: options.onEnd,
+            onError: options.onError
+        }
+
         const activeVoiceId = options.voiceId || storeVoice
 
         const detectedLang = options.language === 'auto' || !options.language
@@ -96,7 +107,6 @@ export function useTTS(): TTSHook {
         const customVoice = customVoices.find(v => v.id === activeVoiceId)
 
         if (customVoice) {
-            // Play custom voice audio sample
             const audioUrl = customVoice.audioUrl.startsWith('http')
                 ? customVoice.audioUrl
                 : `${(import.meta as any).env?.VITE_API_URL || 'http://localhost:8000'}${customVoice.audioUrl}`
@@ -107,14 +117,17 @@ export function useTTS(): TTSHook {
             audio.onplay = () => {
                 setIsSpeaking(true)
                 setIsPaused(false)
+                callbacksRef.current.onStart?.()
             }
             audio.onended = () => {
                 setIsSpeaking(false)
                 setIsPaused(false)
+                callbacksRef.current.onEnd?.()
             }
-            audio.onerror = () => {
+            audio.onerror = (err) => {
                 setIsSpeaking(false)
                 console.error("Custom voice playback failed")
+                callbacksRef.current.onError?.(err)
             }
 
             audio.play().catch(console.error)
@@ -135,24 +148,24 @@ export function useTTS(): TTSHook {
             'voice-3': { lang: 'en-IN', gender: 'female', nameHint: 'Divya' },
             'voice-4': { lang: 'en-IN', gender: 'male', nameHint: 'Ravi' },
             'voice-5': { lang: 'ta-IN', gender: 'female', nameHint: 'Ananya' },
+            'hi': { lang: 'hi-IN', gender: 'female', nameHint: 'Google' },
+            'kn': { lang: 'kn-IN', gender: 'female', nameHint: 'Google' },
+            'te': { lang: 'te-IN', gender: 'female', nameHint: 'Google' },
+            'mr': { lang: 'mr-IN', gender: 'female', nameHint: 'Google' },
+            'ta': { lang: 'ta-IN', gender: 'female', nameHint: 'Google' }
         }
 
-        const voiceMeta = VOICE_MAP[activeVoiceId]
-        const targetLang = voiceMeta?.lang || detectedLang
+        const voiceMeta = VOICE_MAP[activeVoiceId] || VOICE_MAP[detectedLang]
+        const finalTargetLang = voiceMeta?.lang || detectedLang
 
         const availableVoices = window.speechSynthesis.getVoices()
-
-        // Advanced selection logic:
-        // 1. Try to match exact language and name hint
-        // 2. Try to match language and gender
-        // 3. Fallback to any voice for the language
 
         let voice: SpeechSynthesisVoice | undefined
 
         if (voiceMeta) {
             // Priority 1: Match lang and name hint
             voice = availableVoices.find(v =>
-                v.lang.startsWith(targetLang) &&
+                v.lang.startsWith(voiceMeta.lang) &&
                 v.name.toLowerCase().includes(voiceMeta.nameHint.toLowerCase())
             )
 
@@ -160,7 +173,7 @@ export function useTTS(): TTSHook {
             if (!voice) {
                 voice = availableVoices.find(v => {
                     const name = v.name.toLowerCase()
-                    const isLangMatch = v.lang.startsWith(targetLang)
+                    const isLangMatch = v.lang.startsWith(voiceMeta.lang)
                     if (!isLangMatch) return false
 
                     if (voiceMeta.gender === 'female') {
@@ -174,19 +187,19 @@ export function useTTS(): TTSHook {
 
         // Priority 3: Fallback to any voice for the target language
         if (!voice) {
-            voice = availableVoices.find(v => v.lang.startsWith(targetLang))
+            voice = availableVoices.find(v => v.lang.startsWith(finalTargetLang))
         }
 
         // Last resort fallback
-        if (!voice && targetLang.includes('-')) {
-            voice = availableVoices.find(v => v.lang.startsWith(targetLang.split('-')[0]))
+        if (!voice && finalTargetLang.includes('-')) {
+            voice = availableVoices.find(v => v.lang.startsWith(finalTargetLang.split('-')[0]))
         }
 
         if (voice) {
             utterance.voice = voice
             utterance.lang = voice.lang
         } else {
-            utterance.lang = targetLang
+            utterance.lang = finalTargetLang
         }
 
         utterance.rate = rate
@@ -196,13 +209,17 @@ export function useTTS(): TTSHook {
         utterance.onstart = () => {
             setIsSpeaking(true)
             setIsPaused(false)
+            callbacksRef.current.onStart?.()
         }
         utterance.onend = () => {
             setIsSpeaking(false)
             setIsPaused(false)
+            callbacksRef.current.onEnd?.()
         }
-        utterance.onerror = () => {
+        utterance.onerror = (err: any) => {
+            console.error("TTS Error:", err)
             setIsSpeaking(false)
+            callbacksRef.current.onError?.(err)
         }
 
         window.speechSynthesis.speak(utterance)
@@ -224,21 +241,23 @@ export function useTTS(): TTSHook {
             setIsPaused(false)
 
             // Verification: many browsers fail to update 'paused' state immediately
-            // If it's still paused after a small delay, we try speak() again as fallback
+            // If it's still paused after a small delay, it might be due to a lost utterance
             setTimeout(() => {
-                if (window.speechSynthesis.paused && isSpeaking) {
-                    console.warn("TTS Resume failed, retrying...")
+                if (window.speechSynthesis.paused) {
+                    // Try one more time, then fail silently or provide feedback if needed
                     window.speechSynthesis.resume()
+                    if (window.speechSynthesis.paused) {
+                        setIsPaused(false) // Force state update so user can try 'Play' again
+                    }
                 }
-            }, 100)
+            }, 150)
         } else if (audioRef.current && audioRef.current.paused) {
             audioRef.current.play().catch(console.error)
             setIsPaused(false)
         } else {
-            // If state is inconsistent (isPaused is true but browser says it's not)
             setIsPaused(false)
         }
-    }, [isSpeaking])
+    }, [])
 
     return {
         speak,

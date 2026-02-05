@@ -1,7 +1,7 @@
 """
 AI Tutor Interaction Router
 """
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -30,26 +30,32 @@ async def tutor_chat(
     if not content:
         raise HTTPException(status_code=404, detail="Content not found")
         
-    # 2. Extract section context
-    section_context = ""
+    # 2. Extract section context (Prioritize request-provided content)
+    section_context = request.active_section_content or ""
     active_sec = None
-    if content.content_json and "sections" in content.content_json:
+    
+    # Fallback to database if no content provided in request
+    if not section_context and content.content_json and "sections" in content.content_json:
         sections = content.content_json["sections"]
         active_sec = next((s for s in sections if s.get('id') == request.active_section_id), None)
         if active_sec:
-            section_context = f"Current Section: {active_sec.get('title')}\nContent: {active_sec.get('content')}"
-    
-    # If no sequential sections found, fallback to legacy keys
-    if not section_context and content.content_json:
-        val = content.content_json.get(request.active_section_id)
-        if val:
-            section_context = f"Context: {str(val)}"
+            section_context = active_sec.get('content', '')
 
-    # 3. Fetch system settings
+    # 3. Fetch system & organization settings
     system_settings = await db.scalar(select(SystemSettings).limit(1))
-    orchestrator = AIOrchestrator(system_settings=system_settings)
+    org_settings = None
+    if current_user.organization_id:
+        from app.models.organization_settings import OrganizationSettings
+        org_settings = await db.scalar(
+            select(OrganizationSettings).where(OrganizationSettings.organization_id == current_user.organization_id)
+        )
+        
+    orchestrator = AIOrchestrator(
+        organization_settings=org_settings,
+        system_settings=system_settings
+    )
 
-    # 4. Construct STRICT Context-Bound System Prompt
+    # 3. Construct Educator Persona Prompt
     lang_name = {
         "en": "English",
         "hi": "Hindi",
@@ -60,64 +66,43 @@ async def tutor_chat(
     }.get(request.language, "English")
 
     section_title = active_sec.get('title') if active_sec else request.active_section_id.replace('_', ' ').title()
-    section_type = active_sec.get('type') if active_sec else 'explanation'
 
-    system_prompt = f"""You are Pathshala AI Teaching Assistant.
+    system_prompt = f"""You are Pathshala AI, a supportive and professional teacher's assistant. Your mission is to help teachers explain the current lesson clearly to their students.
 
-YOU ARE STRICTLY CONTEXT-BOUND.
+CORE IDENTITY & TONE:
+- You are a warm, encouraging educator.
+- You speak fluently in {lang_name}. You are the dedicated {lang_name} Teaching Assistant for this classroom.
+- LANGUAGE LOCK: You MUST respond ONLY in {lang_name}. NEVER ask to switch to English. NEVER mention that you are an "English Assistant" or that you have "limitations" in {lang_name}.
+- YOUR ROLE: Your job is to TEACH the English content provided below using clear, natural {lang_name}.
 
-HARD RULES (MUST FOLLOW - NON-NEGOTIABLE):
-1. You can ONLY answer questions related to the CURRENT LESSON CONTEXT below.
-2. If a question is OUTSIDE the current lesson or section, you MUST refuse politely using the exact refusal message.
-3. You MUST answer ONLY in {lang_name}. This is NON-NEGOTIABLE.
-4. You MUST NOT switch language unless the user EXPLICITLY asks to change language.
-5. You MUST reference the current section in your answer.
-6. You are NOT a general chatbot. You are a lesson-bound teaching assistant.
+TEACHING RULES (STRICT):
+1. ASSIST, DON'T DUPLICATE: Never re-state the verbatim content from the "CURRENT SECTION CONTENT". Instead, explain it simply, provide new local examples, or answer questions—all in {lang_name}.
+2. BREVITY: Never write more than 6 brief bullet points or 6 short lines.
+3. SIMPLICITY: Use simple analogies relevant to Indian students (Class 6 level).
+4. CONTEXT: Stay focused on the current section being viewed.
 
-OFF-TOPIC REFUSAL RULE:
-If the user asks about topics NOT in the CURRENT TEACHING CONTEXT (e.g., Newton's Laws during a Water Cycle lesson), respond EXACTLY with:
-"This question is outside the current lesson. Let's continue with {section_title}."
-(Translate this refusal message to {lang_name} if needed)
+HOW TO REFUSE OFF-TOPIC QUERIES:
+If a user asks something completely unrelated to the lesson, reply concisely in {lang_name} that you are here to help with {section_title}.
 
-LANGUAGE RULE:
-- Selected Language: {lang_name}
-- ALL responses MUST be in {lang_name} ONLY.
-- Do NOT mix languages.
-- Do NOT switch languages unless the user explicitly requests it.
-
-CURRENT TEACHING CONTEXT (AUTHORITATIVE - this is the ONLY topic you may discuss):
-- Class: Grade {content.grade if content.grade else 'N/A'}
-- Subject: {content.subject if content.subject else 'General'}
-- Lesson Title: {content.title}
-- Section Title: {section_title}
-- Section Type: {section_type}
-- Topic: {content.topic if content.topic else section_title}
+CURRENT LESSON CONTEXT:
+- Lesson: {content.title}
+- Section: {section_title}
+- Target Language: {lang_name} (MANDATORY)
 
 CURRENT SECTION CONTENT:
 {section_context}
 
-OUTPUT STYLE:
-- Teacher-friendly, classroom-ready language
-- Simple and encouraging tone
-- 4-6 lines maximum
-- Use bullet points if steps are involved
+Think like a veteran {lang_name} teacher. Be concise, be clear, and respect the learner's language choice as a hard requirement."""
 
-REMEMBER: You are NOT a general AI. You are lesson-bound. Refuse anything outside the current context."""
+    # 4. Format chat history for the prompt
+    history_text = ""
+    if request.history:
+        for msg in request.history:
+            role = "CO-TEACHER" if msg.get('role') == 'assistant' or msg.get('role') == 'tutor' else "TEACHER"
+            content_text = msg.get('content', '')
+            history_text += f"{role}: {content_text}\n"
 
-    lesson_metadata = f"""
-CURRENT_SECTION METADATA:
-- id: {active_sec.get('id') if active_sec else request.active_section_id}
-- type: {section_type}
-- title: {section_title}
-- index: {request.section_index}
-"""
-
-    section_details = f"""
-CONTENT TO RENDER:
-{section_context}
-"""
-
-    prompt = f"{system_prompt}\n{lesson_metadata}\n{section_details}\nUSER MESSAGE: {request.user_message}\n\nResponse:"
+    prompt = f"{system_prompt}\n\nHISTORY:\n{history_text if history_text else 'No previous conversation.'}\n\nTEACHER QUESTION: {request.user_message}\n\nCO-TEACHER RESPONSE:"
 
 
     try:
@@ -131,96 +116,22 @@ CONTENT TO RENDER:
         raise HTTPException(status_code=500, detail=f"Tutor chat error: {str(e)}")
 
 
-async def _process_pdf_background(
-    content_id: int,
-    db_session_factory,
-    pdf_url: str
-):
-    """Background task to process PDF into sections."""
-    from app.services.ai_orchestrator import AIOrchestrator
-    from app.models.system_settings import SystemSettings
-    from app.models.teacher_content import TeacherContent, ContentStatus
-    from sqlalchemy import select
-    import httpx
-    import tempfile
-    import os
-    import traceback
-
-    async with db_session_factory() as db:
-        try:
-            # 1. Fetch content
-            content = await db.get(TeacherContent, content_id)
-            if not content:
-                print(f"[Tutor-BG] Content {content_id} not found")
-                return
-
-            # 2. Fetch system settings
-            system_settings = await db.scalar(select(SystemSettings).limit(1))
-            orchestrator = AIOrchestrator(system_settings=system_settings)
-
-            # 3. Download/Prepare PDF
-            pdf_path = pdf_url
-            temp_file_path = None
-            
-            if pdf_path.startswith("http"):
-                print(f"[Tutor-BG] Downloading PDF: {pdf_path}")
-                async with httpx.AsyncClient() as client:
-                    response = await client.get(pdf_path, timeout=60.0)
-                    if response.status_code == 200:
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                            tmp.write(response.content)
-                            temp_file_path = tmp.name
-                            pdf_path = temp_file_path
-            
-            # 4. Process using AI
-            print(f"[Tutor-BG] Extracting sections via {orchestrator.llm_client.provider}...")
-            sections = await orchestrator.process_pdf_to_sections(pdf_path)
-            
-            if sections:
-                if not content.content_json:
-                    content.content_json = {}
-                content.content_json["sections"] = sections
-                content.status = ContentStatus.PUBLISHED # Re-publish after processing
-                print(f"[Tutor-BG] Success! {len(sections)} sections extracted for content {content_id}")
-            else:
-                print(f"[Tutor-BG] Error: AI provider failed to extract sections")
-                content.status = ContentStatus.PUBLISHED # Re-publish even on failure so it's not stuck
-                if not content.content_json:
-                    content.content_json = {}
-                content.content_json["error"] = "AI failed to extract sections from this PDF."
-
-            db.add(content)
-            await db.commit()
-
-        except Exception as e:
-            print(f"[Tutor-BG] Critical error: {str(e)}")
-            traceback.print_exc()
-            # Try to reset status so it's not stuck in 'processing'
-            try:
-                content = await db.get(TeacherContent, content_id)
-                if content:
-                    content.status = ContentStatus.PUBLISHED
-                    db.add(content)
-                    await db.commit()
-            except: pass
-        finally:
-            if temp_file_path and os.path.exists(temp_file_path):
-                try: os.unlink(temp_file_path)
-                except: pass
-
-
 @router.post("/process-pdf/{content_id}")
 async def process_pdf_content(
     content_id: int,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Process a PDF file and convert it into interactive Guru sections (Background Task).
+    Process a PDF file and convert it into interactive Guru sections synchronously.
     """
-    from app.database import async_session_maker
     from app.models.teacher_content import ContentStatus
+    from app.services.ai_orchestrator import AIOrchestrator
+    from app.models.system_settings import SystemSettings
+    import httpx
+    import tempfile
+    import os
+    import traceback
 
     # 1. Fetch content
     content = await db.get(TeacherContent, content_id)
@@ -230,13 +141,12 @@ async def process_pdf_content(
     if not content.pdf_url:
         raise HTTPException(status_code=400, detail="This content has no PDF to process")
 
-    # 1.5 Prevent redundant background tasks
-    if content.status == ContentStatus.PROCESSING:
-        print(f"[Tutor] Skipping PDF process request for {content_id} - already in progress")
+    # Prevent redundant processing if already published with sections
+    if content.content_json and "sections" in content.content_json and len(content.content_json["sections"]) > 0:
         return {
-            "message": "PDF processing is already in progress",
-            "status": "processing",
-            "content_id": content_id
+            "message": "Content already has processed sections",
+            "status": "published",
+            "sections": content.content_json["sections"]
         }
 
     # 2. Update status to processing
@@ -244,17 +154,81 @@ async def process_pdf_content(
     db.add(content)
     await db.commit()
 
-    # 3. Queue background task
-    background_tasks.add_task(
-        _process_pdf_background,
-        content_id=content_id,
-        db_session_factory=async_session_maker,
-        pdf_url=content.pdf_url
-    )
+    temp_file_path = None
+    try:
+        # 3. Fetch system settings & Init Orchestrator
+        system_settings = await db.scalar(select(SystemSettings).limit(1))
+        orchestrator = AIOrchestrator(system_settings=system_settings)
 
-    return {
-        "message": "PDF processing started in background",
-        "status": "processing",
-        "content_id": content_id
-    }
+        # 4. Download PDF
+        pdf_path = content.pdf_url
+        if pdf_path.startswith("http"):
+            print(f"[Tutor] Sync downloading PDF: {pdf_path}")
+            async with httpx.AsyncClient() as client:
+                response = await client.get(pdf_path, timeout=60.0)
+                if response.status_code == 200:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                        tmp.write(response.content)
+                        temp_file_path = tmp.name
+                        pdf_path = temp_file_path
+                else:
+                    raise Exception(f"Failed to download PDF: {response.status_code}")
+        
+        # 5. Process using AI (This is where the resource analysis happens)
+        print(f"[Tutor] Sync extracting sections via {orchestrator.llm_client.provider}...")
+        
+        # Call the resource analyzer function, passing system_settings
+        analysis = await analyze_resource(
+            resource_id=content.id,
+            title=content.title,
+            content_url=content.pdf_url,
+            category=content.category,
+            grade=content.grade,
+            subject=content.subject,
+            system_settings=system_settings,
+            pdf_local_path=pdf_path # Pass the local path of the downloaded PDF
+        )
+        
+        sections = analysis.get("sections") # Assuming analyze_resource returns a dict with 'sections'
+
+        if sections:
+            if not content.content_json:
+                content.content_json = {}
+            content.content_json["sections"] = sections
+            content.content_json.pop("error", None)  # Clear any previous error
+            content.status = ContentStatus.PUBLISHED
+            print(f"[Tutor] Success! {len(sections)} sections extracted for content {content_id}")
+        else:
+            print(f"[Tutor] Error: AI provider failed to extract sections")
+            content.status = ContentStatus.PUBLISHED # Reset so it's not stuck
+            if not content.content_json:
+                content.content_json = {}
+            content.content_json["error"] = "Unable to extract learning sections from this PDF. The document may be image-based or have complex formatting. Please try a different PDF."
+            content.content_json["sections"] = []  # Ensure empty array
+
+        db.add(content)
+        await db.commit()
+        await db.refresh(content)
+
+        return {
+            "message": "PDF processing complete",
+            "status": "published",
+            "sections": sections if sections else [],
+            "content_id": content_id,
+            "error": content.content_json.get("error") if not sections else None
+        }
+
+    except Exception as e:
+        print(f"[Tutor] Critical processing error: {str(e)}")
+        traceback.print_exc()
+        # Reset status so it's not stuck in 'processing'
+        content.status = ContentStatus.PUBLISHED
+        db.add(content)
+        await db.commit()
+        raise HTTPException(status_code=500, detail=f"PDF processing failed: {str(e)}")
+    
+    finally:
+        if temp_file_path and os.path.exists(temp_file_path):
+            try: os.unlink(temp_file_path)
+            except: pass
 

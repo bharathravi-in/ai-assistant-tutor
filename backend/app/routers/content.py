@@ -505,7 +505,7 @@ async def get_pending_content(
     
     # Get paginated results
     query = query.options(selectinload(TeacherContent.author), selectinload(TeacherContent.reviewer))
-    query = query.order_by(TeacherContent.created_at.asc())  # Oldest first
+    query = query.order_by(TeacherContent.created_at.desc())  # Latest first
     query = query.offset((page - 1) * page_size).limit(page_size)
     
     result = await db.execute(query)

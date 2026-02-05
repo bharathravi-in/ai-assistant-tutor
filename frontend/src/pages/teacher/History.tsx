@@ -34,7 +34,7 @@ const modeIcons: Record<string, typeof Lightbulb> = {
 const modeColors: Record<string, string> = {
     EXPLAIN: '#2563EB',
     ASSIST: '#059669',
-    PLAN: '#7C3AED',
+    PLAN: '#2563EB',
     ASK: '#EA580C',
 }
 
@@ -140,7 +140,7 @@ export default function TeacherHistory() {
         return (
             <div className="min-h-[calc(100vh-80px)] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 rounded-full border-4 border-gray-200 animate-spin" style={{ borderTopColor: '#264092' }} />
+                    <div className="w-12 h-12 rounded-full border-4 border-gray-200 animate-spin" style={{ borderTopColor: '#2563EB' }} />
                     <p className="text-gray-500 dark:text-gray-400">Loading history...</p>
                 </div>
             </div>
@@ -154,7 +154,7 @@ export default function TeacherHistory() {
                 <div className="mb-8">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
                                 <History className="w-6 h-6 text-white" />
                             </div>
                             <div>
@@ -170,8 +170,8 @@ export default function TeacherHistory() {
                             <button
                                 onClick={() => setActiveTab('ask-ai')}
                                 className={`flex-1 md:flex-none px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'ask-ai'
-                                        ? 'bg-white dark:bg-blue-600 text-blue-600 dark:text-white shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                                    ? 'bg-white dark:bg-blue-600 text-blue-600 dark:text-white shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
                                     }`}
                             >
                                 <div className="flex items-center justify-center gap-2">
@@ -182,8 +182,8 @@ export default function TeacherHistory() {
                             <button
                                 onClick={() => setActiveTab('chats')}
                                 className={`flex-1 md:flex-none px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'chats'
-                                        ? 'bg-white dark:bg-blue-600 text-blue-600 dark:text-white shadow-sm'
-                                        : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                                    ? 'bg-white dark:bg-blue-600 text-blue-600 dark:text-white shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
                                     }`}
                             >
                                 <div className="flex items-center justify-center gap-2">
@@ -286,20 +286,20 @@ export default function TeacherHistory() {
                                 <button
                                     key={conv.id}
                                     onClick={() => handleChatClick(conv)}
-                                    className="group text-left bg-white dark:bg-[#1C1C1E] p-5 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-lg hover:border-indigo-200 dark:hover:border-indigo-900/30 transition-all active:scale-[0.98]"
+                                    className="group text-left bg-white dark:bg-[#1C1C1E] p-5 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-900/30 transition-all active:scale-[0.98]"
                                 >
                                     <div className="flex items-center justify-between mb-4">
-                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
+                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
                                             <MessageCircle className="w-5 h-5" />
                                         </div>
                                         {conv.topic && (
-                                            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
+                                            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
                                                 {conv.topic}
                                             </span>
                                         )}
                                     </div>
 
-                                    <h3 className="text-gray-900 dark:text-white font-semibold line-clamp-2 mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                    <h3 className="text-gray-900 dark:text-white font-semibold line-clamp-2 mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                                         {conv.title || 'Untitled Conversation'}
                                     </h3>
 
@@ -312,7 +312,7 @@ export default function TeacherHistory() {
                                             <Clock className="w-3.5 h-3.5" />
                                             <span>{conv.last_message_at ? formatDate(conv.last_message_at) : formatDate(conv.created_at)}</span>
                                         </div>
-                                        <div className="flex items-center gap-1 text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex items-center gap-1 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <span className="font-bold">Resume</span>
                                             <ExternalLink className="w-3.5 h-3.5" />
                                         </div>

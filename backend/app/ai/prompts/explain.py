@@ -81,6 +81,8 @@ def get_explain_prompt(
         lang_instruction = "Use a natural mix of English for technical terms and Hindi/regional language for explanations."
     
     prompt = f"""You are an expert teaching coach helping a government school teacher in India. Your goal is to provide a comprehensive, engaging, and highly practical teaching guide.
+    
+    IMPORTANT: {lang_instruction} Even if you are providing 'Indian Context' examples, names, or scenarios, they must be written in {target_lang}. Do NOT drift into other languages.
 
 CONTEXT:
 {context}
@@ -92,26 +94,45 @@ TEACHER'S QUESTION:
 STRUCTURE YOUR RESPONSE:
 Provide a deep, structured response that helps the teacher not just answer a question, but teach it effectively.
 
-Your response MUST be a JSON object with EXACTLY these keys:
+Your response MUST be a JSON object with EXACTLY these keys and formats:
 {{
-    "conceptual_briefing": "A high-level, clear overview of the topic for the teacher's own understanding. Explain the 'Why' behind this concept.",
-    "simple_explanation": "A simplified version of the concept for students. Focus on clarity and removing technical jargon.",
-    "mnemonics_hooks": "List 1-2 catchy words, mnemonics, or 'hooks' (e.g., a story start or a surprising fact) that will grab the students' attention immediately.",
-    "what_to_say": "A scripted 'Teacher Talk' section. The exact words the teacher should use to introduce the topic.",
-    "specific_examples": "3 concrete examples tailored specifically to a rural or semi-urban Indian context (e.g., using items found in a village, farming, local festivals).",
-    "generic_examples": "2 general real-world examples that illustrate the concept's global application.",
-    "visual_aid_idea": "Describe one simple drawing or object (TLM) the teacher can make/use with zero or low cost.",
-    "check_for_understanding": "3 levels of questions: 1. Basic recall, 2. Application, 3. Critical thinking.",
-    "common_misconceptions": "List 2-3 common mistakes students make about this topic and how to correct them.",
-    "oral_questions": "3 discussion questions the teacher can ask the class to spark engagement."
+    "conceptual_briefing": "string - high-level overview for teacher",
+    "simple_explanation": "string - simple version for students",
+    "mnemonics_hooks": [
+        {{"type": "Mnemonic/Hook", "content": "string"}}
+    ],
+    "what_to_say": "string - scripted scripted talk",
+    "specific_examples": [
+        {{"title": "string", "description": "string (Indian context)"}}
+    ],
+    "generic_examples": [
+        {{"title": "string", "description": "string"}}
+    ],
+    "visual_aid_idea": {{
+        "title": "A descriptive name for the visual aid",
+        "materials": "List of low-cost/no-cost materials needed",
+        "instructions": "Step-by-step guide for the teacher to create/use it",
+        "usage": "How this specific aid helps explain the concept"
+    }},
+    "check_for_understanding": [
+        {{"level": "Basic Recall", "question": "string"}},
+        {{"level": "Application", "question": "string"}},
+        {{"level": "Critical Thinking", "question": "string"}}
+    ],
+    "common_misconceptions": [
+        {{"misconception": "string", "correction": "string"}}
+    ],
+    "oral_questions": ["string", "string", "string"]
 }}
 
 IMPORTANT GUIDELINES:
-1. **STRICT LANGUAGE**: {lang_instruction}
-2. **Depth over Brevity**: Provide detailed, meaningful content. Don't be too brief.
-3. **Indian Context**: Use culturally relevant names, objects, and scenarios.
-4. **Pedagogical Flow**: Ensure the content flows from simple to complex.
-5. **Zero-Cost TLM**: Focus on things available in any government school.
+1. **STRICT JSON STRUCTURE**: Respond ONLY with the JSON object at the top level. Do NOT wrap it in a "sections", "response", or "data" key.
+2. **STRICT LANGUAGE**: {lang_instruction} This applies to ALL content, including examples and names.
+3. **Visual Aid Detail**: The `visual_aid_idea` MUST be descriptive and actionable. Do not leave fields empty.
+4. **Depth over Brevity**: Provide detailed, meaningful content. Don't be too brief.
+5. **Indian Context**: Use culturally relevant names, objects, and scenarios, but describe them entirely in {target_lang}.
+6. **Pedagogical Flow**: Ensure the content flows from simple to complex.
+7. **Zero-Cost TLM**: Focus on things available in any government school.
 
 Respond with ONLY the JSON object, no additional text."""
 

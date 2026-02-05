@@ -161,6 +161,7 @@ class TutorChatRequest(BaseModel):
     """Schema for AI Tutor chat request."""
     content_id: int
     active_section_id: str
+    active_section_content: Optional[str] = None # Direct content injection
     section_index: Optional[int] = 0
     total_sections: Optional[int] = 0
     user_message: str

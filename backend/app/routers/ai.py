@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.query import Query, QueryMode
 from app.models.system_settings import SystemSettings
+from app.models.organization_settings import OrganizationSettings
 from app.schemas.ai import (
     AIRequest, AIResponse, QuizRequest, QuizResponse,
     TLMRequest, TLMResponse, AuditRequest, AuditResponse
@@ -113,6 +114,13 @@ async def ask_ai(
     # Fetch global AI settings first
     system_settings = await db.scalar(select(SystemSettings).limit(1))
     
+    # Fetch organization settings if user belongs to one
+    org_settings = None
+    if current_user.organization_id:
+        org_settings = await db.scalar(
+            select(OrganizationSettings).where(OrganizationSettings.organization_id == current_user.organization_id)
+        )
+    
     # RAG: Search for relevant content using vector similarity
     relevant_context = ""
     vector_service = get_vector_service()
@@ -150,7 +158,10 @@ async def ask_ai(
             # Continue without RAG if it fails
     
     # Create orchestrator and get response
-    orchestrator = AIOrchestrator(system_settings=system_settings)
+    orchestrator = AIOrchestrator(
+        organization_settings=org_settings,
+        system_settings=system_settings
+    )
     
     try:
         # Add RAG context to the request if available
@@ -270,7 +281,15 @@ async def answer_question(
     Used for "Check for Understanding" questions and similar use cases.
     """
     system_settings = await db.scalar(select(SystemSettings).limit(1))
-    orchestrator = AIOrchestrator(system_settings=system_settings)
+    org_settings = None
+    if current_user.organization_id:
+        org_settings = await db.scalar(
+            select(OrganizationSettings).where(OrganizationSettings.organization_id == current_user.organization_id)
+        )
+    orchestrator = AIOrchestrator(
+        organization_settings=org_settings,
+        system_settings=system_settings
+    )
     
     # Language instruction for non-English
     language_instruction = ""
@@ -385,7 +404,15 @@ async def generate_quiz(
     Mode 4: Generate a quiz based on specific lesson content.
     """
     system_settings = await db.scalar(select(SystemSettings).limit(1))
-    orchestrator = AIOrchestrator(system_settings=system_settings)
+    org_settings = None
+    if current_user.organization_id:
+        org_settings = await db.scalar(
+            select(OrganizationSettings).where(OrganizationSettings.organization_id == current_user.organization_id)
+        )
+    orchestrator = AIOrchestrator(
+        organization_settings=org_settings,
+        system_settings=system_settings
+    )
     
     try:
         quiz = await orchestrator.generate_quiz(
@@ -418,7 +445,15 @@ async def generate_tlm(
     Mode 5: Generate TLM (Visual/Physical) based on specific lesson content.
     """
     system_settings = await db.scalar(select(SystemSettings).limit(1))
-    orchestrator = AIOrchestrator(system_settings=system_settings)
+    org_settings = None
+    if current_user.organization_id:
+        org_settings = await db.scalar(
+            select(OrganizationSettings).where(OrganizationSettings.organization_id == current_user.organization_id)
+        )
+    orchestrator = AIOrchestrator(
+        organization_settings=org_settings,
+        system_settings=system_settings
+    )
     
     try:
         tlm = await orchestrator.generate_tlm(
@@ -449,7 +484,15 @@ async def generate_audit(
     Mode 6: Audit content for NCERT compliance.
     """
     system_settings = await db.scalar(select(SystemSettings).limit(1))
-    orchestrator = AIOrchestrator(system_settings=system_settings)
+    org_settings = None
+    if current_user.organization_id:
+        org_settings = await db.scalar(
+            select(OrganizationSettings).where(OrganizationSettings.organization_id == current_user.organization_id)
+        )
+    orchestrator = AIOrchestrator(
+        organization_settings=org_settings,
+        system_settings=system_settings
+    )
 
     try:
         audit = await orchestrator.audit_content(

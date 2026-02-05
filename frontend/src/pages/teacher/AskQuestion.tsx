@@ -92,9 +92,9 @@ const queryModes = [
         icon: Clock,
         label: 'Plan Lesson',
         description: 'Create lesson plans',
-        gradient: 'from-[#5856D6] to-[#AF52DE]',
-        shadow: 'shadow-purple-500/20',
-        color: '#5856D6'
+        gradient: 'from-[#007AFF] to-[#0051FF]',
+        shadow: 'shadow-blue-500/20',
+        color: '#007AFF'
     },
 ]
 
@@ -120,7 +120,6 @@ const languageOptions = [
     { id: 'hi', label: 'Hindi', flag: '🇮🇳' },
     { id: 'kn', label: 'Kannada', flag: '🇮🇳' },
     { id: 'te', label: 'Telugu', flag: '🇮🇳' },
-    { id: 'mixed', label: 'Mixed', flag: '🌐' },
 ]
 
 const getStringContent = (content: any): string => {
@@ -513,7 +512,7 @@ export default function AskQuestion() {
                 <title>Quiz - ${originalQuery}</title>
                 <style>
                     body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
-                    h1 { color: #333; border-bottom: 2px solid #7c3aed; padding-bottom: 10px; }
+                    h1 { color: #333; border-bottom: 2px solid #007AFF; padding-bottom: 10px; }
                     .question { margin: 20px 0; padding: 15px; background: #f5f5f5; border-radius: 8px; }
                     .question-type { font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 5px; }
                     .question-text { font-weight: bold; margin-bottom: 10px; }
@@ -541,7 +540,7 @@ export default function AskQuestion() {
                         ` : ''}
                     </div>
                 `).join('')}
-                <button class="no-print" onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; background: #7c3aed; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                <button class="no-print" onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; background: #007AFF; color: white; border: none; border-radius: 8px; cursor: pointer;">
                     Print / Save as PDF
                 </button>
             </body>
@@ -568,7 +567,7 @@ export default function AskQuestion() {
                     {/* Header */}
                     <div className="mb-8">
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
                                 <Bot className="w-5 h-5 text-white" />
                             </div>
                             <div>
@@ -699,8 +698,8 @@ export default function AskQuestion() {
                                                             type="button"
                                                             onClick={() => setPersona(p.id)}
                                                             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${persona === p.id
-                                                                ? 'bg-purple-500 text-white shadow-md'
-                                                                : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-purple-300'
+                                                                ? 'bg-blue-600 text-white shadow-md'
+                                                                : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:border-blue-300'
                                                                 }`}
                                                             title={p.description}
                                                         >

@@ -98,7 +98,34 @@ def mask_value(value: str, visible_chars: int = 4) -> str:
     if not value:
         return ""
     
-    return "••••••••"
+    if len(value) <= visible_chars * 2:
+        return "••••••••"
+        
+    return f"{value[:visible_chars]}••••{value[-visible_chars:]}"
+
+
+def is_mask(value: str) -> bool:
+    """
+    Check if a value is a masked string (only bullets or asterisks).
+    Useful for preventing saving of UI masks as real API keys.
+    """
+    if not value:
+        return False
+    
+    # 1. Check if string consists only of mask characters
+    mask_chars = {'\u2022', '*'}
+    if all(c in mask_chars for c in value):
+        return True
+        
+    # 2. Check for placeholder patterns like 'your...-key' or 'sk-...'
+    # Use lowercase for case-insensitive check
+    val_lower = value.lower()
+    placeholders = [
+        "your-", "your...", "placeholder", "todo", "enter-your", 
+        "sk-...", "api-key", "api_key"
+    ]
+    
+    return any(p in val_lower for p in placeholders)
 
 
 def is_encrypted(value: str) -> bool:

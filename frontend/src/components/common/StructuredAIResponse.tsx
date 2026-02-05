@@ -41,8 +41,14 @@ function toSafeString(data: any): string {
 
     if (Array.isArray(data)) {
         return data.map((item, idx) => {
-            const val = typeof item === 'object' ? toSafeString(item) : String(item)
-            return `${idx + 1}. ${val}`
+            if (typeof item === 'string') return `${idx + 1}. ${item}`
+            if (typeof item === 'object') {
+                // Handle nested structures in arrays (like specific_examples)
+                const label = item.title || item.name || item.misconception || `Point ${idx + 1}`
+                const content = item.content || item.description || item.correction || item.example || JSON.stringify(item)
+                return `${idx + 1}. **${label}**: ${content}`
+            }
+            return `${idx + 1}. ${String(item)}`
         }).join('\n\n')
     }
 
@@ -52,8 +58,9 @@ function toSafeString(data: any): string {
         if (data.text) return toSafeString(data.text)
         if (data.description) return toSafeString(data.description)
 
+        // If it's a key-value pair object, format as list
         return Object.entries(data)
-            .map(([key, val]) => `**${key.replace(/_/g, ' ')}**: ${typeof val === 'object' ? JSON.stringify(val) : val}`)
+            .map(([key, val]) => `**${key.replace(/_/g, ' ')}**: ${typeof val === 'object' ? toSafeString(val) : val}`)
             .join('\n\n')
     }
 
@@ -162,17 +169,17 @@ const sectionConfig = {
         icon: Lightbulb,
         title: 'Simple Explanation',
         emoji: '💡',
-        bgGradient: 'from-amber-50 to-yellow-100/80 dark:from-amber-900/40 dark:to-yellow-800/30',
-        iconBg: 'bg-amber-500',
-        borderColor: 'border-amber-200 dark:border-amber-700'
+        bgGradient: 'from-purple-50 to-purple-100/80 dark:from-purple-900/40 dark:to-purple-800/30',
+        iconBg: 'bg-purple-500',
+        borderColor: 'border-purple-200 dark:border-purple-700'
     },
     mnemonics_hooks: {
         icon: Link2,
         title: 'Mnemonics & Hooks',
         emoji: '🔗',
-        bgGradient: 'from-purple-50 to-purple-100/80 dark:from-purple-900/40 dark:to-purple-800/30',
-        iconBg: 'bg-purple-500',
-        borderColor: 'border-purple-200 dark:border-purple-700'
+        bgGradient: 'from-blue-50 to-blue-100/80 dark:from-blue-900/40 dark:to-blue-800/30',
+        iconBg: 'bg-blue-500',
+        borderColor: 'border-blue-200 dark:border-blue-700'
     },
     what_to_say: {
         icon: MessageSquare,
@@ -210,9 +217,9 @@ const sectionConfig = {
         icon: HelpCircle,
         title: 'Check for Understanding',
         emoji: '❓',
-        bgGradient: 'from-indigo-50 to-indigo-100/80 dark:from-indigo-900/40 dark:to-indigo-800/30',
-        iconBg: 'bg-indigo-500',
-        borderColor: 'border-indigo-200 dark:border-indigo-700'
+        bgGradient: 'from-blue-50 to-blue-100/80 dark:from-blue-900/40 dark:to-blue-800/30',
+        iconBg: 'bg-blue-500',
+        borderColor: 'border-blue-200 dark:border-blue-700'
     },
     // Math solution sections
     problem_statement: {
@@ -251,9 +258,9 @@ const sectionConfig = {
         icon: Lightbulb,
         title: 'Concept Explanation',
         emoji: '💡',
-        bgGradient: 'from-amber-50 to-amber-100/80 dark:from-amber-900/40 dark:to-amber-800/30',
-        iconBg: 'bg-amber-500',
-        borderColor: 'border-amber-200 dark:border-amber-700'
+        bgGradient: 'from-purple-50 to-purple-100/80 dark:from-purple-900/40 dark:to-purple-800/30',
+        iconBg: 'bg-purple-500',
+        borderColor: 'border-purple-200 dark:border-purple-700'
     },
     common_mistakes: {
         icon: AlertTriangle,
@@ -267,9 +274,9 @@ const sectionConfig = {
         icon: HelpCircle,
         title: 'Practice Problem',
         emoji: '✏️',
-        bgGradient: 'from-purple-50 to-purple-100/80 dark:from-purple-900/40 dark:to-purple-800/30',
-        iconBg: 'bg-purple-500',
-        borderColor: 'border-purple-200 dark:border-purple-700'
+        bgGradient: 'from-blue-50 to-blue-100/80 dark:from-blue-900/40 dark:to-blue-800/30',
+        iconBg: 'bg-blue-500',
+        borderColor: 'border-blue-200 dark:border-blue-700'
     },
     common_misconceptions: {
         icon: AlertTriangle,
@@ -300,9 +307,9 @@ const sectionConfig = {
         icon: Zap,
         title: 'Do This NOW',
         emoji: '⚡',
-        bgGradient: 'from-yellow-50 to-yellow-100/80 dark:from-yellow-900/40 dark:to-yellow-800/30',
-        iconBg: 'bg-yellow-500',
-        borderColor: 'border-yellow-200 dark:border-yellow-700'
+        bgGradient: 'from-purple-50 to-purple-100/80 dark:from-purple-900/40 dark:to-purple-800/30',
+        iconBg: 'bg-purple-600',
+        borderColor: 'border-purple-200 dark:border-purple-700'
     },
     quick_activity: {
         icon: Activity,
@@ -316,9 +323,9 @@ const sectionConfig = {
         icon: ArrowRightCircle,
         title: 'Bridge to Lesson',
         emoji: '🌉',
-        bgGradient: 'from-indigo-50 to-indigo-100/80 dark:from-indigo-900/40 dark:to-indigo-800/30',
-        iconBg: 'bg-indigo-500',
-        borderColor: 'border-indigo-200 dark:border-indigo-700'
+        bgGradient: 'from-blue-50 to-blue-100/80 dark:from-blue-900/40 dark:to-blue-800/30',
+        iconBg: 'bg-blue-500',
+        borderColor: 'border-blue-200 dark:border-blue-700'
     },
     check_progress: {
         icon: BarChart2,
@@ -332,9 +339,9 @@ const sectionConfig = {
         icon: CalendarClock,
         title: 'For Tomorrow',
         emoji: '🛡️',
-        bgGradient: 'from-violet-50 to-violet-100/80 dark:from-violet-900/40 dark:to-violet-800/30',
-        iconBg: 'bg-violet-500',
-        borderColor: 'border-violet-200 dark:border-violet-700'
+        bgGradient: 'from-blue-50 to-blue-100/80 dark:from-blue-900/40 dark:to-blue-800/30',
+        iconBg: 'bg-blue-500',
+        borderColor: 'border-blue-200 dark:border-blue-700'
     },
     // Plan mode (Lesson Plan) section configs
     learning_objectives: {
@@ -365,9 +372,9 @@ const sectionConfig = {
         icon: Users,
         title: 'Multigrade Adaptations',
         emoji: '🏫',
-        bgGradient: 'from-purple-50 to-purple-100/80 dark:from-purple-900/40 dark:to-purple-800/30',
-        iconBg: 'bg-purple-600',
-        borderColor: 'border-purple-200 dark:border-purple-700'
+        bgGradient: 'from-sky-50 to-sky-100/80 dark:from-sky-900/40 dark:to-sky-800/30',
+        iconBg: 'bg-sky-600',
+        borderColor: 'border-sky-200 dark:border-sky-700'
     },
     low_tlm_alternatives: {
         icon: Package,
@@ -454,7 +461,7 @@ function MnemonicsHooksContent({ items }: { items: (string | { type: string; con
                     return (
                         <div
                             key={idx}
-                            className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border-l-4 border-purple-500"
+                            className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500"
                         >
                             <div className="text-gray-700 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none">
                                 <MarkdownRenderer content={item} />
@@ -467,12 +474,12 @@ function MnemonicsHooksContent({ items }: { items: (string | { type: string; con
                     <div
                         key={idx}
                         className={`p-3 rounded-lg border-l-4 ${item.type === 'Mnemonic'
-                            ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-500'
+                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500'
                             : 'bg-orange-50 dark:bg-orange-900/20 border-orange-500'
                             }`}
                     >
                         <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold mb-2 ${item.type === 'Mnemonic'
-                            ? 'bg-purple-200 text-purple-800 dark:bg-purple-800 dark:text-purple-200'
+                            ? 'bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-200'
                             : 'bg-orange-200 text-orange-800 dark:bg-orange-800 dark:text-orange-200'
                             }`}>
                             {item.type}
@@ -613,58 +620,76 @@ function parseInstructions(text: string): string[] {
     return instructions.length > 1 ? instructions : [text]
 }
 
-// Render visual aid idea - handles multiple field name formats
-function VisualAidContent({ item }: { item: VisualAidIdea }) {
-    const title = item.title || item.name || 'Visual Aid'
-    const description = item.description || item.instructions || ''
-    const usage = item.usage || ''
+// Render visual aid idea - handles multiple field name formats and string fallback
+function VisualAidContent({ item }: { item: any }) {
+    if (!item) return <p className="text-gray-500 text-sm">No visual aid idea provided.</p>
 
-    // Parse instructions into numbered list
-    const instructionsList = parseInstructions(description)
+    // Handle string case
+    if (typeof item === 'string') {
+        return (
+            <div className="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-300">
+                <MarkdownRenderer content={item} />
+            </div>
+        )
+    }
+
+    const title = item.title || item.name || 'Visual Aid / TLM idea'
+    const materials = item.materials || item.required_items || ''
+    const usage = item.usage || item.benefit || ''
+
+    // Support multiple instruction field names
+    const rawInstructions = item.instructions || item.description || item.steps || ''
+    const instructionsList = parseInstructions(rawInstructions)
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-4">
             <h4 className="font-semibold text-lg text-gray-900 dark:text-white flex items-center gap-2">
                 <Wrench className="w-5 h-5 text-pink-500" />
                 {title}
             </h4>
 
-            {/* Only show Materials Needed if materials data exists */}
-            {item.materials && (
-                <div className="p-3 rounded-lg bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-700">
-                    <h5 className="font-medium text-pink-700 dark:text-pink-300 mb-2 flex items-center gap-1 text-sm">
-                        <ListChecks className="w-4 h-4" /> Materials Needed
+            {materials && (
+                <div className="p-3 rounded-xl bg-pink-50/50 dark:bg-pink-900/10 border border-pink-100 dark:border-pink-800/30">
+                    <h5 className="font-medium text-pink-700 dark:text-pink-300 mb-2 flex items-center gap-1.5 text-sm uppercase tracking-wider">
+                        <Package className="w-4 h-4" /> Materials Needed
                     </h5>
                     <div className="text-gray-700 dark:text-gray-300 text-sm">
-                        <MarkdownRenderer content={item.materials} />
+                        <MarkdownRenderer content={Array.isArray(materials) ? materials.join(', ') : String(materials)} />
                     </div>
                 </div>
             )}
 
             {instructionsList.length > 0 && (
-                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
-                    <h5 className="font-medium text-blue-700 dark:text-blue-300 mb-2 text-sm">📝 Instructions</h5>
-                    <ol className="space-y-2">
+                <div className="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/30">
+                    <h5 className="font-medium text-blue-700 dark:text-blue-300 mb-3 text-sm uppercase tracking-wider">📝 Instructions</h5>
+                    <div className="space-y-3">
                         {instructionsList.map((instruction, idx) => (
-                            <li key={idx} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                                <span className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                            <div key={idx} className="flex gap-3 text-sm text-gray-700 dark:text-gray-300">
+                                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs font-bold">
                                     {idx + 1}
-                                </span>
-                                <span className="prose prose-sm dark:prose-invert max-w-none">
+                                </div>
+                                <div className="prose prose-sm dark:prose-invert max-w-none pt-0.5">
                                     <MarkdownRenderer content={instruction.replace(/^\d+[.)]\s*/, '')} />
-                                </span>
-                            </li>
+                                </div>
+                            </div>
                         ))}
-                    </ol>
+                    </div>
                 </div>
             )}
 
             {usage && (
-                <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700">
-                    <h5 className="font-medium text-green-700 dark:text-green-300 mb-1 text-sm">🎯 How to Use</h5>
-                    <div className="text-gray-700 dark:text-gray-300 text-sm">
-                        <MarkdownRenderer content={usage} />
+                <div className="p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30">
+                    <h5 className="font-medium text-emerald-700 dark:text-emerald-300 mb-1 text-sm uppercase tracking-wider">🎯 How to Use</h5>
+                    <div className="text-gray-700 dark:text-gray-300 text-sm italic">
+                        <MarkdownRenderer content={String(usage)} />
                     </div>
+                </div>
+            )}
+
+            {/* If it's an object but doesn't match keys, show all fields */}
+            {(!materials && instructionsList.length === 0 && !usage) && (
+                <div className="text-gray-700 dark:text-gray-300 text-sm">
+                    <MarkdownRenderer content={toSafeString(item)} />
                 </div>
             )}
         </div>
@@ -724,13 +749,13 @@ function QuestionCard({
     }
 
     return (
-        <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700">
+        <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700">
             <div className="flex items-start gap-3">
-                <span className="w-7 h-7 rounded-lg bg-indigo-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                <span className="w-7 h-7 rounded-lg bg-blue-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                     Q{index + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                    <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase">
+                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase">
                         {getLevelLabel(item.level, item.type)}
                     </span>
                     <div className="text-gray-700 dark:text-gray-300 mt-1 prose prose-sm dark:prose-invert max-w-none">
@@ -741,7 +766,7 @@ function QuestionCard({
                     <button
                         onClick={handleGetAnswer}
                         disabled={loading}
-                        className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-medium transition-colors disabled:opacity-60"
+                        className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium transition-colors disabled:opacity-60"
                     >
                         {loading ? (
                             <>
@@ -809,7 +834,7 @@ function parseStringQuestion(str: string, index: number): CheckQuestion {
 
 // Render check for understanding questions - handles flat list and nested level groups
 function CheckUnderstandingContent({ items, topic, grade, language }: { items: any, topic?: string, grade?: number, language?: string }) {
-    // If items is an object with levels (e.g., { "Basic": [...], "Application": [...] })
+    // Case 1: Object with levels as keys (e.g., { "Basic": [...], "Application": [...] })
     if (items && typeof items === 'object' && !Array.isArray(items)) {
         return (
             <div className="space-y-6">
@@ -843,44 +868,91 @@ function CheckUnderstandingContent({ items, topic, grade, language }: { items: a
         )
     }
 
-    // Safety check - ensure items is an array
+    // Case 2: Array of objects or strings
     const safeItems = Array.isArray(items) ? items : []
 
     if (safeItems.length === 0) {
         return <p className="text-gray-500 dark:text-gray-400 text-sm">No questions available.</p>
     }
 
-    // Normalize items to CheckQuestion format
-    const normalizedItems: CheckQuestion[] = safeItems.map((item, idx) => {
-        if (typeof item === 'string') {
-            return parseStringQuestion(item, idx)
-        } else if (item && typeof item === 'object') {
-            // Ensure question property exists
-            return {
-                level: item.level || 'Question',
-                question: item.question || String(item),
-                type: item.type
-            }
-        } else {
-            return {
-                level: 'Question',
-                question: String(item)
-            }
-        }
-    })
+    // Check if this is an array of groups: [{level: "...", questions: [...]}, ...]
+    const isGroupedArray = safeItems.length > 0 && safeItems.some(i => i && typeof i === 'object' && (i.questions || i.question_list));
 
+    if (isGroupedArray) {
+        return (
+            <div className="space-y-6">
+                {safeItems.map((group, groupIdx) => {
+                    if (typeof group === 'string') {
+                        return (
+                            <QuestionCard
+                                key={groupIdx}
+                                item={parseStringQuestion(group, groupIdx)}
+                                index={groupIdx}
+                                topic={topic}
+                                grade={grade}
+                                language={language}
+                            />
+                        )
+                    }
+
+                    const level = group.level || `Level ${groupIdx + 1}`
+                    const questionList = Array.isArray(group.questions || group.question_list)
+                        ? (group.questions || group.question_list)
+                        : [group.question || group.text || String(group)]
+
+                    return (
+                        <div key={groupIdx} className="space-y-3">
+                            <h4 className="text-xs font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-1 h-1 rounded-full bg-indigo-500" />
+                                {level}
+                            </h4>
+                            <div className="space-y-3">
+                                {questionList.map((q: any, idx: number) => {
+                                    const normalizedQ = typeof q === 'string'
+                                        ? { question: q, level }
+                                        : { ...q, level: q.level || level, question: q.question || q.text || String(q) }
+                                    return (
+                                        <QuestionCard
+                                            key={`${groupIdx}-${idx}`}
+                                            item={normalizedQ}
+                                            index={idx}
+                                            topic={topic}
+                                            grade={grade}
+                                            language={language}
+                                        />
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )
+                })}
+            </div>
+        )
+    }
+
+    // Case 3: Flat array of questions
     return (
         <div className="space-y-3">
-            {normalizedItems.map((item, idx) => (
-                <QuestionCard
-                    key={idx}
-                    item={item}
-                    index={idx}
-                    topic={topic}
-                    grade={grade}
-                    language={language}
-                />
-            ))}
+            {safeItems.map((item, idx) => {
+                const normalizedQ = typeof item === 'string'
+                    ? parseStringQuestion(item, idx)
+                    : {
+                        level: item.level || 'Question',
+                        question: item.question || item.text || String(item),
+                        type: item.type
+                    }
+
+                return (
+                    <QuestionCard
+                        key={idx}
+                        item={normalizedQ}
+                        index={idx}
+                        topic={topic}
+                        grade={grade}
+                        language={language}
+                    />
+                )
+            })}
         </div>
     )
 }

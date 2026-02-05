@@ -419,7 +419,9 @@ async def generate_teacher_feedback(
     )
     
     # Get AI response
-    llm_client = LLMClient()
+    from app.models.system_settings import SystemSettings
+    system_settings = await db.scalar(select(SystemSettings).limit(1))
+    llm_client = LLMClient(system_settings=system_settings)
     response_text = await llm_client.generate(prompt)
     
     # Parse JSON response with extreme robust extraction
@@ -497,7 +499,9 @@ async def generate_improvement_plan(
     )
     
     # Get AI response
-    llm_client = LLMClient()
+    from app.models.system_settings import SystemSettings
+    system_settings = await db.scalar(select(SystemSettings).limit(1))
+    llm_client = LLMClient(system_settings=system_settings)
     response_text = await llm_client.generate(prompt)
     
     # Parse JSON response with extreme robust extraction

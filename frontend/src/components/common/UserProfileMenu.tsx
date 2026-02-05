@@ -56,9 +56,9 @@ export default function UserProfileMenu() {
             {isOpen && (
                 <div className="absolute right-0 mt-3 w-72 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 dark:border-white/10 overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-300">
                     {/* User Header */}
-                    <div className="p-5 bg-gradient-to-br from-blue-50/50 to-indigo-50/50 dark:from-gray-900/50 dark:to-blue-900/20 border-b border-gray-100 dark:border-white/5">
+                    <div className="p-5 bg-gradient-to-br from-blue-50/50 to-blue-100/30 dark:from-gray-900/50 dark:to-blue-900/20 border-b border-gray-100 dark:border-white/5">
                         <div className="flex items-center gap-4">
-                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-blue-500/20">
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-blue-700 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-blue-500/20">
                                 {userName.charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0">

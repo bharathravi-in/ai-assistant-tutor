@@ -251,9 +251,9 @@ export default function ContentPreview() {
                                 </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                            <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
-                            <span className="text-sm font-medium text-yellow-700 dark:text-yellow-300">
+                        <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+                            <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                            <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
                                 Pending Review
                             </span>
                         </div>
@@ -318,8 +318,8 @@ export default function ContentPreview() {
                                     <div
                                         key={section.id}
                                         className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border transition-all duration-300 ${isExpanded
-                                                ? 'border-blue-200 dark:border-blue-700 shadow-md'
-                                                : 'border-gray-100 dark:border-gray-700'
+                                            ? 'border-blue-200 dark:border-blue-700 shadow-md'
+                                            : 'border-gray-100 dark:border-gray-700'
                                             }`}
                                     >
                                         {/* Section Header */}
@@ -343,8 +343,8 @@ export default function ContentPreview() {
                                                 </h3>
                                             </div>
                                             <div className={`p-2 rounded-lg transition-colors ${isExpanded
-                                                    ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-400'
+                                                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-400'
                                                 }`}>
                                                 {isExpanded ? (
                                                     <ChevronUp className="w-5 h-5" />
@@ -463,8 +463,8 @@ export default function ContentPreview() {
                                                     document.getElementById(section.id)?.scrollIntoView({ behavior: 'smooth' })
                                                 }}
                                                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${isExpanded
-                                                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                                                        : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400'
+                                                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                                                    : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400'
                                                     }`}
                                             >
                                                 <span className={`w-5 h-5 rounded flex items-center justify-center text-xs font-bold ${styles.bg} ${styles.text}`}>
@@ -480,14 +480,14 @@ export default function ContentPreview() {
                         )}
 
                         {/* Status Info */}
-                        <div className="bg-yellow-50 dark:bg-yellow-900/10 rounded-2xl border border-yellow-200 dark:border-yellow-800 p-6">
+                        <div className="bg-purple-50 dark:bg-purple-900/10 rounded-2xl border border-purple-200 dark:border-purple-800 p-6">
                             <div className="flex items-start gap-3">
-                                <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                                <Clock className="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5" />
                                 <div>
-                                    <h4 className="font-semibold text-yellow-800 dark:text-yellow-300">
+                                    <h4 className="font-semibold text-purple-800 dark:text-purple-300">
                                         Under Review
                                     </h4>
-                                    <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
+                                    <p className="text-sm text-purple-700 dark:text-purple-400 mt-1">
                                         Your content is being reviewed by CRP/ARP. You will be notified once it's approved or if changes are needed.
                                     </p>
                                 </div>
